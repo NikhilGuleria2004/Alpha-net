@@ -1,0 +1,42 @@
+import { type ReactNode } from 'react'
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Card } from '../ui/Card'
+
+interface StatCardProps {
+  title: string
+  value: string | number
+  icon?: ReactNode
+  trend?: { value: number; label: string }
+  supportingText?: string
+  iconBgColor?: string
+  onClick?: () => void
+}
+
+export function StatCard({ title, value, icon, trend, supportingText, iconBgColor = 'bg-indigo-50 text-indigo-600', onClick }: StatCardProps) {
+  const isPositive = trend && trend.value > 0
+  return (
+    <Card hoverable={Boolean(onClick)} onClick={onClick} className="transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
+          {trend && (
+            <div className="mt-2 flex items-center gap-1 text-sm">
+              <span className={`flex items-center gap-0.5 ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                {Math.abs(trend.value)}
+              </span>
+              <span className="text-slate-500">{trend.label}</span>
+            </div>
+          )}
+          {supportingText && <p className="mt-1 text-sm text-slate-500">{supportingText}</p>}
+        </div>
+        {icon && (
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconBgColor}`}>
+            {icon}
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
