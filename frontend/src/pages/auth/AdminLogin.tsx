@@ -8,8 +8,8 @@ import { Input } from '../../components/ui/Input'
 import { loginAsDemo } from '../../services/authService'
 
 export function AdminLogin() {
-  const [email, setEmail] = useState('nikhil@alphanet.demo')
-  const [password, setPassword] = useState('Password123!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
