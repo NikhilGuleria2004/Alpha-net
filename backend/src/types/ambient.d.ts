@@ -12,3 +12,23 @@ declare module 'bcryptjs' {
   const bcryptjs: any
   export default bcryptjs
 }
+
+declare module 'helmet' {
+  const helmet: any
+  export default helmet
+}
+
+declare module 'express-rate-limit' {
+  const rateLimit: any
+  export default rateLimit
+}
+
+declare module 'jose' {
+  export const SignJWT: any
+  export const jwtVerify: any
+}
+
+declare module '@vercel/blob' {
+  export const put: any
+  export const del: any
+}
