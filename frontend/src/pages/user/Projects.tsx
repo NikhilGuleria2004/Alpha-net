@@ -80,10 +80,10 @@ export function Projects() {
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Statuses' }, ...projectStatuses.map((s) => ({ value: s, label: s }))]} />
-              <Select value={deadlineFilter} onChange={(e) => setDeadlineFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Deadlines' }, { value: '7d', label: 'Next 7 days' }, { value: '30d', label: 'Next 30 days' }, { value: '90d', label: 'Next 90 days' }]} />
-              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />}>Clear</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Statuses' }, ...projectStatuses.map((s) => ({ value: s, label: s }))]} />
+              <Select value={deadlineFilter} onChange={(e) => setDeadlineFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Deadlines' }, { value: '7d', label: 'Next 7 days' }, { value: '30d', label: 'Next 30 days' }, { value: '90d', label: 'Next 90 days' }]} />
+              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
             </div>
           </div>
         </div>

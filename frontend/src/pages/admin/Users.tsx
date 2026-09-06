@@ -109,12 +109,12 @@ export function Users() {
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-32" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
-              <Select value={supervisorFilter} onChange={(e) => setSupervisorFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Roles' }, { value: 'true', label: 'Supervisors' }, { value: 'false', label: 'Non-Supervisors' }]} />
-              <Button variant="secondary" onClick={() => { setSearch(''); setDepartmentFilter(''); setStatusFilter(''); setSupervisorFilter('') }} leftIcon={<SlidersHorizontal className="h-4 w-4" />}>Clear</Button>
-              <Button variant="secondary" onClick={handleExport} leftIcon={<Download className="h-4 w-4" />}>Export</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-32" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+              <Select value={supervisorFilter} onChange={(e) => setSupervisorFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Roles' }, { value: 'true', label: 'Supervisors' }, { value: 'false', label: 'Non-Supervisors' }]} />
+              <Button variant="secondary" onClick={() => { setSearch(''); setDepartmentFilter(''); setStatusFilter(''); setSupervisorFilter('') }} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
+              <Button variant="secondary" onClick={handleExport} leftIcon={<Download className="h-4 w-4" />} className="w-full sm:w-auto">Export</Button>
             </div>
           </div>
         </div>

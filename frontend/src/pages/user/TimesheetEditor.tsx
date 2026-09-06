@@ -298,22 +298,22 @@ export function TimesheetEditor() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Work Item</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Mon</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Tue</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Wed</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Thu</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Fri</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Sat</th>
-                <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Sun</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
-                {!isReadOnly && <th className="sticky right-0 z-10 bg-slate-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>}
+                <th className="sm:sticky sm:left-0 sm:z-10 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Work Item</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Mon</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Tue</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Wed</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Thu</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Fri</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Sat</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Sun</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Total</th>
+                {!isReadOnly && <th className="sm:sticky sm:right-0 sm:z-10 bg-slate-50 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td className="sticky left-0 z-10 bg-white px-4 py-2">
+                  <td className="sm:sticky sm:left-0 sm:z-10 bg-white px-3 py-2 sm:px-4 sm:py-2">
                     <div className="flex flex-col gap-2">
                       <Input value={entry.description} onChange={(e) => handleDescriptionChange(entry.id, e.target.value)} placeholder="Work item description" disabled={isReadOnly} />
                       {!isReadOnly && (
@@ -325,7 +325,7 @@ export function TimesheetEditor() {
                     const isWeekday = ['mon', 'tue', 'wed', 'thu', 'fri'].includes(day)
                     const isEnabled = isReadOnly ? false : entry.entryType === 'regular' ? isWeekday : !isWeekday
                     return (
-                      <td key={day} className="px-2 py-2 text-center">
+                      <td key={day} className="px-2 py-2 text-center sm:px-2 sm:py-2">
                         <input
                           type="number"
                           min="0"
@@ -339,9 +339,9 @@ export function TimesheetEditor() {
                       </td>
                     )
                   })}
-                  <td className="px-4 py-2 text-right text-sm font-medium text-slate-900">{calcEntryTotal(entry).toFixed(1)}</td>
+                  <td className="px-3 py-2 text-right text-sm font-medium text-slate-900 sm:px-4 sm:py-2">{calcEntryTotal(entry).toFixed(1)}</td>
                   {!isReadOnly && (
-                    <td className="sticky right-0 z-10 bg-white px-4 py-2 text-right">
+                    <td className="sm:sticky sm:right-0 sm:z-10 bg-white px-3 py-2 text-right sm:px-4 sm:py-2">
                       <button type="button" onClick={() => handleRemoveEntry(entry.id)} className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </td>
                   )}
@@ -350,8 +350,8 @@ export function TimesheetEditor() {
             </tbody>
             <tfoot className="bg-slate-50">
               <tr>
-                <td colSpan={9} className="px-4 py-2 text-right text-sm font-semibold text-slate-900">Total Hours</td>
-                <td className="px-4 py-2 text-right text-sm font-semibold text-slate-900">{totals.totalHours.toFixed(1)}h</td>
+                <td colSpan={9} className="px-3 py-2 text-right text-sm font-semibold text-slate-900 sm:px-4 sm:py-2">Total Hours</td>
+                <td className="px-3 py-2 text-right text-sm font-semibold text-slate-900 sm:px-4 sm:py-2">{totals.totalHours.toFixed(1)}h</td>
                 {!isReadOnly && <td />}
               </tr>
             </tfoot>

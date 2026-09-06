@@ -5,10 +5,11 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { loginAsDemo } from '../../services/authService'
 
 export function UserLogin() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('alex@alphanet.demo')
+  const [password, setPassword] = useState('Password123!')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
@@ -31,7 +32,7 @@ export function UserLogin() {
     setIsLoading(true)
     setErrors({})
     try {
-      await login('user')
+      await login(email, password)
       addToast('success', 'Welcome back')
       navigate('/user/dashboard')
     } catch {
@@ -46,7 +47,7 @@ export function UserLogin() {
     setIsLoading(true)
     setErrors({})
     try {
-      await login('user')
+      await loginAsDemo(demoId)
       addToast('success', 'Welcome back')
       navigate(demoId === 'supervisor-demo' ? '/supervisor/timesheets' : '/user/dashboard')
     } catch {

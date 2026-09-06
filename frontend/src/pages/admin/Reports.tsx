@@ -135,18 +135,18 @@ export function Reports() {
       <Card>
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row">
-            <div className="flex flex-wrap items-end gap-3">
-              <Select value={dateRange} onChange={(e) => setDateRange(e.target.value as ReportFilters['dateRange'])} className="w-36" options={[{ value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }, { value: 'custom', label: 'Custom' }]} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={dateRange} onChange={(e) => setDateRange(e.target.value as ReportFilters['dateRange'])} className="w-full sm:w-36" options={[{ value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }, { value: 'custom', label: 'Custom' }]} />
               {dateRange === 'custom' && (
                 <>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
-                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-40" />
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-40" />
                 </>
               )}
-              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
-              <Select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="w-44" options={[{ value: '', label: 'All Employees' }, ...employeeOptions]} />
-              <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
-              <Button variant="secondary" onClick={handleClear}>Clear</Button>
+              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-full sm:w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
+              <Select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="w-full sm:w-44" options={[{ value: '', label: 'All Employees' }, ...employeeOptions]} />
+              <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
+              <Button variant="secondary" onClick={handleClear} className="w-full sm:w-auto">Clear</Button>
             </div>
           </div>
         </div>

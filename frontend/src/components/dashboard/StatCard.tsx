@@ -16,7 +16,7 @@ export function StatCard({ title, value, icon, trend, supportingText, iconBgColo
   const isPositive = trend && trend.value > 0
   return (
     <Card hoverable={Boolean(onClick)} onClick={onClick} className="transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between p-5">
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-500">{title}</p>
           <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>

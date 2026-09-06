@@ -1,27 +1,25 @@
-import type { User, UserRole } from '../types/auth'
+import type { User } from '../types/auth'
 import apiClient from './apiClient'
 
 const STORAGE_KEY = 'alphanet_access_token'
 
-export async function login(role: UserRole): Promise<User> {
+export async function login(email: string, password: string): Promise<User> {
   const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', {
-    email: `${role}@alphanet.demo`,
-    password: 'password',
+    email,
+    password,
   })
   localStorage.setItem(STORAGE_KEY, response.accessToken)
   return response.user
 }
 
 export async function loginAsDemo(demoId: 'admin-demo' | 'user-demo' | 'supervisor-demo'): Promise<User> {
-  const demoMap: Record<string, string> = {
-    'admin-demo': 'admin@alphanet.demo',
-    'user-demo': 'user@alphanet.demo',
-    'supervisor-demo': 'supervisor@alphanet.demo',
+  const demoMap: Record<string, { email: string; password: string }> = {
+    'admin-demo': { email: 'nikhil@alphanet.demo', password: 'Password123!' },
+    'user-demo': { email: 'alex@alphanet.demo', password: 'Password123!' },
+    'supervisor-demo': { email: 'raj@alphanet.demo', password: 'Password123!' },
   }
-  const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', {
-    email: demoMap[demoId],
-    password: 'password',
-  })
+  const credentials = demoMap[demoId]
+  const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', credentials)
   localStorage.setItem(STORAGE_KEY, response.accessToken)
   return response.user
 }

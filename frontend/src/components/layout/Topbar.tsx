@@ -178,7 +178,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        <div ref={searchRef} className="relative hidden sm:block">
+        <div ref={searchRef} className="relative">
           <button
             type="button"
             onClick={() => setIsSearchOpen((prev) => !prev)}
@@ -186,11 +186,11 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
             aria-label="Open search"
           >
             <Search className="h-4 w-4" />
-            <span>Search projects, users...</span>
-            <kbd className="ml-2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-400">⌘K</kbd>
+            <span className="hidden sm:inline">Search projects, users...</span>
+            <kbd className="ml-2 hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-400 sm:inline-block">⌘K</kbd>
           </button>
           {isSearchOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg" role="search">
+            <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg sm:w-80" role="search">
               <div className="p-3">
                 <input
                   type="text"

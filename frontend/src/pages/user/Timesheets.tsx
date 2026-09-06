@@ -113,11 +113,11 @@ export function Timesheets() {
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-36" options={[{ value: '', label: 'All Statuses' }, { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'declined', label: 'Declined' }, { value: 'withdrawn', label: 'Withdrawn' }]} />
-              <Select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="w-36" options={[{ value: '', label: 'All Time' }, { value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }]} />
-              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />}>Clear</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-full sm:w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-36" options={[{ value: '', label: 'All Statuses' }, { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'declined', label: 'Declined' }, { value: 'withdrawn', label: 'Withdrawn' }]} />
+              <Select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="w-full sm:w-36" options={[{ value: '', label: 'All Time' }, { value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }]} />
+              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
             </div>
           </div>
         </div>

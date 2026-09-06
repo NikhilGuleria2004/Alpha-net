@@ -111,15 +111,11 @@ export function Projects() {
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'draft', label: 'Draft' }, { value: 'completed', label: 'Completed' }, { value: 'overdue', label: 'Overdue' }, { value: 'archived', label: 'Archived' }]} />
-              <Select value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)} className="w-48" options={[{ value: '', label: 'All Managers' }, ...managers.map((m) => ({ value: m!.id, label: m!.name }))]} />
-              <Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setManagerFilter('') }} leftIcon={<SlidersHorizontal className="h-4 w-4" />}>
-                Clear
-              </Button>
-              <Button variant="secondary" onClick={handleExport} leftIcon={<Download className="h-4 w-4" />}>
-                Export
-              </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'draft', label: 'Draft' }, { value: 'completed', label: 'Completed' }, { value: 'overdue', label: 'Overdue' }, { value: 'archived', label: 'Archived' }]} />
+              <Select value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)} className="w-full sm:w-48" options={[{ value: '', label: 'All Managers' }, ...managers.map((m) => ({ value: m!.id, label: m!.name }))]} />
+              <Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setManagerFilter('') }} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
+              <Button variant="secondary" onClick={handleExport} leftIcon={<Download className="h-4 w-4" />} className="w-full sm:w-auto">Export</Button>
             </div>
           </div>
         </div>

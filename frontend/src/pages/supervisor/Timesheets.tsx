@@ -84,12 +84,12 @@ export function SupervisorTimesheets() {
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} className="w-44" options={[{ value: '', label: 'All Employees' }, ...userOptions]} />
-              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-36" options={[{ value: '', label: 'All Statuses' }, { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'declined', label: 'Declined' }, { value: 'withdrawn', label: 'Withdrawn' }]} />
-              <Input type="week" value={weekStartFilter} onChange={(e) => setWeekStartFilter(e.target.value)} className="w-40" />
-              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />}>Clear</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <Select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} className="w-full sm:w-44" options={[{ value: '', label: 'All Employees' }, ...userOptions]} />
+              <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="w-full sm:w-44" options={[{ value: '', label: 'All Projects' }, ...projectOptions]} />
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-36" options={[{ value: '', label: 'All Statuses' }, { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'declined', label: 'Declined' }, { value: 'withdrawn', label: 'Withdrawn' }]} />
+              <Input type="week" value={weekStartFilter} onChange={(e) => setWeekStartFilter(e.target.value)} className="w-full sm:w-40" />
+              <Button variant="secondary" onClick={handleClear} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
             </div>
           </div>
         </div>

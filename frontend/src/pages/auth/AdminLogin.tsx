@@ -5,10 +5,11 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { loginAsDemo } from '../../services/authService'
 
 export function AdminLogin() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('nikhil@alphanet.demo')
+  const [password, setPassword] = useState('Password123!')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
@@ -31,7 +32,7 @@ export function AdminLogin() {
     setIsLoading(true)
     setErrors({})
     try {
-      await login('admin')
+      await login(email, password)
       addToast('success', 'Welcome back, Administrator')
       navigate('/admin/dashboard')
     } catch {
@@ -46,7 +47,7 @@ export function AdminLogin() {
     setIsLoading(true)
     setErrors({})
     try {
-      await login(demoId === 'admin-demo' ? 'admin' : 'user')
+      await loginAsDemo(demoId)
       addToast('success', 'Welcome back')
       navigate(demoId === 'admin-demo' ? '/admin/dashboard' : demoId === 'supervisor-demo' ? '/supervisor/timesheets' : '/user/dashboard')
     } catch {

@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, UserRole } from '../types/auth'
+import type { User } from '../types/auth'
 import { login as authLogin, logout as authLogout, getCurrentUser, isAuthenticated as checkAuth } from '../services/authService'
 
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (role: UserRole) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const handleLogin = async (role: UserRole) => {
-    const loggedInUser = await authLogin(role)
+  const handleLogin = async (email: string, password: string) => {
+    const loggedInUser = await authLogin(email, password)
     setUser(loggedInUser)
   }
 
