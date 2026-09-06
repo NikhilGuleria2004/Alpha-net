@@ -11,7 +11,7 @@ import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
 import { Modal } from '../../components/ui/Modal'
 import { Avatar } from '../../components/ui/Avatar'
-import { validateDateRange } from '../../utils/validation'
+import { validateDateRange, validateDeadlineRange } from '../../utils/validation'
 import type { CreateProjectInput } from '../../types/project'
 
 type Document = { id: string; name: string; size: string }
@@ -70,9 +70,12 @@ export function CreateProject() {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`
       }
     }
+    if (form.teamMemberIds.length === 0) {
+      newErrors.teamMemberIds = 'At least one team member is required'
+    }
     const dateValidation = validateDateRange(form.startDate, form.endDate)
     if (!dateValidation.valid) newErrors.endDate = dateValidation.message || ''
-    const deadlineValidation = validateDateRange(form.startDate, form.deadline)
+    const deadlineValidation = validateDeadlineRange(form.startDate, form.deadline, form.endDate)
     if (!deadlineValidation.valid) newErrors.deadline = deadlineValidation.message || ''
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -86,8 +89,10 @@ export function CreateProject() {
       await createProject(form)
       addToast('success', 'Project created successfully')
       navigate('/admin/projects')
-    } catch {
-      addToast('error', 'Failed to create project')
+    } catch (err) {
+      console.error('Failed to create project:', err)
+      const message = err instanceof Error ? err.message : 'Failed to create project'
+      addToast('error', message)
     } finally {
       setIsSubmitting(false)
     }

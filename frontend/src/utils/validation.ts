@@ -40,6 +40,19 @@ export function validateDateRange(start: string, end: string): { valid: boolean;
   return { valid: true }
 }
 
+export function validateDeadlineRange(start: string, deadline: string, end: string): { valid: boolean; message?: string } {
+  if (!start || !deadline || !end) {
+    return { valid: false, message: 'Start, end, and deadline dates are required' }
+  }
+  if (new Date(deadline) < new Date(start)) {
+    return { valid: false, message: 'Deadline cannot be before start date' }
+  }
+  if (new Date(deadline) > new Date(end)) {
+    return { valid: false, message: 'Deadline cannot be after end date' }
+  }
+  return { valid: true }
+}
+
 export function validateTimesheet(entries: { regularHours: number; overtimeHours: number }[]): { valid: boolean; message?: string } {
   if (!entries.length) {
     return { valid: false, message: 'At least one timesheet entry is required' }

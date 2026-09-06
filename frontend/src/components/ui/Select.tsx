@@ -26,7 +26,7 @@ export function Select({ label, error, placeholder, options, className = '', id,
         {...props}
       >
         {placeholder && (
-          <option value="" disabled>
+          <option key="placeholder" value="" disabled>
             {placeholder}
           </option>
         )}

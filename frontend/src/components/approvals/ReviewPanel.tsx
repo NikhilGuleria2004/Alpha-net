@@ -57,6 +57,10 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
   const [declineReason, setDeclineReason] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
 
+  if (!timesheet || !timesheet.userId) {
+    return null
+  }
+
   const employee = users.find((u) => u.id === timesheet.userId)
   const project = projects.find((p) => p.id === timesheet.projectId)
   const start = new Date(timesheet.weekStart)

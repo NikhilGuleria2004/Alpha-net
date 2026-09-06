@@ -1,4 +1,37 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const ACCESS_TOKEN_KEY = 'alphanet_access_token'
+
+function getAccessToken(): string | null {
+  try {
+    return localStorage.getItem(ACCESS_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+async function parseResponse(response: Response): Promise<{ ok: boolean; data: unknown; status: number }> {
+  const contentType = response.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+
+  if (response.status === 204) {
+    return { ok: true, data: undefined, status: response.status }
+  }
+
+  if (!isJson) {
+    return {
+      ok: response.ok,
+      data: { message: await response.text() },
+      status: response.status,
+    }
+  }
+
+  const data = await response.json()
+  return { ok: response.ok, data, status: response.status }
+}
+
+async function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 async function request<T>(
   endpoint: string,
@@ -9,9 +42,14 @@ async function request<T>(
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000)
 
+  const accessToken = getAccessToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
+  }
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
   }
 
   try {
@@ -27,33 +65,31 @@ async function request<T>(
     const isSafeRequest = options.method === 'GET' || options.method === 'HEAD' || options.method === 'OPTIONS' || !options.method
 
     if (response.status === 401 && isSafeRequest && retries > 0) {
-      try {
-        await fetch(`${API_BASE_URL}/auth/me`, {
-          method: 'GET',
-          headers,
-          credentials: 'include',
-        })
-      } catch {
-        window.location.href = '/login'
-        throw new Error('Unauthorized')
-      }
+      await wait(200)
       return request<T>(endpoint, options, retries - 1)
     }
 
     if (response.status === 401) {
-      window.location.href = '/login'
+      try {
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
+      } catch {
+        // ignore
+      }
       throw new Error('Unauthorized')
     }
 
-    if (response.status === 204) {
-      return undefined as T
+    const { ok, data, status } = await parseResponse(response)
+
+    if (status === 429 && retries > 0) {
+      const retryAfter = response.headers.get('retry-after')
+      const delayMs = retryAfter ? Number(retryAfter) * 1000 : 1000
+      await wait(Math.min(delayMs, 5000))
+      return request<T>(endpoint, options, retries - 1)
     }
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      const message = data?.error?.message || data?.message || 'Request failed'
-      const code = data?.error?.code || 'UNKNOWN_ERROR'
+    if (!ok) {
+      const message = (data as { error?: { message?: string }; message?: string })?.error?.message || (data as { message?: string })?.message || 'Request failed'
+      const code = (data as { error?: { code?: string } })?.error?.code || 'UNKNOWN_ERROR'
       throw new Error(`[${code}] ${message}`)
     }
 

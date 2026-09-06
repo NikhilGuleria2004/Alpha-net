@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import type { Project } from '../types/project'
 import type { User } from '../types/auth'
 import type { CreateUserInput } from '../types/user'
@@ -13,6 +13,7 @@ import { getTimesheets as fetchTimesheets, saveDraft as saveDraftService, submit
 import { getNotifications as fetchNotifications, markAsRead as markAsReadService, markAllAsRead as markAllAsReadService, createNotification as createNotificationService } from '../services/notificationService'
 import { getActivities as fetchActivities, createActivity as createActivityService } from '../services/activityService'
 import { getDocuments as fetchDocuments, createDocument as createDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
+import { useAuth } from './AuthContext'
 
 interface AppDataContextValue {
   projects: Project[]
@@ -54,13 +55,54 @@ interface AppDataContextValue {
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const loadingRef = useRef(false)
+
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) {
+      setIsLoading(false)
+      return
+    }
+
+    let cancelled = false
+    async function loadInitialData() {
+      if (loadingRef.current) return
+      loadingRef.current = true
+      setIsLoading(true)
+      try {
+        const [projectsData, usersData, timesheetsData, activitiesData, documentsData] = await Promise.all([
+          fetchProjects(),
+          fetchUsers(),
+          fetchTimesheets(),
+          fetchActivities(),
+          fetchDocuments(),
+        ])
+        if (!cancelled) {
+          setProjects(projectsData)
+          setUsers(usersData)
+          setTimesheets(timesheetsData)
+          setActivities(activitiesData)
+          setDocuments(documentsData)
+        }
+      } finally {
+        if (!cancelled) {
+          loadingRef.current = false
+          setIsLoading(false)
+        }
+      }
+    }
+    loadInitialData()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, authLoading])
 
   const refreshProjects = async () => {
     const data = await fetchProjects()
@@ -93,9 +135,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }
 
   const handleCreateProject = async (data: CreateProjectInput) => {
-    const project = await createProjectService(data)
-    setProjects((prev) => [...prev, project])
-    return project
+    try {
+      const project = await createProjectService(data)
+      setProjects((prev) => [...prev, project])
+      return project
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create project'
+      throw new Error(message)
+    }
   }
 
   const handleUpdateProject = async (id: string, data: Partial<CreateProjectInput>) => {
@@ -241,31 +288,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     return success
   }
-
-  useEffect(() => {
-    let cancelled = false
-    async function loadInitialData() {
-      const [projectsData, usersData, timesheetsData, activitiesData, documentsData] = await Promise.all([
-        fetchProjects(),
-        fetchUsers(),
-        fetchTimesheets(),
-        fetchActivities(),
-        fetchDocuments(),
-      ])
-      if (!cancelled) {
-        setProjects(projectsData)
-        setUsers(usersData)
-        setTimesheets(timesheetsData)
-        setActivities(activitiesData)
-        setDocuments(documentsData)
-        setIsLoading(false)
-      }
-    }
-    loadInitialData()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   return (
     <AppDataContext.Provider

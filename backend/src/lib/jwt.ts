@@ -5,7 +5,7 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'change-me-in-
 export async function signAccessToken(payload: { userId: string; role: string; isSupervisor: boolean }) {
   const jwt = new SignJWT(payload as any)
   jwt.setProtectedHeader({ alg: 'HS256' })
-  jwt.setExpirationTime('15m')
+  jwt.setExpirationTime('1h')
   return jwt.sign(secret)
 }
 

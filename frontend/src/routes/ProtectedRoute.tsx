@@ -26,7 +26,7 @@ export function ProtectedRoute({ children, allowedRoles, requireSupervisor }: Pr
   }
 
   if (!isAuthenticated || !user) {
-    const loginRoute = '/userlog'
+    const loginRoute = location.pathname.startsWith('/admin') ? '/adminlog' : '/userlog'
     return <Navigate to={loginRoute} state={{ from: location }} replace />
   }
 
