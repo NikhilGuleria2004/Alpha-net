@@ -52,7 +52,7 @@ async function seed() {
     const users = db.collection('users')
 
     for (const user of demoUsers) {
-      user.passwordHash = await hashPassword('password')
+      user.passwordHash = await hashPassword('Password123!')
       await users.updateOne({ email: user.email }, { $set: user }, { upsert: true })
       logger.info({ userId: user.email }, 'seeded demo user')
     }

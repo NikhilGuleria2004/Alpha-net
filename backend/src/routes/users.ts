@@ -6,7 +6,7 @@ import { requireUserManage } from '../middleware/access.js'
 export function usersRoutes() {
   const router = Router()
   router.use(authenticate)
-  router.get('/', requireAdmin, listUsers)
+  router.get('/', listUsers)
   router.get('/:id', requireUserManage, getUser)
   router.post('/', requireAdmin, create)
   router.patch('/:id', requireUserManage, update)

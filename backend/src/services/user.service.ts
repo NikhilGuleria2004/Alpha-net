@@ -53,7 +53,7 @@ export async function getUsers(filters?: { role?: string; status?: string; isSup
 
   const users = await db.collection(COLLECTIONS.USERS).find(query).toArray()
   return users.map((u) => ({
-    _id: u._id.toString(),
+    id: u._id.toString(),
     name: u.name,
     email: u.email,
     employeeId: u.employeeId,
@@ -72,7 +72,7 @@ export async function getUserById(id: string): Promise<User | null> {
   const user = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(id) })
   if (!user) return null
   return {
-    _id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
     email: user.email,
     employeeId: user.employeeId,
@@ -105,7 +105,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   }
   const result = await db.collection(COLLECTIONS.USERS).insertOne(doc)
   const createdUser = {
-    _id: result.insertedId.toString(),
+    id: result.insertedId.toString(),
     ...doc,
     supervisorId: doc.supervisorId?.toString(),
   } as User
@@ -187,7 +187,7 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   }
 
   return {
-    _id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
     email: user.email,
     employeeId: user.employeeId,
@@ -228,7 +228,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const user = await db.collection(COLLECTIONS.USERS).findOne({ email: email.toLowerCase() })
   if (!user) return null
   return {
-    _id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
     email: user.email,
     employeeId: user.employeeId,
@@ -247,7 +247,7 @@ export async function getUserByEmployeeId(employeeId: string): Promise<User | nu
   const user = await db.collection(COLLECTIONS.USERS).findOne({ employeeId })
   if (!user) return null
   return {
-    _id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
     email: user.email,
     employeeId: user.employeeId,

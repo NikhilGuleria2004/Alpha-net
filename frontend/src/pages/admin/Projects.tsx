@@ -163,7 +163,7 @@ export function Projects() {
                 {filteredProjects.map((project) => {
                   const manager = appUsers.find((u) => u.id === project.managerId)
                   return (
-                    <tr key={project.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/projects/${project.id}`)}>
+                    <tr key={project.id || project.name} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/projects/${project.id}`)}>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">{project.name}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{project.sowNumber}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{project.client}</td>

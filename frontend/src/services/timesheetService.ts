@@ -1,5 +1,6 @@
 import type { Timesheet, SaveTimesheetInput } from '../types/timesheet'
 import apiClient from './apiClient'
+import { toLocalDateString } from '../utils/date'
 
 export async function getTimesheets(): Promise<Timesheet[]> {
   const response = await apiClient.get<{ timesheets: Timesheet[] }>('/timesheets')
@@ -56,7 +57,7 @@ export async function getCurrentWeekTimesheet(userId: string, projectId: string)
   const day = today.getDay()
   const diff = today.getDate() - day + (day === 0 ? -6 : 1)
   const monday = new Date(today.setDate(diff))
-  const weekStart = monday.toISOString().split('T')[0]
+  const weekStart = toLocalDateString(monday)
   const response = await apiClient.get<{ timesheets: Timesheet[] }>(`/timesheets?userId=${userId}&projectId=${projectId}&weekStart=${weekStart}`)
   return response.timesheets[0]
 }

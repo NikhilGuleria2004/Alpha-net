@@ -3,7 +3,7 @@ import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
 
 export interface Notification {
-  _id: string
+  id: string
   userId: string
   type: string
   title: string
@@ -34,7 +34,7 @@ export async function createNotification(input: {
   }
   const result = await db.collection(COLLECTIONS.NOTIFICATIONS).insertOne(doc)
   return {
-    _id: result.insertedId.toString(),
+    id: result.insertedId.toString(),
     userId: input.userId,
     type: doc.type,
     title: doc.title,
@@ -49,7 +49,7 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
   const db = await getDb()
   const notifications = await db.collection(COLLECTIONS.NOTIFICATIONS).find({ userId: new ObjectId(userId) }).sort({ createdAt: -1 }).toArray()
   return notifications.map((n) => ({
-    _id: n._id.toString(),
+    id: n._id.toString(),
     userId: n.userId.toString(),
     type: n.type,
     title: n.title,

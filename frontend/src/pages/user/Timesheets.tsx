@@ -10,7 +10,7 @@ import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate } from '../../utils/date'
+import { formatDate, toLocalDateString } from '../../utils/date'
 
 export function Timesheets() {
   const { user } = useAuth()
@@ -72,12 +72,22 @@ export function Timesheets() {
       const day = today.getDay()
       const diff = today.getDate() - day + (day === 0 ? -6 : 1)
       const monday = new Date(today.setDate(diff))
-      const weekStart = monday.toISOString().split('T')[0]
+      const weekStart = toLocalDateString(monday)
+
+      const existing = timesheets.find((t) => t.userId === user.id && t.projectId === newProjectId && t.weekStart === weekStart)
+      if (existing) {
+        addToast('info', 'A timesheet already exists for this week. Opening it...')
+        setIsCreateOpen(false)
+        setNewProjectId('')
+        navigate(`/user/timesheets/${existing.id}`)
+        return
+      }
+
       const timesheet = await createTimesheet({
         userId: user.id,
         projectId: newProjectId,
         weekStart,
-        entries: [],
+        entries: [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
         notes: '',
       })
       await refreshTimesheets()
@@ -85,8 +95,10 @@ export function Timesheets() {
       setIsCreateOpen(false)
       setNewProjectId('')
       navigate(`/user/timesheets/${timesheet.id}`)
-    } catch {
-      addToast('error', 'Failed to create timesheet')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create timesheet'
+      console.error('Failed to create timesheet:', err)
+      addToast('error', message)
     } finally {
       setIsCreating(false)
     }

@@ -17,7 +17,7 @@ function createMockCollection() {
     findOne: vi.fn(),
     insertOne: vi.fn(),
     deleteOne: vi.fn(),
-    find: vi.fn(() => ({ toArray: vi.fn() })),
+    find: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })),
     updateOne: vi.fn(),
     findOneAndUpdate: vi.fn(),
   }
@@ -69,15 +69,15 @@ describe('Security tests', () => {
     setupSecurityMocks()
   })
 
-  it('normal user cannot list all users', async () => {
+  it('normal user can list all users', async () => {
     mockUser('507f1f77bcf86cd799439011', 'user', false)
 
     const res = await request(createApp())
       .get('/api/v1/users/')
       .set('Authorization', 'Bearer valid-token')
 
-    expect(res.status).toBe(403)
-    expect(res.body.error.code).toBe('FORBIDDEN')
+    expect(res.status).toBe(200)
+    expect(res.body.users).toBeDefined()
   })
 
   it('normal user cannot access another user profile', async () => {

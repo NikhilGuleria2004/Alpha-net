@@ -7,7 +7,7 @@ import { createActivity } from './activity.service.js'
 export type ProjectStatus = 'draft' | 'active' | 'completed' | 'overdue' | 'archived'
 
 export interface Project {
-  _id: string
+  id: string
   name: string
   sowNumber: string
   client: string
@@ -54,7 +54,7 @@ export interface UpdateProjectInput {
 
 function toProject(doc: any): Project {
   return {
-    _id: doc._id.toString(),
+    id: doc._id.toString(),
     name: doc.name,
     sowNumber: doc.sowNumber,
     client: doc.client,

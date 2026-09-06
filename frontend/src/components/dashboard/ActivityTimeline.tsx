@@ -24,7 +24,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
   return (
     <div className="space-y-4">
       {items.map((item, index) => (
-        <div key={item.id} className="flex gap-4">
+        <div key={item.id || `activity-${index}`} className="flex gap-4">
           <div className="flex flex-col items-center">
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colorClasses[item.color || 'default']}`}>
               {item.icon || <Activity className="h-5 w-5" />}

@@ -172,9 +172,6 @@ export async function createTimesheet(input: SaveTimesheetInput, authenticatedUs
   }
 
   const totals = calcTotals(input.entries)
-  if (totals.totalHours <= 0) {
-    throw new Error('At least one hour is required before submission')
-  }
 
   const now = new Date()
   const doc = {

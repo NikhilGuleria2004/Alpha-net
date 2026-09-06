@@ -60,7 +60,7 @@ export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
         type: 'document',
         title: 'New Document Uploaded',
         message: `A new document "${file.originalname}" was uploaded to project "${project.name}".`,
-        relatedId: document._id,
+        relatedId: document.id,
       })
     }
 

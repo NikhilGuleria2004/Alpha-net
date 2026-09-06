@@ -6,7 +6,7 @@ import { useAppData } from '../../contexts/AppDataContext'
 import { StatCard } from '../../components/dashboard/StatCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDateRange } from '../../utils/date'
+import { formatDateRange, toLocalDateString } from '../../utils/date'
 
 export function UserDashboard() {
   const { user } = useAuth()
@@ -28,7 +28,7 @@ export function UserDashboard() {
     const day = today.getDay()
     const diff = today.getDate() - day + (day === 0 ? -6 : 1)
     const monday = new Date(today.setDate(diff))
-    return monday.toISOString().split('T')[0]
+    return toLocalDateString(monday)
   }, [])
 
   const currentWeekTimesheet = useMemo(() => {

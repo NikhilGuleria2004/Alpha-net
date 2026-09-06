@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/Select'
 import { formatDateRange } from '../../utils/date'
 import type { Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
+import { toLocalDateString } from '../../utils/date'
 
 const DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
@@ -55,7 +56,7 @@ export function TimesheetEditor() {
     const day = today.getDay()
     const diff = today.getDate() - day + (day === 0 ? -6 : 1)
     const monday = new Date(today.setDate(diff))
-    return monday.toISOString().split('T')[0]
+    return toLocalDateString(monday)
    })())
   const [status] = useState<Timesheet['status']>(() => existingTimesheet?.status || 'draft')
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
@@ -116,14 +117,14 @@ export function TimesheetEditor() {
     if (!canNavigatePrev || !weekStart) return
     const start = new Date(weekStart)
     start.setDate(start.getDate() - 7)
-    setWeekStart(start.toISOString().split('T')[0])
+    setWeekStart(toLocalDateString(start))
   }
 
   const handleNextWeek = () => {
     if (!canNavigateNext || !weekStart) return
     const start = new Date(weekStart)
     start.setDate(start.getDate() + 7)
-    setWeekStart(start.toISOString().split('T')[0])
+    setWeekStart(toLocalDateString(start))
   }
 
   const handleEntryChange = (entryId: string, day: DayKey, value: number) => {

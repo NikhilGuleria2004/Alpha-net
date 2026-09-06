@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const createTimesheetSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
   weekStart: z.string().min(1, 'Week start is required'),
-  entries: z.array(z.any()).min(1, 'At least one entry is required'),
+  entries: z.array(z.any()),
   notes: z.string().optional(),
 })
 

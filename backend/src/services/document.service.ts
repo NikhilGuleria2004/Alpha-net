@@ -6,7 +6,7 @@ import { logger } from '../lib/logger.js'
 import { createActivity } from './activity.service.js'
 
 export interface Document {
-  _id: string
+  id: string
   projectId: string
   name: string
   size: number
@@ -57,7 +57,7 @@ export async function getDocumentsByProjectId(projectId: string): Promise<Docume
   const db = await getDb()
   const documents = await db.collection(COLLECTIONS.DOCUMENTS).find({ projectId: new ObjectId(projectId) }).sort({ createdAt: -1 }).toArray()
   return documents.map((d) => ({
-    _id: d._id.toString(),
+    id: d._id.toString(),
     projectId: d.projectId.toString(),
     name: d.name,
     size: d.size,
@@ -84,7 +84,7 @@ export async function createDocument(input: CreateDocumentInput): Promise<Docume
   }
   const result = await db.collection(COLLECTIONS.DOCUMENTS).insertOne(doc)
   const created = {
-    _id: result.insertedId.toString(),
+    id: result.insertedId.toString(),
     projectId: input.projectId,
     name: doc.name,
     size: doc.size,
@@ -131,7 +131,7 @@ export async function getDocumentById(id: string): Promise<Document | null> {
   const document = await db.collection(COLLECTIONS.DOCUMENTS).findOne({ _id: new ObjectId(id) })
   if (!document) return null
   return {
-    _id: document._id.toString(),
+    id: document._id.toString(),
     projectId: document.projectId.toString(),
     name: document.name,
     size: document.size,

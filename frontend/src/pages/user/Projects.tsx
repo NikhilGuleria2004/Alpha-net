@@ -10,7 +10,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
-import { formatDate } from '../../utils/date'
+import { formatDate, toLocalDateString } from '../../utils/date'
 
 export function Projects() {
   const { user } = useAuth()
@@ -51,7 +51,7 @@ export function Projects() {
     const day = today.getDay()
     const diff = today.getDate() - day + (day === 0 ? -6 : 1)
     const monday = new Date(today.setDate(diff))
-    const weekStart = monday.toISOString().split('T')[0]
+    const weekStart = toLocalDateString(monday)
     const timesheet = timesheets.find((t) => t.userId === user.id && t.projectId === projectId && t.weekStart === weekStart)
     return timesheet?.totalHours || 0
   }

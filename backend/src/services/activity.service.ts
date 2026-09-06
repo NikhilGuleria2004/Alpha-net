@@ -3,7 +3,7 @@ import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
 
 export interface Activity {
-  _id: string
+  id: string
   userId: string
   projectId?: string
   timesheetId?: string
@@ -28,7 +28,7 @@ export async function createActivity(input: {
   }
   const result = await db.collection(COLLECTIONS.ACTIVITIES).insertOne(doc)
   return {
-    _id: result.insertedId.toString(),
+    id: result.insertedId.toString(),
     userId: input.userId,
     projectId: doc.projectId?.toString(),
     timesheetId: doc.timesheetId?.toString(),
@@ -41,7 +41,7 @@ export async function getActivitiesByUserId(userId: string): Promise<Activity[]>
   const db = await getDb()
   const activities = await db.collection(COLLECTIONS.ACTIVITIES).find({ userId: new ObjectId(userId) }).sort({ createdAt: -1 }).toArray()
   return activities.map((a) => ({
-    _id: a._id.toString(),
+    id: a._id.toString(),
     userId: a.userId.toString(),
     projectId: a.projectId?.toString(),
     timesheetId: a.timesheetId?.toString(),
@@ -54,7 +54,7 @@ export async function getActivitiesByProjectId(projectId: string): Promise<Activ
   const db = await getDb()
   const activities = await db.collection(COLLECTIONS.ACTIVITIES).find({ projectId: new ObjectId(projectId) }).sort({ createdAt: -1 }).toArray()
   return activities.map((a) => ({
-    _id: a._id.toString(),
+    id: a._id.toString(),
     userId: a.userId.toString(),
     projectId: a.projectId?.toString(),
     timesheetId: a.timesheetId?.toString(),
@@ -67,7 +67,7 @@ export async function getActivitiesByTimesheetId(timesheetId: string): Promise<A
   const db = await getDb()
   const activities = await db.collection(COLLECTIONS.ACTIVITIES).find({ timesheetId: new ObjectId(timesheetId) }).sort({ createdAt: -1 }).toArray()
   return activities.map((a) => ({
-    _id: a._id.toString(),
+    id: a._id.toString(),
     userId: a.userId.toString(),
     projectId: a.projectId?.toString(),
     timesheetId: a.timesheetId?.toString(),
@@ -85,7 +85,7 @@ export async function getAllActivities(filters?: { userId?: string; projectId?: 
 
   const activities = await db.collection(COLLECTIONS.ACTIVITIES).find(query).sort({ createdAt: -1 }).toArray()
   return activities.map((a) => ({
-    _id: a._id.toString(),
+    id: a._id.toString(),
     userId: a.userId.toString(),
     projectId: a.projectId?.toString(),
     timesheetId: a.timesheetId?.toString(),
