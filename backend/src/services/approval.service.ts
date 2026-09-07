@@ -108,8 +108,8 @@ export async function approveTimesheet(timesheetId: string, reviewerId: string):
     { $set: { status: 'approved', review, updatedAt: now } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = result.value
+  if (!result) return null
+  const updated = result
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
   const projectName = project?.name || 'a project'
@@ -178,8 +178,8 @@ export async function declineTimesheet(timesheetId: string, reviewerId: string, 
     { $set: { status: 'declined', review, updatedAt: now } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = result.value
+  if (!result) return null
+  const updated = result
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
   const projectName = project?.name || 'a project'

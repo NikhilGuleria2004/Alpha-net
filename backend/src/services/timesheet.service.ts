@@ -125,10 +125,11 @@ export function calcTotals(entries: TimesheetEntry[]): { regularHours: number; o
   return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours }
 }
 
-export async function getTimesheets(filters?: { userId?: string; projectId?: string; status?: string }): Promise<Timesheet[]> {
+export async function getTimesheets(filters?: { userId?: string; userIds?: string[]; projectId?: string; status?: string }): Promise<Timesheet[]> {
   const db = await getDb()
   const query: Record<string, unknown> = {}
-  if (filters?.userId) query.userId = new ObjectId(filters.userId)
+  if (filters?.userIds) query.userId = { $in: filters.userIds.map((id) => new ObjectId(id)) }
+  else if (filters?.userId) query.userId = new ObjectId(filters.userId)
   if (filters?.projectId) query.projectId = new ObjectId(filters.projectId)
   if (filters?.status) query.status = filters.status
 
@@ -240,8 +241,8 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
     { $set: update },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = toTimesheet(result.value)
+  if (!result) return null
+  const updated = toTimesheet(result)
 
   await createActivity({
     userId: authenticatedUserId,
@@ -279,8 +280,8 @@ export async function submitTimesheet(id: string, authenticatedUserId: string): 
     { $set: { status: 'pending', submittedAt: now, updatedAt: now } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = toTimesheet(result.value)
+  if (!result) return null
+  const updated = toTimesheet(result)
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(updated.projectId) })
   const projectName = project?.name || 'a project'
@@ -343,8 +344,8 @@ export async function withdrawTimesheet(id: string, authenticatedUserId: string,
     { $set: { status: 'withdrawn', review, updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = toTimesheet(result.value)
+  if (!result) return null
+  const updated = toTimesheet(result)
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(updated.projectId) })
   const projectName = project?.name || 'a project'
@@ -401,8 +402,8 @@ export async function approveTimesheet(id: string, reviewerId: string): Promise<
     { $set: { status: 'approved', review, updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  return toTimesheet(result.value)
+  if (!result) return null
+  return toTimesheet(result)
 }
 
 export async function declineTimesheet(id: string, reviewerId: string, reason: string): Promise<Timesheet | null> {
@@ -427,6 +428,6 @@ export async function declineTimesheet(id: string, reviewerId: string, reason: s
     { $set: { status: 'declined', review, updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  return toTimesheet(result.value)
+  if (!result) return null
+  return toTimesheet(result)
 }

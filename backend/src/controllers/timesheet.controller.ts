@@ -1,4 +1,7 @@
 import { type Request, type Response } from 'express'
+import { getDb } from '../lib/mongodb.js'
+import { COLLECTIONS } from '../lib/collections.js'
+import { ObjectId } from 'mongodb'
 import { getTimesheets, getTimesheetById, createTimesheet, updateTimesheet, submitTimesheet, withdrawTimesheet } from '../services/timesheet.service.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
@@ -6,9 +9,25 @@ import { createTimesheetSchema, updateTimesheetSchema } from '../schemas/timeshe
 
 export async function listTimesheets(req: AuthenticatedRequest, res: Response) {
   try {
-    const isAdmin = req.user?.role === 'admin'
+    const { role, isSupervisor, userId: requestUserId } = req.user!
+
+    let userIds: string[] | undefined
+
+    if (role === 'admin') {
+      userIds = undefined
+    } else if (isSupervisor) {
+      const db = await getDb()
+      const subordinates = await db
+        .collection(COLLECTIONS.USERS)
+        .find({ supervisorId: new ObjectId(requestUserId) })
+        .toArray()
+      userIds = [requestUserId, ...subordinates.map((u) => u._id.toString())]
+    } else {
+      userIds = [requestUserId]
+    }
+
     const timesheets = await getTimesheets({
-      userId: isAdmin ? undefined : req.user?.userId,
+      userIds,
       projectId: req.query.projectId ? String(req.query.projectId) : undefined,
       status: req.query.status ? String(req.query.status) : undefined,
     })

@@ -43,12 +43,12 @@ export async function withdrawTimesheet(id: string, reason?: string): Promise<Ti
 }
 
 export async function approveTimesheet(id: string): Promise<Timesheet | undefined> {
-  const response = await apiClient.post<{ timesheet: Timesheet }>(`/timesheets/${id}/approve`)
+  const response = await apiClient.post<{ timesheet: Timesheet }>(`/approvals/${id}/approve`)
   return response.timesheet
 }
 
 export async function declineTimesheet(id: string, reason: string): Promise<Timesheet | undefined> {
-  const response = await apiClient.post<{ timesheet: Timesheet }>(`/timesheets/${id}/decline`, { reason })
+  const response = await apiClient.post<{ timesheet: Timesheet }>(`/approvals/${id}/decline`, { reason })
   return response.timesheet
 }
 

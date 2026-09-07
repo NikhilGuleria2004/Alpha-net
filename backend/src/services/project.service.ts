@@ -114,7 +114,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
 
   await createActivity({
     userId: input.managerId,
-    projectId: project._id,
+    projectId: project.id,
     description: `Project "${project.name}" was created.`,
   })
 
@@ -141,12 +141,12 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
     { $set: update },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const updated = toProject(result.value)
+  if (!result) return null
+  const updated = toProject(result)
 
   await createActivity({
     userId: input.managerId || updated.managerId,
-    projectId: updated._id,
+    projectId: updated.id,
     description: `Project "${updated.name}" was updated.`,
   })
 
@@ -166,8 +166,8 @@ export async function addTeamMember(projectId: string, userId: string): Promise<
     { $addToSet: { teamMemberIds: new ObjectId(userId) }, $set: { updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const project = toProject(result.value)
+  if (!result) return null
+  const project = toProject(result)
 
   await createNotification({
     userId,
@@ -193,8 +193,8 @@ export async function removeTeamMember(projectId: string, userId: string): Promi
     { $pull: { teamMemberIds: new ObjectId(userId) } as any, $set: { updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const project = toProject(result.value)
+  if (!result) return null
+  const project = toProject(result)
 
   await createActivity({
     userId,
@@ -212,8 +212,8 @@ export async function assignSupervisor(projectId: string, supervisorId: string):
     { $set: { supervisorId: new ObjectId(supervisorId), updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
-  if (!result || !result.value) return null
-  const project = toProject(result.value)
+  if (!result) return null
+  const project = toProject(result)
 
   await createNotification({
     userId: supervisorId,

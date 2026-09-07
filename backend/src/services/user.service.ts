@@ -6,7 +6,7 @@ import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 
 export interface User {
-  _id: string
+  id: string
   name: string
   email: string
   employeeId: string
@@ -111,7 +111,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   } as User
 
   await createActivity({
-    userId: createdUser._id,
+    userId: createdUser.id,
     description: `User "${createdUser.name}" was created.`,
   })
 
@@ -140,8 +140,7 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
     { returnDocument: 'after' }
   )
   if (!result) return null
-  const user = result.value
-  if (!user) return null
+  const user = result
 
   const changes: string[] = []
   if (input.name !== undefined && input.name !== existing.name) changes.push(`name to "${input.name}"`)
@@ -205,7 +204,7 @@ export async function activateUser(id: string): Promise<User | null> {
   const user = await updateUser(id, { status: 'active' })
   if (user) {
     await createActivity({
-      userId: user._id,
+      userId: user.id,
       description: `User "${user.name}" was activated.`,
     })
   }
@@ -216,7 +215,7 @@ export async function deactivateUser(id: string): Promise<User | null> {
   const user = await updateUser(id, { status: 'inactive' })
   if (user) {
     await createActivity({
-      userId: user._id,
+      userId: user.id,
       description: `User "${user.name}" was deactivated.`,
     })
   }
