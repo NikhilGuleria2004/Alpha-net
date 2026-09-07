@@ -5,7 +5,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { loginAsDemo } from '../../services/authService'
 
 export function UserLogin() {
   const [email, setEmail] = useState('')
@@ -14,7 +13,7 @@ export function UserLogin() {
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, loginAsDemo } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
 
