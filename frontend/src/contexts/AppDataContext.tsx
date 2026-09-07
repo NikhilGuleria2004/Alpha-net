@@ -208,49 +208,74 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }
 
   const handleSaveDraft = async (id: string, data: SaveTimesheetInput) => {
-    const updated = await saveDraftService(id, data)
-    if (updated) {
-      setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    try {
+      const updated = await saveDraftService(id, data)
+      if (updated) {
+        setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      }
+      return updated
+    } catch {
+      return undefined
     }
-    return updated
   }
 
   const handleSubmitTimesheet = async (id: string) => {
-    const updated = await submitTimesheetService(id)
-    if (updated) {
-      setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    try {
+      const updated = await submitTimesheetService(id)
+      if (updated) {
+        setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      }
+      return updated
+    } catch {
+      return undefined
     }
-    return updated
   }
 
   const handleWithdrawTimesheet = async (id: string, reason?: string) => {
-    const updated = await withdrawTimesheetService(id, reason)
-    if (updated) {
-      setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    try {
+      const updated = await withdrawTimesheetService(id, reason)
+      if (updated) {
+        setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      }
+      return updated
+    } catch {
+      return undefined
     }
-    return updated
   }
 
   const handleApproveTimesheet = async (id: string) => {
-    const updated = await approveTimesheetService(id)
-    if (updated) {
-      setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    try {
+      const updated = await approveTimesheetService(id)
+      if (updated) {
+        setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      }
+      return updated
+    } catch {
+      return undefined
     }
-    return updated
   }
 
   const handleDeclineTimesheet = async (id: string, reason: string) => {
-    const updated = await declineTimesheetService(id, reason)
-    if (updated) {
-      setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    try {
+      const updated = await declineTimesheetService(id, reason)
+      if (updated) {
+        setTimesheets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      }
+      return updated
+    } catch {
+      return undefined
     }
-    return updated
   }
 
   const handleCreateTimesheet = async (data: SaveTimesheetInput) => {
-    const timesheet = await createTimesheetService(data)
-    setTimesheets((prev) => [...prev, timesheet])
-    return timesheet
+    try {
+      const timesheet = await createTimesheetService(data)
+      setTimesheets((prev) => [...prev, timesheet])
+      return timesheet
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create timesheet'
+      throw new Error(message)
+    }
   }
 
   const handleMarkNotificationAsRead = async (id: string) => {

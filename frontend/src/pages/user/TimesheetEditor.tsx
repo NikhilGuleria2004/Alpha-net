@@ -191,6 +191,9 @@ export function TimesheetEditor() {
       await saveDraft(existingTimesheet.id, data)
       addToast('success', 'Draft saved')
       await refreshTimesheets()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save draft'
+      addToast('error', message)
     } finally {
       setIsSaving(false)
     }
@@ -206,6 +209,14 @@ export function TimesheetEditor() {
     }
     setIsProcessing(true)
     try {
+      if (!existingTimesheet || !user || !project) return
+      const errors = getValidationErrors()
+      setValidationErrors(errors)
+      if (errors.length > 0) {
+        addToast('error', 'Please fix validation errors before submitting.')
+        return
+      }
+
       const data = {
         userId: user.id,
         projectId: project.id,
@@ -213,26 +224,46 @@ export function TimesheetEditor() {
         entries,
         notes,
       }
-      await saveDraft(existingTimesheet.id, data)
+
+      const draft = await saveDraft(existingTimesheet.id, data)
+      if (!draft) {
+        addToast('error', 'Failed to save draft. Please try again.')
+        return
+      }
+
       await submitTimesheet(existingTimesheet.id)
-      await addNotification({
-        userId: user.id,
-        type: 'submission',
-        title: 'Timesheet submitted',
-        message: `Your timesheet for ${project.name} (${formatDateRange(new Date(weekStart), weekEnd!)} ) has been submitted for review.`,
-        read: false,
-        relatedId: existingTimesheet.id,
-      })
-      await addActivity({
-        userId: user.id,
-        projectId: project.id,
-        timesheetId: existingTimesheet.id,
-        description: `${user.name} submitted a timesheet for ${project.name}.`,
-      })
+
+      try {
+        await addNotification({
+          userId: user.id,
+          type: 'submission',
+          title: 'Timesheet submitted',
+          message: `Your timesheet for ${project.name} (${formatDateRange(new Date(weekStart), weekEnd!)} ) has been submitted for review.`,
+          read: false,
+          relatedId: existingTimesheet.id,
+        })
+      } catch {
+        // notification failure should not block submission
+      }
+
+      try {
+        await addActivity({
+          userId: user.id,
+          projectId: project.id,
+          timesheetId: existingTimesheet.id,
+          description: `${user.name} submitted a timesheet for ${project.name}.`,
+        })
+      } catch {
+        // activity failure should not block submission
+      }
+
       addToast('success', 'Timesheet submitted successfully')
       setIsSubmitOpen(false)
       await refreshTimesheets()
       navigate('/user/timesheets')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to submit timesheet'
+      addToast('error', message)
     } finally {
       setIsProcessing(false)
     }
@@ -248,6 +279,9 @@ export function TimesheetEditor() {
       setWithdrawReason('')
       await refreshTimesheets()
       navigate('/user/timesheets')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to withdraw timesheet'
+      addToast('error', message)
     } finally {
       setIsProcessing(false)
     }
@@ -439,7 +473,9 @@ export function TimesheetEditor() {
   )
 }
 
-function WithdrawModal({ onClose, onConfirm, reason, onReasonChange, isLoading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; reason: string; onReasonChange: (reason: string) => void; isLoading?: boolean }) {
+function WithdrawModal({ isOpen, onClose, onConfirm, reason, onReasonChange, isLoading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; reason: string; onReasonChange: (reason: string) => void; isLoading?: boolean }) {
+  if (!isOpen) return null
+
   const handleSubmit = () => {
     onConfirm()
   }
