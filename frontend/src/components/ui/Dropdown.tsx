@@ -1,4 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, type KeyboardEvent } from 'react'
+import ReactDOM from 'react-dom'
 
 interface DropdownProps {
   trigger: ReactNode
@@ -9,13 +10,32 @@ interface DropdownProps {
 export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+
+  const handleToggle = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const menuWidth = 224
+      let left = align === 'right' ? rect.right - menuWidth : rect.left
+      if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth - 8
+      if (left < 8) left = 8
+      setCoords({
+        top: rect.bottom + 4,
+        left,
+      })
+    }
+    setIsOpen((prev) => !prev)
+  }
 
   useEffect(() => {
     if (!isOpen) return
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      const target = event.target as Node
+      if (containerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return
       }
+      setIsOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -27,16 +47,19 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
 
   return (
     <div ref={containerRef} className="relative inline-block text-left" onKeyDown={handleKeyDown}>
-      <div onClick={() => setIsOpen((prev) => !prev)} className="cursor-pointer">
+      <div onClick={handleToggle} className="cursor-pointer">
         {trigger}
       </div>
-      {isOpen && (
+      {isOpen && coords && ReactDOM.createPortal(
         <div
-          className={`absolute z-20 mt-2 w-56 origin-top-right rounded-lg border border-slate-200 bg-white py-1 shadow-lg ${align === 'right' ? 'right-0' : 'left-0'}`}
+          ref={menuRef}
+          className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          style={{ top: coords.top, left: coords.left }}
           role="menu"
         >
           {children}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

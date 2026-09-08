@@ -65,13 +65,13 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Good morning, {user?.name?.split(' ')[0] || 'Admin'}</h1>
+        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">Good morning, {user?.name?.split(' ')[0] || 'Admin'}</h1>
         <p className="mt-1 text-sm text-slate-500">Here's what's happening across Alphanet today.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Active Projects"
           value={activeProjectsCount}
@@ -102,15 +102,15 @@ export function AdminDashboard() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+        <div className="space-y-4 sm:space-y-6 lg:col-span-2">
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">Timesheet Approvals</h2>
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-4">
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Timesheet Approvals</h2>
             </div>
             <div className="overflow-x-auto">
               {pendingApprovals.length === 0 ? (
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <EmptyState
                     icon={<Clock3 className="h-12 w-12" />}
                     title="You're all caught up"
@@ -118,63 +118,108 @@ export function AdminDashboard() {
                   />
                 </div>
               ) : (
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Employee</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Project</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Week</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Hours</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Submitted</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
+                <>
+                  <table className="hidden min-w-full divide-y divide-slate-200 sm:block">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Employee</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Project</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Week</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Hours</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Submitted</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {pendingApprovals.map((timesheet) => {
+                        const start = new Date(timesheet.weekStart)
+                        const end = new Date(start)
+                        end.setDate(end.getDate() + 4)
+                        const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
+                        return (
+                          <tr key={timesheet.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/approvals`)}>
+                            <td className="px-4 py-3 text-sm text-slate-700">{getUserName(timesheet.userId)}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{getProjectName(timesheet.projectId)}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">
+                              {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm text-slate-700">{timesheet.totalHours.toFixed(1)}h</td>
+                            <td className="px-4 py-3 text-sm text-slate-500">
+                              {submittedDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(submittedDate) : '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusBadge status={timesheet.status} size="sm" />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/admin/approvals`)
+                                }}
+                                className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                              >
+                                Review
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="sm:hidden divide-y divide-slate-200">
                     {pendingApprovals.map((timesheet) => {
                       const start = new Date(timesheet.weekStart)
                       const end = new Date(start)
                       end.setDate(end.getDate() + 4)
                       const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
                       return (
-                        <tr key={timesheet.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/approvals`)}>
-                          <td className="px-4 py-3 text-sm text-slate-700">{getUserName(timesheet.userId)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-700">{getProjectName(timesheet.projectId)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-700">
-                            {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-slate-700">{timesheet.totalHours.toFixed(1)}h</td>
-                          <td className="px-4 py-3 text-sm text-slate-500">
-                            {submittedDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(submittedDate) : '-'}
-                          </td>
-                          <td className="px-4 py-3">
+                        <div key={timesheet.id} className="p-4" onClick={() => navigate(`/admin/approvals`)}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">{getUserName(timesheet.userId)}</p>
+                              <p className="text-xs text-slate-500 truncate">{getProjectName(timesheet.projectId)}</p>
+                            </div>
                             <StatusBadge status={timesheet.status} size="sm" />
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                navigate(`/admin/approvals`)
-                              }}
-                              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                            >
-                              Review
-                            </button>
-                          </td>
-                        </tr>
+                          </div>
+                          <div className="mt-3 space-y-1.5 text-xs text-slate-600">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Week</span>
+                              <span className="text-slate-700">{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Hours</span>
+                              <span className="font-medium text-slate-700">{timesheet.totalHours.toFixed(1)}h</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Submitted</span>
+                              <span className="text-slate-700">{submittedDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(submittedDate) : '-'}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/admin/approvals`)
+                            }}
+                            className="mt-3 w-full rounded-lg bg-indigo-50 px-3 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+                          >
+                            Review
+                          </button>
+                        </div>
                       )
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <h3 className="text-base font-semibold text-slate-900">Project Overview</h3>
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                 {Object.entries(statusCounts).map(([status, count]) => (
                   <div key={status} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -186,9 +231,9 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <h3 className="text-base font-semibold text-slate-900">Hours This Week</h3>
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">Regular Hours</span>
                   <span className="text-sm font-medium text-slate-900">
@@ -201,7 +246,7 @@ export function AdminDashboard() {
                     {timesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(1)}h
                   </span>
                 </div>
-                <div className="border-t border-slate-200 pt-3">
+                <div className="border-t border-slate-200 pt-2.5 sm:pt-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-slate-700">Total</span>
                     <span className="text-sm font-semibold text-slate-900">
@@ -214,19 +259,19 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">Upcoming Deadlines</h2>
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-4">
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Upcoming Deadlines</h2>
             </div>
-            <div className="p-4">
+            <div className="p-4 sm:p-5">
               {upcomingDeadlines.length === 0 ? (
                 <EmptyState
                   title="No upcoming deadlines"
                   description="Projects approaching deadlines will appear here."
                 />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {upcomingDeadlines.map((project) => (
                     <DeadlineCard
                       key={project.id}
@@ -241,10 +286,10 @@ export function AdminDashboard() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-4">
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Recent Activity</h2>
             </div>
-            <div className="p-4">
+            <div className="p-4 sm:p-5">
               <ActivityTimeline
                 items={recentActivities.map((activity) => ({
                   id: activity.id,
