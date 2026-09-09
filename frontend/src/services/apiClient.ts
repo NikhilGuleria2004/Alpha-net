@@ -1,5 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-const ACCESS_TOKEN_KEY = 'alphanet_access_token'
+const ACCESS_TOKEN_KEY = 'eniac_access_token'
 
 function getAccessToken(): string | null {
   try {

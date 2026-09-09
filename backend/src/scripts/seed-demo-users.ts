@@ -4,9 +4,9 @@ import { hashPassword } from '../services/auth.service.js'
 import { logger } from '../lib/logger.js'
 import { ObjectId } from 'mongodb'
 
-const SUPERVISOR_EMAIL = 'raj@alphanet.demo'
-const USER_EMAIL = 'alex@alphanet.demo'
-const ADMIN_EMAIL = 'nikhil@alphanet.demo'
+const SUPERVISOR_EMAIL = 'raj@eniac.demo'
+const USER_EMAIL = 'alex@eniac.demo'
+const ADMIN_EMAIL = 'nikhil@eniac.demo'
 
 interface DemoUser {
   name: string

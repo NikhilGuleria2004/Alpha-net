@@ -37,7 +37,7 @@ export function Settings() {
   const { addToast } = useToast()
   const [isSaving, setIsSaving] = useState(false)
 
-  const [companyName, setCompanyName] = useState('Alphanet')
+  const [companyName, setCompanyName] = useState('Eniac')
   const [timezone, setTimezone] = useState('America/New_York')
   const [weeklyStartDay, setWeeklyStartDay] = useState<DayKey>('mon')
   const [workdays, setWorkdays] = useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri'])
@@ -51,7 +51,7 @@ export function Settings() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const stored = localStorage.getItem('alphanet_settings')
+      const stored = localStorage.getItem('eniac_settings')
       if (!stored || cancelled) return
       try {
         const data = JSON.parse(stored)
@@ -90,7 +90,7 @@ export function Settings() {
       approvalNotifications,
       logoPreview,
     }
-    localStorage.setItem('alphanet_settings', JSON.stringify(data))
+    localStorage.setItem('eniac_settings', JSON.stringify(data))
     addToast('success', 'Settings saved successfully')
     setIsSaving(false)
   }

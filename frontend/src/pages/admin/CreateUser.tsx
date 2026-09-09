@@ -72,7 +72,7 @@ export function CreateUser() {
         <Button variant="ghost" onClick={() => navigate('/admin/users')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Create New User</h1>
-          <p className="mt-1 text-sm text-slate-500">Add a new team member to Alphanet.</p>
+          <p className="mt-1 text-sm text-slate-500">Add a new team member to Eniac.</p>
         </div>
       </div>
 

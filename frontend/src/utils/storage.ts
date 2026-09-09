@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'alphanet_'
+const STORAGE_PREFIX = 'eniac_'
 
 export function getLocalStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue

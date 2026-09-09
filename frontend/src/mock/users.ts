@@ -2,7 +2,7 @@ export const users = [
   {
     id: 'admin-1',
     name: 'Alex Morgan',
-    email: 'alex.morgan@alphanet.com',
+    email: 'alex.morgan@eniac.com',
     employeeId: 'EMP-001',
     department: 'Engineering',
     role: 'admin' as const,
@@ -13,7 +13,7 @@ export const users = [
   {
     id: 'user-1',
     name: 'John Smith',
-    email: 'john.smith@alphanet.com',
+    email: 'john.smith@eniac.com',
     employeeId: 'EMP-002',
     department: 'Engineering',
     role: 'user' as const,
@@ -24,7 +24,7 @@ export const users = [
   {
     id: 'user-2',
     name: 'Sarah Johnson',
-    email: 'sarah.johnson@alphanet.com',
+    email: 'sarah.johnson@eniac.com',
     employeeId: 'EMP-003',
     department: 'Engineering',
     role: 'user' as const,
@@ -35,7 +35,7 @@ export const users = [
   {
     id: 'user-3',
     name: 'Michael Brown',
-    email: 'michael.brown@alphanet.com',
+    email: 'michael.brown@eniac.com',
     employeeId: 'EMP-004',
     department: 'Design',
     role: 'user' as const,
@@ -46,7 +46,7 @@ export const users = [
   {
     id: 'user-4',
     name: 'Priya Sharma',
-    email: 'priya.sharma@alphanet.com',
+    email: 'priya.sharma@eniac.com',
     employeeId: 'EMP-005',
     department: 'Design',
     role: 'user' as const,
@@ -57,7 +57,7 @@ export const users = [
   {
     id: 'user-5',
     name: 'David Lee',
-    email: 'david.lee@alphanet.com',
+    email: 'david.lee@eniac.com',
     employeeId: 'EMP-006',
     department: 'Engineering',
     role: 'user' as const,
@@ -68,7 +68,7 @@ export const users = [
   {
     id: 'user-6',
     name: 'Emily Davis',
-    email: 'emily.davis@alphanet.com',
+    email: 'emily.davis@eniac.com',
     employeeId: 'EMP-007',
     department: 'Marketing',
     role: 'user' as const,
@@ -79,7 +79,7 @@ export const users = [
   {
     id: 'user-7',
     name: 'Raj Patel',
-    email: 'raj.patel@alphanet.com',
+    email: 'raj.patel@eniac.com',
     employeeId: 'EMP-008',
     department: 'Engineering',
     role: 'user' as const,
@@ -90,7 +90,7 @@ export const users = [
   {
     id: 'user-8',
     name: 'Lisa Wang',
-    email: 'lisa.wang@alphanet.com',
+    email: 'lisa.wang@eniac.com',
     employeeId: 'EMP-009',
     department: 'Design',
     role: 'user' as const,
@@ -101,7 +101,7 @@ export const users = [
   {
     id: 'user-9',
     name: 'Tom Wilson',
-    email: 'tom.wilson@alphanet.com',
+    email: 'tom.wilson@eniac.com',
     employeeId: 'EMP-010',
     department: 'Sales',
     role: 'user' as const,
@@ -112,7 +112,7 @@ export const users = [
   {
     id: 'user-10',
     name: 'Jessica Martinez',
-    email: 'jessica.martinez@alphanet.com',
+    email: 'jessica.martinez@eniac.com',
     employeeId: 'EMP-011',
     department: 'QA',
     role: 'user' as const,
@@ -123,7 +123,7 @@ export const users = [
   {
     id: 'user-11',
     name: 'Kevin Chen',
-    email: 'kevin.chen@alphanet.com',
+    email: 'kevin.chen@eniac.com',
     employeeId: 'EMP-012',
     department: 'Engineering',
     role: 'user' as const,

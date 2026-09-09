@@ -30,7 +30,7 @@ export async function getDb(): Promise<Db> {
   const client = getMongoClient()
   await client.connect()
 
-  const dbName = process.env.MONGODB_DB_NAME || 'alphanet'
+  const dbName = process.env.MONGODB_DB_NAME || 'eniac'
   const db = client.db(dbName)
   globalForMongo.__mongoDb = db
   return db

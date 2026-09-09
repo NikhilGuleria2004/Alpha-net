@@ -27,7 +27,7 @@ export function Settings() {
       setEmployeeId(user.employeeId)
       setDepartment(user.department)
     }
-    const stored = localStorage.getItem('alphanet_user_settings')
+    const stored = localStorage.getItem('eniac_user_settings')
     if (stored) {
       try {
         const data = JSON.parse(stored)
@@ -39,7 +39,7 @@ export function Settings() {
         // ignore
       }
     }
-    const savedTheme = localStorage.getItem('alphanet_theme')
+    const savedTheme = localStorage.getItem('eniac_theme')
     if (savedTheme === 'dark' || savedTheme === 'light') {
       setTheme(savedTheme)
       document.documentElement.classList.toggle('dark', savedTheme === 'dark')
@@ -48,7 +48,7 @@ export function Settings() {
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     setTheme(newTheme)
-    localStorage.setItem('alphanet_theme', newTheme)
+    localStorage.setItem('eniac_theme', newTheme)
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
   }
 
@@ -61,7 +61,7 @@ export function Settings() {
       approvalNotifications,
       theme,
     }
-    localStorage.setItem('alphanet_user_settings', JSON.stringify(data))
+    localStorage.setItem('eniac_user_settings', JSON.stringify(data))
     addToast('success', 'Settings saved successfully')
     setIsSaving(false)
   }

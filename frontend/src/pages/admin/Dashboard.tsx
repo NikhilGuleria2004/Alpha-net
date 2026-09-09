@@ -68,7 +68,7 @@ export function AdminDashboard() {
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">Good morning, {user?.name?.split(' ')[0] || 'Admin'}</h1>
-        <p className="mt-1 text-sm text-slate-500">Here's what's happening across Alphanet today.</p>
+        <p className="mt-1 text-sm text-slate-500">Here's what's happening across Eniac today.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

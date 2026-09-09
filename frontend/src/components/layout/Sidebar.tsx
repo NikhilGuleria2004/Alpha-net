@@ -84,7 +84,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
                 <span className="text-sm font-bold">A</span>
               </div>
-              <span className="text-lg font-semibold text-slate-900">Alphanet</span>
+              <span className="text-lg font-semibold text-slate-900">Eniac</span>
             </div>
           )}
           <button
@@ -166,7 +166,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
               <span className="text-sm font-bold">A</span>
             </div>
-            <span className="text-lg font-semibold text-slate-900">Alphanet</span>
+            <span className="text-lg font-semibold text-slate-900">Eniac</span>
           </div>
           <button
             type="button"

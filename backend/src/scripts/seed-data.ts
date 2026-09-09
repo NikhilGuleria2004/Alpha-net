@@ -88,28 +88,28 @@ type SeedUser = {
 }
 
 const admins: SeedUser[] = [
-  { name: 'Nikhil Guleria', email: 'nikhil@alphanet.demo', employeeId: 'ADMIN-001', department: 'Engineering', role: 'admin', isSupervisor: false, status: 'active' },
-  { name: 'Sarah Chen', email: 'sarah@alphanet.demo', employeeId: 'ADMIN-002', department: 'Operations', role: 'admin', isSupervisor: false, status: 'active' },
+  { name: 'Nikhil Guleria', email: 'nikhil@eniac.demo', employeeId: 'ADMIN-001', department: 'Engineering', role: 'admin', isSupervisor: false, status: 'active' },
+  { name: 'Sarah Chen', email: 'sarah@eniac.demo', employeeId: 'ADMIN-002', department: 'Operations', role: 'admin', isSupervisor: false, status: 'active' },
 ]
 
 const supervisors: SeedUser[] = [
-  { name: 'Raj Patel', email: 'raj@alphanet.demo', employeeId: 'SUP-001', department: 'Engineering', role: 'user', isSupervisor: true, status: 'active' },
-  { name: 'Emily Watson', email: 'emily@alphanet.demo', employeeId: 'SUP-002', department: 'Design', role: 'user', isSupervisor: true, status: 'active' },
-  { name: 'Michael Ross', email: 'michael@alphanet.demo', employeeId: 'SUP-003', department: 'Marketing', role: 'user', isSupervisor: true, status: 'active' },
-  { name: 'Priya Sharma', email: 'priya@alphanet.demo', employeeId: 'SUP-004', department: 'Finance', role: 'user', isSupervisor: true, status: 'active' },
+  { name: 'Raj Patel', email: 'raj@eniac.demo', employeeId: 'SUP-001', department: 'Engineering', role: 'user', isSupervisor: true, status: 'active' },
+  { name: 'Emily Watson', email: 'emily@eniac.demo', employeeId: 'SUP-002', department: 'Design', role: 'user', isSupervisor: true, status: 'active' },
+  { name: 'Michael Ross', email: 'michael@eniac.demo', employeeId: 'SUP-003', department: 'Marketing', role: 'user', isSupervisor: true, status: 'active' },
+  { name: 'Priya Sharma', email: 'priya@eniac.demo', employeeId: 'SUP-004', department: 'Finance', role: 'user', isSupervisor: true, status: 'active' },
 ]
 
 const regularUsers: SeedUser[] = [
-  { name: 'Alex Johnson', email: 'alex@alphanet.demo', employeeId: 'USER-001', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
-  { name: 'Jordan Lee', email: 'jordan@alphanet.demo', employeeId: 'USER-002', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
-  { name: 'Taylor Smith', email: 'taylor@alphanet.demo', employeeId: 'USER-003', department: 'Marketing', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-003' },
-  { name: 'Casey Brown', email: 'casey@alphanet.demo', employeeId: 'USER-004', department: 'Finance', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-004' },
-  { name: 'Morgan Davis', email: 'morgan@alphanet.demo', employeeId: 'USER-005', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
-  { name: 'Riley Wilson', email: 'riley@alphanet.demo', employeeId: 'USER-006', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
-  { name: 'Quinn Martinez', email: 'quinn@alphanet.demo', employeeId: 'USER-007', department: 'Marketing', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-003' },
-  { name: 'Avery Anderson', email: 'avery@alphanet.demo', employeeId: 'USER-008', department: 'Finance', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-004' },
-  { name: 'Jamie Thomas', email: 'jamie@alphanet.demo', employeeId: 'USER-009', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
-  { name: 'Drew Jackson', email: 'drew@alphanet.demo', employeeId: 'USER-010', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
+  { name: 'Alex Johnson', email: 'alex@eniac.demo', employeeId: 'USER-001', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
+  { name: 'Jordan Lee', email: 'jordan@eniac.demo', employeeId: 'USER-002', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
+  { name: 'Taylor Smith', email: 'taylor@eniac.demo', employeeId: 'USER-003', department: 'Marketing', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-003' },
+  { name: 'Casey Brown', email: 'casey@eniac.demo', employeeId: 'USER-004', department: 'Finance', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-004' },
+  { name: 'Morgan Davis', email: 'morgan@eniac.demo', employeeId: 'USER-005', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
+  { name: 'Riley Wilson', email: 'riley@eniac.demo', employeeId: 'USER-006', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
+  { name: 'Quinn Martinez', email: 'quinn@eniac.demo', employeeId: 'USER-007', department: 'Marketing', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-003' },
+  { name: 'Avery Anderson', email: 'avery@eniac.demo', employeeId: 'USER-008', department: 'Finance', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-004' },
+  { name: 'Jamie Thomas', email: 'jamie@eniac.demo', employeeId: 'USER-009', department: 'Engineering', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-001' },
+  { name: 'Drew Jackson', email: 'drew@eniac.demo', employeeId: 'USER-010', department: 'Design', role: 'user', isSupervisor: false, status: 'active', supervisorId: 'SUP-002' },
 ]
 
 async function seedUsers() {

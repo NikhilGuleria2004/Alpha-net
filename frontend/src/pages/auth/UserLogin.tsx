@@ -63,7 +63,7 @@ export function UserLogin() {
           <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
             <span className="text-3xl font-bold text-white">A</span>
           </div>
-          <h1 className="text-4xl font-bold text-white">Alphanet</h1>
+          <h1 className="text-4xl font-bold text-white">Eniac</h1>
           <p className="mt-4 text-lg text-slate-300">Internal Project Management</p>
           <p className="mt-2 text-slate-400">Manage your projects, timesheets and submissions.</p>
           <div className="mt-12 flex justify-center gap-4">
@@ -80,7 +80,7 @@ export function UserLogin() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
               <span className="text-lg font-bold">A</span>
             </div>
-            <span className="text-2xl font-bold text-slate-900">Alphanet</span>
+            <span className="text-2xl font-bold text-slate-900">Eniac</span>
           </div>
           <h2 className="text-2xl font-semibold text-slate-900">Employee Portal</h2>
           <p className="mt-1 text-sm text-slate-500">Sign in to your employee account</p>
@@ -97,7 +97,7 @@ export function UserLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
-              placeholder="you@alphanet.com"
+              placeholder="you@eniac.com"
               autoComplete="email"
             />
             <div>

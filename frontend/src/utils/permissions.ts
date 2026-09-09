@@ -45,7 +45,7 @@ export function canViewTimesheet(user: User, timesheet: Timesheet): boolean {
 
 function getSupervisedProjectIds(supervisorId: string): string[] {
   try {
-    const stored = localStorage.getItem('alphanet_projects')
+    const stored = localStorage.getItem('eniac_projects')
     if (!stored) return []
     const projects = JSON.parse(stored) as { supervisorId: string; id: string }[]
     return projects.filter((p) => p.supervisorId === supervisorId).map((p) => p.id)
@@ -56,7 +56,7 @@ function getSupervisedProjectIds(supervisorId: string): string[] {
 
 function getSupervisedUserIds(supervisorId: string): string[] {
   try {
-    const stored = localStorage.getItem('alphanet_users')
+    const stored = localStorage.getItem('eniac_users')
     if (!stored) return []
     const users = JSON.parse(stored) as { id: string; supervisorId?: string }[]
     return users.filter((u) => u.supervisorId === supervisorId).map((u) => u.id)
