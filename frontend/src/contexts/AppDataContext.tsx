@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import type { Project } from '../types/project'
 import type { User } from '../types/auth'
 import type { CreateUserInput } from '../types/user'
@@ -77,12 +77,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       loadingRef.current = true
       setIsLoading(true)
       try {
-        const [projectsData, usersData, timesheetsData, activitiesData, documentsData] = await Promise.all([
+        const [projectsData, usersData, timesheetsData, activitiesData, documentsData, notificationsData] = await Promise.all([
           fetchProjects(),
           fetchUsers(),
           fetchTimesheets(),
           fetchActivities(),
           fetchDocuments(),
+          // Isolated failure: a notifications error must not break the rest of the initial load.
+          fetchNotifications().catch(() => [] as Notification[]),
         ])
         if (!cancelled) {
           setProjects(projectsData)
@@ -90,6 +92,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTimesheets(timesheetsData)
           setActivities(activitiesData)
           setDocuments(documentsData)
+          setNotifications(notificationsData)
         }
       } finally {
         if (!cancelled) {
@@ -119,10 +122,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTimesheets(data)
   }
 
-  const refreshNotifications = async () => {
+  // Stable identity (useCallback) so consumers can safely use these in effect dependency arrays.
+  const refreshNotifications = useCallback(async () => {
     const data = await fetchNotifications()
     setNotifications(data)
-  }
+  }, [])
 
   const refreshActivities = async () => {
     const data = await fetchActivities()
@@ -278,15 +282,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const handleMarkNotificationAsRead = async (id: string) => {
+  const handleMarkNotificationAsRead = useCallback(async (id: string) => {
     await markAsReadService(id)
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
+  }, [])
 
-  const handleMarkAllNotificationsAsRead = async () => {
+  const handleMarkAllNotificationsAsRead = useCallback(async () => {
     await markAllAsReadService()
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }
+  }, [])
 
   const handleAddNotification = async (data: Omit<Notification, 'id' | 'createdAt'>) => {
     const notification = await createNotificationService(data)

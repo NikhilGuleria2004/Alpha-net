@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { Notification } from '../types/notification'
-import { useAuth } from './AuthContext'
 import { useAppData } from './AppDataContext'
 
 interface NotificationContextValue {
@@ -11,42 +10,42 @@ interface NotificationContextValue {
   refresh: () => Promise<void>
 }
 
+/**
+ * A thin, derived view over AppData notifications.
+ *
+ * Holds no state and runs no effects of its own: notifications are fetched
+ * once on login by AppDataProvider, and this context simply projects them
+ * (plus an unread count) for consumers. This intentionally avoids the
+ * previous fetch-in-effect loop (QA finding C3).
+ */
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined)
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const { notifications: appNotifications, refreshNotifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppData()
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const {
+    notifications,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useAppData()
 
-  useEffect(() => {
-    if (user) {
-      refreshNotifications().then(() => {
-        setNotifications(appNotifications)
-      })
-    }
-  }, [user, appNotifications, refreshNotifications])
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  )
 
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  const handleMarkAsRead = async (id: string) => {
-    await markNotificationAsRead(id)
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
-  const handleMarkAllAsRead = async () => {
-    if (!user) return
-    await markAllNotificationsAsRead()
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }
-
-  const refresh = async () => {
-    if (!user) return
-    await refreshNotifications()
-    setNotifications(appNotifications)
-  }
+  const value = useMemo<NotificationContextValue>(
+    () => ({
+      notifications,
+      unreadCount,
+      markAsRead: markNotificationAsRead,
+      markAllAsRead: markAllNotificationsAsRead,
+      refresh: refreshNotifications,
+    }),
+    [notifications, unreadCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications]
+  )
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead: handleMarkAsRead, markAllAsRead: handleMarkAllAsRead, refresh }}>
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   )
