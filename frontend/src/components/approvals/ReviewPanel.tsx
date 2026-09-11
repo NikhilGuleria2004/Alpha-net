@@ -49,7 +49,7 @@ function canReviewTimesheet(reviewerId: string | undefined, reviewerRole: string
 }
 
 export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
-  const { users, projects, approveTimesheet, declineTimesheet, addNotification, addActivity, refreshTimesheets } = useAppData()
+  const { users, projects, approveTimesheet, declineTimesheet, refreshTimesheets } = useAppData()
   const { user: currentUser } = useAuth()
   const { addToast } = useToast()
   const [isApproveOpen, setIsApproveOpen] = useState(false)
@@ -70,26 +70,15 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
   const canReview = canReviewTimesheet(currentUser?.id, currentUser?.role, currentUser?.isSupervisor, timesheet, users, projects)
 
   const handleApprove = async () => {
-    const reviewerId = currentUser?.id ?? 'admin-1'
     setIsProcessing(true)
     try {
       const updated = await approveTimesheet(timesheet.id)
       if (updated) {
         await refreshTimesheets()
-        await addNotification({
-          userId: timesheet.userId,
-          type: 'approval',
-          title: 'Timesheet Approved',
-          message: `Your timesheet for ${project?.name || 'the project'} has been approved.`,
-          read: false,
-          relatedId: timesheet.id,
-        })
-        await addActivity({
-          userId: reviewerId,
-          projectId: timesheet.projectId,
-          timesheetId: timesheet.id,
-          description: `${employee?.name || 'A user'} approved a timesheet for ${project?.name || 'a project'}.`,
-        })
+        // Approval/decline notifications + activities are created server-side by
+        // approval.service.ts — the client duplicated them via POST
+        // /notifications + POST /activities (S2/S3 forgery holes + D1 duplicate
+        // logs attributed to a hardcoded 'admin-1' fallback). Removed.
         addToast('success', 'Timesheet approved')
         setIsApproveOpen(false)
         onClose()
@@ -101,26 +90,11 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
 
   const handleDecline = async () => {
     if (!declineReason.trim()) return
-    const reviewerId = currentUser?.id ?? 'admin-1'
     setIsProcessing(true)
     try {
       const updated = await declineTimesheet(timesheet.id, declineReason.trim())
       if (updated) {
         await refreshTimesheets()
-        await addNotification({
-          userId: timesheet.userId,
-          type: 'decline',
-          title: 'Timesheet Declined',
-          message: `Your timesheet for ${project?.name || 'the project'} was declined. Reason: ${declineReason.trim()}`,
-          read: false,
-          relatedId: timesheet.id,
-        })
-        await addActivity({
-          userId: reviewerId,
-          projectId: timesheet.projectId,
-          timesheetId: timesheet.id,
-          description: `${employee?.name || 'A user'} declined a timesheet for ${project?.name || 'a project'}.`,
-        })
         addToast('success', 'Timesheet declined')
         setDeclineReason('')
         setIsDeclineOpen(false)

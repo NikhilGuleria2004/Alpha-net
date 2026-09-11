@@ -60,9 +60,15 @@ export async function getNotificationsByUserId(userId: string): Promise<Notifica
   }))
 }
 
-export async function markNotificationAsRead(id: string): Promise<boolean> {
+export async function markNotificationAsRead(id: string, userId: string): Promise<boolean> {
   const db = await getDb()
-  const result = await db.collection(COLLECTIONS.NOTIFICATIONS).updateOne({ _id: new ObjectId(id) }, { $set: { read: true } })
+  // Ownership constraint prevents IDOR: a user can only mark their OWN
+  // notification as read (QA_REPORT.md S1). A notification that exists but
+  // belongs to someone else matches nothing → returns false → 404.
+  const result = await db.collection(COLLECTIONS.NOTIFICATIONS).updateOne(
+    { _id: new ObjectId(id), userId: new ObjectId(userId) },
+    { $set: { read: true } }
+  )
   return result.modifiedCount > 0
 }
 

@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/date'
+import { formatFileSize } from '../../utils/format'
 
 export function ProjectDetails() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -127,7 +128,7 @@ export function ProjectDetails() {
                     <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
                       <div>
                         <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                        <p className="text-xs text-slate-500">{doc.size} • Uploaded {formatDate(doc.uploadedAt)}</p>
+                        <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
                       </div>
                     </div>
                   ))}

@@ -9,4 +9,5 @@ export interface CreateUserInput {
   isSupervisor: boolean
   status: UserStatus
   supervisorId?: string
+  password: string
 }

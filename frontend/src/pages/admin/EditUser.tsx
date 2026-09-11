@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft } from 'lucide-react'
+import { Save, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
-import { validateEmail } from '../../utils/validation'
+import { validateEmail, validatePassword } from '../../utils/validation'
 import type { CreateUserInput } from '../../types/user'
 
 export function EditUser() {
@@ -17,6 +17,7 @@ export function EditUser() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showPassword, setShowPassword] = useState(false)
 
   const user = users.find((u) => u.id === userId)
 
@@ -29,6 +30,7 @@ export function EditUser() {
     isSupervisor: false,
     status: 'active',
     supervisorId: undefined,
+    password: '',
   })
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function EditUser() {
         isSupervisor: user.isSupervisor,
         status: user.status,
         supervisorId: user.supervisorId,
+        password: '',
       })
     }
   }, [user])
@@ -73,6 +76,11 @@ export function EditUser() {
     }
     const emailValidation = validateEmail(form.email)
     if (!emailValidation.valid) newErrors.email = emailValidation.message || ''
+    // Optional on edit: only validate when the admin is rotating the password.
+    if (form.password) {
+      const pw = validatePassword(form.password)
+      if (!pw.valid) newErrors.password = pw.message || 'Password does not meet requirements'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -82,7 +90,11 @@ export function EditUser() {
     if (!validate()) return
     setIsSubmitting(true)
     try {
-      await updateUser(user.id, form)
+      // The PATCH contract treats an absent password as "keep current" — an
+      // empty string would fail backend min-length validation, so strip it.
+      const { password, ...rest } = form
+      const payload: Partial<CreateUserInput> = password.trim() ? { ...rest, password } : rest
+      await updateUser(user.id, payload)
       addToast('success', 'User updated successfully')
       refreshUsers()
       navigate(`/admin/users/${user.id}`)
@@ -136,6 +148,41 @@ export function EditUser() {
                 <p className="text-xs text-slate-500">This user can review assigned users' timesheets.</p>
               </div>
             </label>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-lg font-semibold text-slate-900">Security</h2>
+          </div>
+          <div className="p-5 space-y-5">
+            <div>
+              <label htmlFor="edit-user-password" className="mb-1 block text-sm font-medium text-slate-700">New Password</label>
+              <div className="relative">
+                <input
+                  id="edit-user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.password ? (
+                <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-500">Leave blank to keep the current password. At least 8 characters with an uppercase letter, lowercase letter, and number.</p>
+              )}
+            </div>
           </div>
         </Card>
 

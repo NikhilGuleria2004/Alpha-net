@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft } from 'lucide-react'
+import { Save, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
-import { validateEmail } from '../../utils/validation'
+import { validateEmail, validatePassword } from '../../utils/validation'
 import type { CreateUserInput } from '../../types/user'
 
 export function CreateUser() {
@@ -16,6 +16,7 @@ export function CreateUser() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showPassword, setShowPassword] = useState(false)
 
   const [form, setForm] = useState<CreateUserInput>({
     name: '',
@@ -26,6 +27,7 @@ export function CreateUser() {
     isSupervisor: false,
     status: 'active',
     supervisorId: undefined,
+    password: '',
   })
 
   const departments = ['Engineering', 'Design', 'Marketing', 'Sales', 'QA', 'Finance', 'HR']
@@ -47,6 +49,12 @@ export function CreateUser() {
     }
     const emailValidation = validateEmail(form.email)
     if (!emailValidation.valid) newErrors.email = emailValidation.message || ''
+    if (!form.password) {
+      newErrors.password = 'Password is required'
+    } else {
+      const pw = validatePassword(form.password)
+      if (!pw.valid) newErrors.password = pw.message || 'Password does not meet requirements'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -85,6 +93,33 @@ export function CreateUser() {
             <Input label="Full Name" value={form.name} onChange={(e) => updateField('name', e.target.value)} error={errors.name} required />
             <Input label="Email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} error={errors.email} required />
             <Input label="Employee ID" value={form.employeeId} onChange={(e) => updateField('employeeId', e.target.value)} error={errors.employeeId} required />
+            <div>
+              <label htmlFor="create-user-password" className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+              <div className="relative">
+                <input
+                  id="create-user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.password ? (
+                <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-500">At least 8 characters with an uppercase letter, lowercase letter, and number. Share it with the user so they can sign in.</p>
+              )}
+            </div>
             <Select label="Department" value={form.department} onChange={(e) => updateField('department', e.target.value)} options={[{ value: '', label: 'Select department' }, ...departments.map((d) => ({ value: d, label: d }))]} error={errors.department} required />
              <Select label="Role" value={form.role} onChange={(e) => updateField('role', e.target.value as 'admin' | 'user')} options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]} />
              <Select label="Status" value={form.status} onChange={(e) => updateField('status', e.target.value as 'active' | 'inactive')} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />

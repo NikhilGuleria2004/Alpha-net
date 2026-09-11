@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { resolveReportDateRange } from '../../utils/date'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getHoursByProject, getHoursByEmployee, getOvertimeStats, getTimesheetStatusBreakdown, exportToCSV } from '../../services/reportService'
 import type { ReportFilters, HoursByProject, HoursByEmployee, OvertimeStats, TimesheetStatusBreakdown } from '../../types/report'
@@ -31,17 +32,20 @@ export function Reports() {
   const [statusBreakdown, setStatusBreakdown] = useState<TimesheetStatusBreakdown | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const filters: ReportFilters = useMemo(
-    () => ({
+  const filters: ReportFilters = useMemo(() => {
+    // Every preset is resolved to an explicit date window and sent to the
+    // backend — previously only 'custom' sent startDate/endDate, so the presets
+    // silently bucketed all-time data (C8).
+    const range = resolveReportDateRange(dateRange, startDate, endDate)
+    return {
       dateRange,
-      startDate: dateRange === 'custom' ? startDate : undefined,
-      endDate: dateRange === 'custom' ? endDate : undefined,
+      startDate: range.startDate,
+      endDate: range.endDate,
       projectId: projectFilter || undefined,
       userId: employeeFilter || undefined,
       department: departmentFilter || undefined,
-    }),
-    [dateRange, startDate, endDate, projectFilter, employeeFilter, departmentFilter]
-  )
+    }
+  }, [dateRange, startDate, endDate, projectFilter, employeeFilter, departmentFilter])
 
   useEffect(() => {
     let cancelled = false

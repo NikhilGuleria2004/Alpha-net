@@ -12,9 +12,12 @@ import { Card } from '../../components/ui/Card'
 import { Modal } from '../../components/ui/Modal'
 import { Avatar } from '../../components/ui/Avatar'
 import { validateDateRange, validateDeadlineRange } from '../../utils/validation'
+import { uploadProjectDocument } from '../../services/documentService'
 import type { CreateProjectInput } from '../../types/project'
 
-type Document = { id: string; name: string; size: string }
+// Holds the actual File objects (not display metadata) so they can be uploaded
+// to the created project — previously they were discarded on submit (C4).
+type SelectedDocument = { id: string; file: File }
 
 export function CreateProject() {
   const { createProject, users } = useAppData()
@@ -40,7 +43,7 @@ export function CreateProject() {
     teamMemberIds: [],
   })
 
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<SelectedDocument[]>([])
 
   const availableUsers = users.filter((u) => u.status === 'active' && !form.teamMemberIds.includes(u.id))
   const filteredAvailableUsers = availableUsers.filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase()))
@@ -53,12 +56,13 @@ export function CreateProject() {
 
   const addFiles = (files: File[]) => {
     if (!files.length) return
-    const newDocs: Document[] = files.map((file) => ({
-      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-    }))
-    setDocuments((prev) => [...prev, ...newDocs])
+    setDocuments((prev) => [
+      ...prev,
+      ...files.map((file) => ({
+        id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+      })),
+    ])
   }
 
   const validate = () => {
@@ -86,8 +90,21 @@ export function CreateProject() {
     if (!validate()) return
     setIsSubmitting(true)
     try {
-      await createProject(form)
-      addToast('success', 'Project created successfully')
+      const project = await createProject(form)
+      if (documents.length > 0) {
+        // Upload all selected files to the just-created project. Failures are
+        // reported per-file but don't block navigation (the project itself is
+        // already created at this point).
+        const results = await Promise.allSettled(documents.map((d) => uploadProjectDocument(project.id, d.file)))
+        const failed = results.filter((r) => r.status === 'rejected').length
+        if (failed > 0) {
+          addToast('warning', `Project created, but ${failed} of ${documents.length} document(s) failed to upload`)
+        } else {
+          addToast('success', 'Project created with documents')
+        }
+      } else {
+        addToast('success', 'Project created successfully')
+      }
       navigate('/admin/projects')
     } catch (err) {
       console.error('Failed to create project:', err)
@@ -215,8 +232,8 @@ export function CreateProject() {
                 {documents.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                      <p className="text-xs text-slate-500">{doc.size}</p>
+                      <p className="text-sm font-medium text-slate-900">{doc.file.name}</p>
+                      <p className="text-xs text-slate-500">{(doc.file.size / (1024 * 1024)).toFixed(1)} MB</p>
                     </div>
                     <button type="button" onClick={() => setDocuments((prev) => prev.filter((d) => d.id !== doc.id))} className="text-sm text-red-600 hover:text-red-700">Remove</button>
                   </div>

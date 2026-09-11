@@ -53,6 +53,24 @@ export function validateDeadlineRange(start: string, deadline: string, end: stri
   return { valid: true }
 }
 
+export function validatePassword(password: string): { valid: boolean; message?: string } {
+  // Mirrors backend `validatePasswordStrength` (auth.service.ts) so client-side errors
+  // match the server contract exactly (KB: password policy drift D16).
+  if (password.length < 8) {
+    return { valid: false, message: 'Password must be at least 8 characters long' }
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one uppercase letter' }
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one lowercase letter' }
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one number' }
+  }
+  return { valid: true }
+}
+
 export function validateTimesheet(entries: { regularHours: number; overtimeHours: number }[]): { valid: boolean; message?: string } {
   if (!entries.length) {
     return { valid: false, message: 'At least one timesheet entry is required' }

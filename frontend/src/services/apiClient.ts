@@ -33,7 +33,43 @@ async function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function request<T>(
+let refreshPromise: Promise<boolean> | null = null
+
+function clearStoredToken(): void {
+  try {
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+// Exchange the httpOnly refresh cookie for a fresh access token via POST
+// /auth/refresh (backend auth.controller.ts). Single-flight: concurrent 401s
+// share one in-flight refresh instead of firing N refresh requests. The
+// endpoint is invoked with retries=0 so its own 401 path never recurses back
+// into this logic.
+function attemptRefresh(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = request<{ accessToken?: string }>('/auth/refresh', { method: 'POST' }, 0)
+    .then((data) => {
+      if (data?.accessToken) {
+        try {
+          localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
+        } catch {
+          // ignore
+        }
+        return true
+      }
+      return false
+    })
+    .catch(() => false)
+    .finally(() => {
+      refreshPromise = null
+    })
+  return refreshPromise
+}
+
+export async function request<T>(
   endpoint: string,
   options: RequestInit = {},
   retries = 1
@@ -43,8 +79,12 @@ async function request<T>(
   const timeoutId = setTimeout(() => controller.abort(), 15000)
 
   const accessToken = getAccessToken()
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // For multipart/form-data uploads the browser must set Content-Type itself
+    // (with the auto-generated boundary); a fixed application/json header would
+    // make multer reject the request.
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> || {}),
   }
 
@@ -62,19 +102,18 @@ async function request<T>(
 
     clearTimeout(timeoutId)
 
-    const isSafeRequest = options.method === 'GET' || options.method === 'HEAD' || options.method === 'OPTIONS' || !options.method
-
-    if (response.status === 401 && isSafeRequest && retries > 0) {
-      await wait(200)
-      return request<T>(endpoint, options, retries - 1)
+    if (response.status === 401 && retries > 0) {
+      // Access token likely expired. Exchange the httpOnly refresh cookie for a
+      // fresh token and retry the original request once (C6). A repeated 401
+      // with retries exhausted falls through and forces a clean re-login.
+      const refreshed = await attemptRefresh()
+      if (refreshed) {
+        return request<T>(endpoint, options, retries - 1)
+      }
     }
 
     if (response.status === 401) {
-      try {
-        localStorage.removeItem(ACCESS_TOKEN_KEY)
-      } catch {
-        // ignore
-      }
+      clearStoredToken()
       throw new Error('Unauthorized')
     }
 

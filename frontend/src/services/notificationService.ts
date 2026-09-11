@@ -19,11 +19,6 @@ export async function markAllAsRead(): Promise<void> {
   await apiClient.post<void>('/notifications/read-all')
 }
 
-export async function createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification> {
-  const response = await apiClient.post<{ notification: Notification }>('/notifications', data)
-  return response.notification
-}
-
 export async function getNotificationCount(): Promise<number> {
   const response = await apiClient.get<{ unreadCount: number }>('/notifications/unread-count')
   return response.unreadCount

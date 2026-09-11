@@ -104,11 +104,21 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     updatedAt: now,
   }
   const result = await db.collection(COLLECTIONS.USERS).insertOne(doc)
-  const createdUser = {
+  // Return an explicit field map (never spread `doc`) so the password hash is
+  // not leaked in the API response.
+  const createdUser: User = {
     id: result.insertedId.toString(),
-    ...doc,
+    name: doc.name,
+    email: doc.email,
+    employeeId: doc.employeeId,
+    department: doc.department,
+    role: doc.role,
+    isSupervisor: doc.isSupervisor,
+    status: doc.status,
     supervisorId: doc.supervisorId?.toString(),
-  } as User
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  }
 
   await createActivity({
     userId: createdUser.id,

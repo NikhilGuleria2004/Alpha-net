@@ -9,7 +9,7 @@ export const createUserSchema = z.object({
   isSupervisor: z.boolean(),
   status: z.enum(['active', 'inactive']),
   supervisorId: z.string().nullish(),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 export const updateUserSchema = z.object({
@@ -21,7 +21,7 @@ export const updateUserSchema = z.object({
   isSupervisor: z.boolean().optional(),
   status: z.enum(['active', 'inactive']).optional(),
   supervisorId: z.string().nullish(),
-  password: z.string().min(1, 'Password is required').optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 })
 
 export const assignSupervisorSchema = z.object({

@@ -1,5 +1,5 @@
 import type { Document } from '../types/document'
-import apiClient from './apiClient'
+import apiClient, { request } from './apiClient'
 
 export async function getDocuments(projectId?: string): Promise<Document[]> {
   if (!projectId) {
@@ -14,8 +14,15 @@ export async function getDocumentsByProjectId(projectId: string): Promise<Docume
   return response.documents
 }
 
-export async function createDocument(data: Omit<Document, 'id' | 'uploadedAt'> & { projectId: string }): Promise<Document> {
-  const response = await apiClient.post<{ document: Document }>(`/projects/${data.projectId}/documents`, data)
+export async function uploadProjectDocument(projectId: string, file: File): Promise<Document> {
+  // The backend upload endpoint (document.controller.ts) expects multipart/form-data
+  // with a `file` field (multer upload.single('file')) — a JSON body is rejected.
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await request<{ document: Document }>(`/projects/${projectId}/documents`, {
+    method: 'POST',
+    body: formData,
+  })
   return response.document
 }
 

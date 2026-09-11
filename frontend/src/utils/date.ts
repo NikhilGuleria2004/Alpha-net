@@ -1,6 +1,25 @@
 import { format, addDays, differenceInDays, isWeekend as dateFnsIsWeekend, parseISO, startOfWeek } from 'date-fns'
+import type { DateRangePreset } from '../types/report'
 
 export { differenceInDays }
+
+// Resolves the concrete date window a report preset implies, formatted as local
+// 'YYYY-MM-DD' (matching the backend's weekStart string comparison). Previously
+// the Reports page only sent start/endDate for the 'custom' range, so the
+// "Last 7/30/90 days" presets silently returned all-time data (QA_REPORT.md C8).
+export function resolveReportDateRange(
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string
+): { startDate?: string; endDate?: string } {
+  if (preset === 'custom') {
+    return { startDate: customStart || undefined, endDate: customEnd || undefined }
+  }
+  const days = preset === '7d' ? 6 : preset === '30d' ? 29 : 89
+  const end = new Date()
+  const start = addDays(end, -days)
+  return { startDate: format(start, 'yyyy-MM-dd'), endDate: format(end, 'yyyy-MM-dd') }
+}
 
 export function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? parseISO(date) : date

@@ -14,9 +14,12 @@ export async function login(email: string, password: string): Promise<User> {
 
 export async function loginAsDemo(demoId: 'admin-demo' | 'user-demo' | 'supervisor-demo'): Promise<User> {
   const demoMap: Record<string, { email: string; password: string }> = {
-    'admin-demo': { email: 'nikhil@alphanet.demo', password: 'Password123!' },
-    'user-demo': { email: 'alex@alphanet.demo', password: 'Password123!' },
-    'supervisor-demo': { email: 'raj@alphanet.demo', password: 'Password123!' },
+    // Emails must match the accounts seeded by backend/src/scripts/seed-demo-users.ts
+    // (which uses the @eniac.demo domain) — the previous @alphanet.demo values made
+    // every demo-login attempt fail (QA_REPORT.md C5).
+    'admin-demo': { email: 'nikhil@eniac.demo', password: 'Password123!' },
+    'user-demo': { email: 'alex@eniac.demo', password: 'Password123!' },
+    'supervisor-demo': { email: 'raj@eniac.demo', password: 'Password123!' },
   }
   const credentials = demoMap[demoId]
   const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', credentials)

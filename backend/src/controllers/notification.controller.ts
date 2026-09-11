@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express'
-import { getNotificationsByUserId, markNotificationAsRead, markAllNotificationsAsRead, sendDeadlineNotifications, createNotification } from '../services/notification.service.js'
+import { getNotificationsByUserId, markNotificationAsRead, markAllNotificationsAsRead, sendDeadlineNotifications } from '../services/notification.service.js'
 import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 
 export async function listNotifications(req: AuthenticatedRequest, res: Response) {
@@ -14,8 +14,10 @@ export async function getUnreadCount(req: AuthenticatedRequest, res: Response) {
 }
 
 export async function markAsRead(req: AuthenticatedRequest, res: Response) {
-  const notification = await markNotificationAsRead(req.params.id as string)
+  const notification = await markNotificationAsRead(req.params.id as string, req.user!.userId)
   if (!notification) {
+    // 404 (not 403) deliberately — it doesn't leak whether the notification
+    // exists but belongs to someone else, or doesn't exist at all (S1).
     return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } })
   }
   res.json({ success: true })
@@ -24,26 +26,6 @@ export async function markAsRead(req: AuthenticatedRequest, res: Response) {
 export async function markAllAsRead(req: AuthenticatedRequest, res: Response) {
   await markAllNotificationsAsRead(req.user!.userId)
   res.json({ success: true })
-}
-
-export async function create(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { userId, type, title, message, relatedId } = req.body
-    if (!userId || !type || !title || !message) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'userId, type, title, and message are required' } })
-    }
-    const notification = await createNotification({
-      userId,
-      type,
-      title,
-      message,
-      read: false,
-      relatedId,
-    })
-    res.status(201).json({ notification })
-  } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
-  }
 }
 
 export async function sendDeadline(req: Request, res: Response) {

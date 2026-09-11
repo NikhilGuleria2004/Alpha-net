@@ -10,9 +10,9 @@ import type { Document } from '../types/document'
 import { getProjects as fetchProjects, createProject as createProjectService, updateProject as updateProjectService, deleteProject as deleteProjectService, addTeamMember as addTeamMemberService, removeTeamMember as removeTeamMemberService, assignSupervisor as assignSupervisorService } from '../services/projectService'
 import { getUsers as fetchUsers, createUser as createUserService, updateUser as updateUserService, deactivateUser as deactivateUserService } from '../services/userService'
 import { getTimesheets as fetchTimesheets, saveDraft as saveDraftService, submitTimesheet as submitTimesheetService, withdrawTimesheet as withdrawTimesheetService, approveTimesheet as approveTimesheetService, declineTimesheet as declineTimesheetService, createTimesheet as createTimesheetService } from '../services/timesheetService'
-import { getNotifications as fetchNotifications, markAsRead as markAsReadService, markAllAsRead as markAllAsReadService, createNotification as createNotificationService } from '../services/notificationService'
-import { getActivities as fetchActivities, createActivity as createActivityService } from '../services/activityService'
-import { getDocuments as fetchDocuments, createDocument as createDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
+import { getNotifications as fetchNotifications, markAsRead as markAsReadService, markAllAsRead as markAllAsReadService } from '../services/notificationService'
+import { getActivities as fetchActivities } from '../services/activityService'
+import { getDocuments as fetchDocuments, uploadProjectDocument as uploadDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
 import { useAuth } from './AuthContext'
 
 interface AppDataContextValue {
@@ -46,9 +46,7 @@ interface AppDataContextValue {
   createTimesheet: (data: SaveTimesheetInput) => Promise<Timesheet>
   markNotificationAsRead: (id: string) => Promise<void>
   markAllNotificationsAsRead: () => Promise<void>
-  addNotification: (data: Omit<Notification, 'id' | 'createdAt'>) => Promise<Notification>
-  addActivity: (data: Omit<Activity, 'id' | 'createdAt'>) => Promise<Activity>
-  createDocument: (data: Omit<Document, 'id' | 'uploadedAt'>) => Promise<Document>
+  uploadDocument: (projectId: string, file: File) => Promise<Document>
   deleteDocument: (projectId: string, id: string) => Promise<boolean>
 }
 
@@ -292,20 +290,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }, [])
 
-  const handleAddNotification = async (data: Omit<Notification, 'id' | 'createdAt'>) => {
-    const notification = await createNotificationService(data)
-    setNotifications((prev) => [notification, ...prev])
-    return notification
-  }
-
-  const handleAddActivity = async (data: Omit<Activity, 'id' | 'createdAt'>) => {
-    const activity = await createActivityService(data)
-    setActivities((prev) => [activity, ...prev])
-    return activity
-  }
-
-  const handleCreateDocument = async (data: Omit<Document, 'id' | 'uploadedAt'>) => {
-    const document = await createDocumentService(data)
+  const handleUploadDocument = async (projectId: string, file: File) => {
+    const document = await uploadDocumentService(projectId, file)
     setDocuments((prev) => [...prev, document])
     return document
   }
@@ -350,9 +336,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         createTimesheet: handleCreateTimesheet,
         markNotificationAsRead: handleMarkNotificationAsRead,
         markAllNotificationsAsRead: handleMarkAllNotificationsAsRead,
-        addNotification: handleAddNotification,
-        addActivity: handleAddActivity,
-        createDocument: handleCreateDocument,
+        uploadDocument: handleUploadDocument,
         deleteDocument: handleDeleteDocument,
         refreshDocuments,
       }}

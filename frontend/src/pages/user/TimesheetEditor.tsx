@@ -37,7 +37,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 export function TimesheetEditor() {
   const { timesheetId } = useParams<{ timesheetId: string }>()
   const { user } = useAuth()
-  const { timesheets, projects: appProjects, saveDraft, submitTimesheet, withdrawTimesheet, addNotification, addActivity, refreshTimesheets } = useAppData()
+  const { timesheets, projects: appProjects, saveDraft, submitTimesheet, withdrawTimesheet, refreshTimesheets } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
 
@@ -233,29 +233,10 @@ export function TimesheetEditor() {
 
       await submitTimesheet(existingTimesheet.id)
 
-      try {
-        await addNotification({
-          userId: user.id,
-          type: 'submission',
-          title: 'Timesheet submitted',
-          message: `Your timesheet for ${project.name} (${formatDateRange(new Date(weekStart), weekEnd!)} ) has been submitted for review.`,
-          read: false,
-          relatedId: existingTimesheet.id,
-        })
-      } catch {
-        // notification failure should not block submission
-      }
-
-      try {
-        await addActivity({
-          userId: user.id,
-          projectId: project.id,
-          timesheetId: existingTimesheet.id,
-          description: `${user.name} submitted a timesheet for ${project.name}.`,
-        })
-      } catch {
-        // activity failure should not block submission
-      }
+      // The submission notification + activity are created server-side by
+      // timesheet.service.ts — the client previously fabricated duplicates via
+      // POST /notifications and POST /activities (S2/S3 authorization holes,
+      // D1 wrong-actor double-logging). Removed.
 
       addToast('success', 'Timesheet submitted successfully')
       setIsSubmitOpen(false)

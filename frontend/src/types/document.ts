@@ -2,8 +2,10 @@ export interface Document {
   id: string
   projectId: string
   name: string
-  size: string
-  type: string
+  size: number
+  mimeType: string
+  storageKey: string
+  url?: string
   uploadedBy: string
-  uploadedAt: string
+  createdAt: string
 }

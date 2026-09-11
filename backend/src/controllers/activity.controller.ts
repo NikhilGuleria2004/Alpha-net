@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express'
-import { getAllActivities, getActivitiesByUserId, getActivitiesByProjectId, getActivitiesByTimesheetId, createActivity } from '../services/activity.service.js'
+import { getAllActivities, getActivitiesByUserId, getActivitiesByProjectId, getActivitiesByTimesheetId } from '../services/activity.service.js'
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
 
 export async function listActivities(req: AuthenticatedRequest, res: Response) {
@@ -30,17 +30,4 @@ export async function getProjectActivities(req: AuthenticatedRequest, res: Respo
 export async function getTimesheetActivities(req: AuthenticatedRequest, res: Response) {
   const activities = await getActivitiesByTimesheetId(req.params.timesheetId as string)
   res.json({ activities })
-}
-
-export async function create(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { userId, projectId, timesheetId, description } = req.body
-    if (!userId || !description) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'userId and description are required' } })
-    }
-    const activity = await createActivity({ userId, projectId, timesheetId, description })
-    res.status(201).json({ activity })
-  } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
-  }
 }

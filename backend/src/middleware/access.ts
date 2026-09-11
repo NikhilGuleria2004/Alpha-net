@@ -61,7 +61,9 @@ export async function canManageUser(_userId: string, role: string): Promise<bool
 }
 
 export async function requireProjectAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const projectId = req.params.id as string
+  // Document routes are mounted at /:projectId/documents while project routes use /:id,
+  // so accept both param names.
+  const projectId = (req.params.projectId ?? req.params.id) as string
   if (!projectId) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Project ID is required' } })
   }
@@ -73,7 +75,9 @@ export async function requireProjectAccess(req: AuthenticatedRequest, res: Respo
 }
 
 export async function requireProjectEdit(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const projectId = req.params.id as string
+  // Document routes are mounted at /:projectId/documents while project routes use /:id,
+  // so accept both param names.
+  const projectId = (req.params.projectId ?? req.params.id) as string
   if (!projectId) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Project ID is required' } })
   }

@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { getDb } from '../lib/mongodb.js'
-import { verifyAccessToken, signAccessToken, signRefreshToken } from '../lib/jwt.js'
+import { verifyAccessToken, signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js'
 import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
 import { COLLECTIONS } from '../lib/collections.js'
@@ -201,6 +201,80 @@ describe('GET /api/v1/auth/me', () => {
 
     expect(res.status).toBe(401)
     expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+})
+
+describe('POST /api/v1/auth/refresh (C6 regression)', () => {
+  beforeEach(() => {
+    setupAuthMocks()
+  })
+
+  it('issues a fresh access token from a valid refresh cookie', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue({ userId: '507f1f77bcf86cd799439011', sessionId: '507f1f77bcf86cd799439011', exp: 9999999999 })
+    vi.mocked(sessionsCollection.findOne).mockResolvedValue({ refreshToken: 'mock-refresh-token', expiresAt: new Date(Date.now() + 86400000) })
+    vi.mocked(usersCollection.findOne).mockResolvedValue({
+      _id: new ObjectId('507f1f77bcf86cd799439011'),
+      email: 'test@example.com',
+      passwordHash: 'hashed-password',
+      name: 'Test User',
+      employeeId: 'EMP001',
+      department: 'Engineering',
+      role: 'user',
+      isSupervisor: false,
+      status: 'active',
+    })
+    vi.mocked(signAccessToken).mockResolvedValue('mock-new-access-token')
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', 'refreshToken=mock-refresh-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.accessToken).toBe('mock-new-access-token')
+    // The endpoint must not require a Bearer access token.
+    expect(sessionsCollection.findOne).toHaveBeenCalled()
+  })
+
+  it('returns 401 without a refresh cookie', async () => {
+    const res = await request(createApp()).post('/api/v1/auth/refresh')
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+
+  it('returns 401 for an invalid or expired refresh token', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue(null)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', 'refreshToken=expired-token')
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+
+  it('returns 401 when the DB session no longer exists', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue({ userId: '507f1f77bcf86cd799439011', sessionId: '507f1f77bcf86cd799439011', exp: 9999999999 })
+    vi.mocked(sessionsCollection.findOne).mockResolvedValue(null)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', 'refreshToken=mock-refresh-token')
+
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 when the owning user is inactive or missing', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue({ userId: '507f1f77bcf86cd799439011', sessionId: '507f1f77bcf86cd799439011', exp: 9999999999 })
+    vi.mocked(sessionsCollection.findOne).mockResolvedValue({ refreshToken: 'mock-refresh-token', expiresAt: new Date(Date.now() + 86400000) })
+    // Inactive status → refreshUserSession throws → 401.
+    vi.mocked(usersCollection.findOne).mockResolvedValue(null)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', 'refreshToken=mock-refresh-token')
+
+    expect(res.status).toBe(401)
   })
 })
 

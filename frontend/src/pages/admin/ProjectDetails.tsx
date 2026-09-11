@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit3, MoreHorizontal, UserPlus, Trash2, Download, Eye } from 'lucide-react'
+import { ArrowLeft, Edit3, MoreHorizontal, UserPlus, Trash2, Download } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
@@ -15,6 +15,7 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
 import { formatDate } from '../../utils/date'
+import { formatFileSize } from '../../utils/format'
 import type { Activity } from '../../types/activity'
 import type { Project } from '../../types/project'
 import type { Timesheet } from '../../types/timesheet'
@@ -313,11 +314,15 @@ function DocumentsTab({ documents: projectDocuments }: { documents: Document[] }
             <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
               <div>
                 <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                <p className="text-xs text-slate-500">{doc.size} • Uploaded {formatDate(doc.uploadedAt)}</p>
+                <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
               </div>
               <div className="flex gap-2">
-                <button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Eye className="h-4 w-4" /></button>
-                <button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Download className="h-4 w-4" /></button>
+                {doc.url ? (
+                  <a href={doc.url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Download document"><Download className="h-4 w-4" /></a>
+                ) : (
+                  <button type="button" disabled className="cursor-not-allowed rounded-lg p-2 text-slate-300" aria-label="Document unavailable"><Download className="h-4 w-4" /></button>
+                )}
+                <button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="File type"><span className="text-xs font-medium uppercase">{doc.mimeType.split('/')[1] || doc.mimeType}</span></button>
               </div>
             </div>
           ))}

@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express'
-import { loginUser, logoutUser, getMe } from '../services/auth.service.js'
+import { loginUser, logoutUser, getMe, refreshUserSession } from '../services/auth.service.js'
 import { authenticate } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { logger } from '../lib/logger.js'
@@ -34,6 +34,24 @@ export async function me(req: AuthenticatedRequest, res: Response) {
   } catch (err) {
     logger.warn({ err }, 'get me failed')
     res.status(401).json({ error: { code: 'UNAUTHORIZED', message: (err as Error).message || 'Not authenticated' } })
+  }
+}
+
+export async function refresh(req: Request, res: Response) {
+  // No `authenticate` middleware here by design — the access token has likely
+  // expired (that's why the client is refreshing). The credential is the
+  // httpOnly refreshToken cookie scoped to path /api/v1/auth (C6).
+  try {
+    const refreshToken = req.cookies?.refreshToken
+    if (!refreshToken) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'No refresh token provided' } })
+    }
+
+    const { accessToken } = await refreshUserSession(refreshToken)
+    res.json({ accessToken })
+  } catch (err) {
+    logger.warn({ err }, 'refresh failed')
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: (err as Error).message || 'Invalid or expired refresh token' } })
   }
 }
 

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { listNotifications, getUnreadCount, markAsRead, markAllAsRead, sendDeadline, create } from '../controllers/notification.controller.js'
+import { listNotifications, getUnreadCount, markAsRead, markAllAsRead, sendDeadline } from '../controllers/notification.controller.js'
 import { authenticate } from '../middleware/auth.js'
 
 export function notificationsRoutes() {
@@ -8,7 +8,6 @@ export function notificationsRoutes() {
 
   router.get('/', listNotifications)
   router.get('/unread-count', getUnreadCount)
-  router.post('/', create)
   router.post('/:id/read', markAsRead)
   router.post('/read-all', markAllAsRead)
   router.post('/cron/deadline', sendDeadline)
