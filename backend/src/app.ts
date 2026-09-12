@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import pinoHttp from 'pino-http'
 import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
+import { getAllowedOrigins } from './lib/origins.js'
 import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes } from './routes/index.js'
 
 export function createApp() {
@@ -14,26 +15,27 @@ export function createApp() {
 
   app.set('trust proxy', 1)
 
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean)
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no Origin (e.g. server-to-server, health checks)
+      if (!origin) {
+        return callback(null, true)
+      }
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no Origin (e.g. server-to-server, health checks)
-    if (!origin) {
-      return callback(null, true)
-    }
+      // FRONTEND_URL is a comma-separated allowlist shared with the
+      // cross-origin-cookie guard in middleware/csrf.js.
+      if (getAllowedOrigins().includes(origin)) {
+        return callback(null, true)
+      }
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true)
-    }
-
-    return callback(new Error(`CORS: Origin ${origin} not allowed`))
-  },
-  credentials: true,
-}))
+      // Not in the allowlist: do NOT emit Access-Control-Allow-Origin, so the
+      // browser blocks the response from being read. The request still reaches
+      // the routes where requireTrustedCookieSource (middleware/csrf.js)
+      // rejects cookie-authenticated endpoints with a server-side 403.
+      return callback(null, false)
+    },
+    credentials: true,
+  }))
   app.use(helmet())
 
   // Must be mounted for req.cookies to work — login/refresh/logout all rely on

@@ -58,10 +58,18 @@ export async function login(req: Request, res: Response) {
 
     const result = await loginUser(email, password)
 
+    // The frontend apps and this API are cross-origin, so the refresh cookie
+    // must be SameSite=None for the browser to attach it to cross-site
+    // fetches. Browsers require `Secure` alongside SameSite=None; that
+    // combination is production-only, because a Secure cookie would be dropped
+    // over plain http in local dev (dev keeps Lax for the vite same-origin
+    // proxy). Endpoints trusting this cookie are guarded by
+    // middleware/csrf.js against untrusted origins.
+    const isProd = process.env.NODE_ENV === 'production'
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
     })

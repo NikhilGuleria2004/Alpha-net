@@ -311,3 +311,102 @@ describe('POST /api/v1/auth/logout', () => {
     expect(res.status).toBe(204)
   })
 })
+describe('login refresh cookie — cross-origin settings', () => {
+  beforeEach(() => {
+    setupAuthMocks()
+  })
+
+  it('sets SameSite=None; Secure; HttpOnly when NODE_ENV=production', async () => {
+    const previousNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    try {
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as any)
+      vi.mocked(signAccessToken).mockResolvedValue('mock-access-token')
+      vi.mocked(signRefreshToken).mockResolvedValue('mock-refresh-token')
+      vi.mocked(usersCollection.findOne).mockResolvedValue({
+        _id: new ObjectId('507f1f77bcf86cd799439011'),
+        email: 'test@example.com',
+        passwordHash: 'hashed-password',
+        name: 'Test User',
+        employeeId: 'EMP001',
+        department: 'Engineering',
+        role: 'user',
+        isSupervisor: false,
+        status: 'active',
+      })
+
+      const res = await request(createApp()).post('/api/v1/auth/login').send({
+        email: 'test@example.com',
+        password: 'password',
+      })
+
+      const setCookie = res.headers['set-cookie']
+      const cookie = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie)
+      expect(cookie).toContain('SameSite=None')
+      expect(cookie).toContain('Secure')
+      expect(cookie).toContain('HttpOnly')
+    } finally {
+      if (previousNodeEnv === undefined) {
+        delete process.env.NODE_ENV
+      } else {
+        process.env.NODE_ENV = previousNodeEnv
+      }
+    }
+  })
+})
+
+describe('POST /api/v1/auth/refresh — cross-origin cookie guard', () => {
+  beforeEach(() => {
+    setupAuthMocks()
+    process.env.FRONTEND_URL = 'https://alphanet-navy.vercel.app,http://localhost:5173'
+  })
+
+  it('rejects refresh from an untrusted origin with 403 FORBIDDEN', async () => {
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'https://evil.example.com')
+      .set('Cookie', 'refreshToken=mock-refresh-token')
+
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('FORBIDDEN')
+  })
+
+  it('allows refresh from a configured FRONTEND_URL origin', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439011',
+      sessionId: '507f1f77bcf86cd799439011',
+      exp: 9999999999,
+    })
+    vi.mocked(sessionsCollection.findOne).mockResolvedValue({
+      refreshToken: 'mock-refresh-token',
+      expiresAt: new Date(Date.now() + 86400000),
+    })
+    vi.mocked(usersCollection.findOne).mockResolvedValue({
+      _id: new ObjectId('507f1f77bcf86cd799439011'),
+      email: 'test@example.com',
+      passwordHash: 'hashed-password',
+      name: 'Test User',
+      employeeId: 'EMP001',
+      department: 'Engineering',
+      role: 'user',
+      isSupervisor: false,
+      status: 'active',
+    })
+    vi.mocked(signAccessToken).mockResolvedValue('mock-new-access-token')
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'https://alphanet-navy.vercel.app')
+      .set('Cookie', 'refreshToken=mock-refresh-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.accessToken).toBe('mock-new-access-token')
+  })
+
+  it('still returns 401 without a refresh cookie (origin allowed)', async () => {
+    const res = await request(createApp()).post('/api/v1/auth/refresh').set('Origin', 'http://localhost:5173')
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+})
