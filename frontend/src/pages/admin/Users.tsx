@@ -10,6 +10,7 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -23,6 +24,7 @@ export function Users() {
   const [supervisorFilter, setSupervisorFilter] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDirection>('asc')
+  const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const departments = useMemo(() => Array.from(new Set(users.map((u) => u.department))), [users])
 
@@ -59,10 +61,15 @@ export function Users() {
   }
 
   const handleDeactivate = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to deactivate "${name}"?`)) return
-    await deactivateUser(id)
+    setDeactivateConfirm({ id, name })
+  }
+
+  const confirmDeactivate = async () => {
+    if (!deactivateConfirm) return
+    await deactivateUser(deactivateConfirm.id)
     addToast('success', 'User deactivated successfully')
     refreshUsers()
+    setDeactivateConfirm(null)
   }
 
   const handleExport = () => {
@@ -192,6 +199,15 @@ export function Users() {
           )}
         </div>
       </Card>
+      <ConfirmDialog
+        open={!!deactivateConfirm}
+        title="Deactivate User"
+        message={`Are you sure you want to deactivate "${deactivateConfirm?.name}"?`}
+        confirmLabel="Deactivate"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeactivate}
+        onCancel={() => setDeactivateConfirm(null)}
+      />
     </div>
   )
 }

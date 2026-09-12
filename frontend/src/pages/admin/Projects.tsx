@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown, DropdownItem } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
 import { TableSkeleton } from '../../components/ui/Skeleton'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { formatDate } from '../../utils/date'
 
 type SortDirection = 'asc' | 'desc'
@@ -25,6 +26,7 @@ export function Projects() {
   const [managerFilter, setManagerFilter] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDirection>('asc')
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const filteredProjects = useMemo(() => {
     let data = projects.filter((p) => p.status !== 'archived')
@@ -63,10 +65,15 @@ export function Projects() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return
-    await deleteProject(id)
+    setDeleteConfirm({ id, name })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
+    await deleteProject(deleteConfirm.id)
     addToast('success', 'Project deleted successfully')
     refreshProjects()
+    setDeleteConfirm(null)
   }
 
   const handleExport = () => {
@@ -198,6 +205,15 @@ export function Projects() {
           )}
         </div>
       </Card>
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

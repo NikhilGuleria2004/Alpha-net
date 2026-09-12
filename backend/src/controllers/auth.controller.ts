@@ -63,7 +63,7 @@ export async function login(req: Request, res: Response) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/api/v1/auth',
+      path: '/',
     })
 
     logger.info({ userId: result.user.id }, 'user logged in')
@@ -106,7 +106,7 @@ export async function logout(req: AuthenticatedRequest, res: Response) {
   try {
     const refreshToken = req.cookies?.refreshToken
     await logoutUser(refreshToken)
-    res.clearCookie('refreshToken', { path: '/api/v1/auth' })
+    res.clearCookie('refreshToken', { path: '/' })
     res.status(204).send()
   } catch (err) {
     logger.warn({ err }, 'logout failed')
