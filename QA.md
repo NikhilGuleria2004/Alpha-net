@@ -57,15 +57,16 @@ Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 H
 - The panel's local `canReviewTimesheet` allows a supervisor who is the **employee's assigned supervisor** or merely a **team member** of the project. The backend route middleware `requireTimesheetReview` only allows **admin** or the **project's `supervisorId`**. Supervisors in allowed-by-UI-but-denied-by-API cases see working buttons, confirm, then get `[FORBIDDEN] Review access denied to this timesheet`.
 - Compounding it, `backend/src/services/approval.service.ts:15-28` defines a **third**, permissive `canReviewTimesheet` (matching the UI) that is never reached because route middleware runs first — triplicated, drifting permission logic.
 
-### H5. Users can (and are invited to) approve their own timesheets
+### H5. Users can (and are invited to) approve their own timesheets **[FIXED — 2026-09-12]**
 - **Where:** `backend/src/middleware/access.ts:48-57` — `canReviewTimesheet` does not exclude `timesheet.userId === reviewerId`.
 - A supervisor who supervises a project they work on sees their own submitted timesheet in `/supervisor/approvals` and can approve/decline it; admins likewise. Separation of duties is not enforced anywhere.
+- **Fix:** added `if (timesheet.userId.toString() === userId) return false` in `access.ts canReviewTimesheet` (admin branch kept first, so admins remain exempt and can review their own). Frontend `ReviewPanel.canReviewTimesheet` now applies the same self-review exclusion and no longer renders Approve/Decline for the owner. Defense-in-depth: `approval.service.ts` approve/decline route through the same middleware check. Covered by `access.test.ts` (self-review denied; admin self-review allowed) and `approvals-service.test.ts` (approve/decline throw for owner; admin self-approve succeeds).
 
 ### H6. Supervisors cannot get the user directory their pages depend on
 - **Where:** `backend/src/routes/users.ts:9` (admin-only `GET /users`) and every supervisor page (`pages/supervisor/*.tsx`, `ReviewPanel`, admin ProjectDetails team tab) which resolves names/subordinates from the `users` array in `AppDataContext`.
 - Even after C1 is fixed, a supervisor has **no wired endpoint** to fetch names: `GET /supervisors/:id/users` exists but is never called by `AppDataContext`. Until then, employee columns render `-` and the "supervised users" filter set is empty for non-admins.
 
-### H7. User deactivation has no confirmation and always reports success
+### H7. User deactivation has no confirmation and always reports success **[FIXED — 2026-09-12]**
 - **Where:** `frontend/src/pages/admin/UserDetails.tsx:46-49, 87`.
 - "Deactivate User" calls `deactivateUser` **immediately** from the dropdown (no `ConfirmDialog`, unlike project deletion which confirms) and then unconditionally toasts **"User deactivated successfully"** — including when the backend refused (self-deactivation, last active admin). The result value is never checked.
 
@@ -200,30 +201,30 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
   - [ ] Test: employee requesting `GET /activities?projectId=<foreign-id>` gets 403/filtered results
 
 ### 🟠 High
-- [ ] **H1 — Swallowed errors + false success toasts** (`AppDataContext.tsx:212-270`, `TimesheetEditor.tsx:188-258`)
-  - [ ] Preserve error messages in context handlers (rethrow or return `{ ok, error }` instead of `catch { return undefined }`)
-  - [ ] `handleSaveDraft`, `handleSubmit`, `handleWithdraw` check the result **before** showing success toasts
-  - [ ] Show backend validation strings (day rules, E11000) verbatim in the editor when a save/submit fails
-- [ ] **H2 — Day-rule validation parity; hidden hours submitted** (`TimesheetEditor.tsx:69-84,138-140`)
-  - [ ] Zero-out (or confirm) hours for days that don't match the entry type when switching type
-  - [ ] Mirror backend `validateEntries` client-side (regular=Mon–Fri, overtime=Sat–Sun) with inline messages
-- [ ] **H3 — Week ‹ › mutates the open timesheet** (`TimesheetEditor.tsx:94-124`, `timesheet.service.ts:226-231`)
-  - [ ] Make the arrows **navigate** weeks (load/create that week's timesheet) instead of editing the open one's `weekStart`
-  - [ ] If week relocation is kept as a feature, require explicit confirmation and pre-check the `(userId, projectId, weekStart)` collision
-  - [ ] Add a supported "create timesheet for past week" path on My Timesheets (aligns with Feature_Report §2.5)
-- [ ] **H4 — Review permission mismatch (UI vs middleware)** (`ReviewPanel.tsx:37-49`, `access.ts:48-57`, `approval.service.ts:15-28`)
-  - [ ] Pick one authority (backend route middleware) and delete the duplicated `canReviewTimesheet` implementations
+- [x] **H1 — Swallowed errors + false success toasts** (`AppDataContext.tsx:212-270`, `TimesheetEditor.tsx:188-258`) **[FIXED — 2026-09-12]**
+  - [x] Preserve error messages in context handlers (rethrow or return `{ ok, error }` instead of `catch { return undefined }`) — the five timesheet handlers in `AppDataContext` now rethrow, so the backend message reaches the caller's `catch` verbatim
+  - [x] `handleSaveDraft`, `handleSubmit`, `handleWithdraw` check the result **before** showing success toasts — falsy results now show an error toast and keep the editor/modal open (no success toast, no navigate-away)
+  - [x] Show backend validation strings (day rules, E11000) verbatim in the editor when a save/submit fails — error toasts surface `err.message` (e.g. `[VALIDATION_ERROR] …`) since the context no longer swallows it
+- [x] **H2 — Day-rule validation parity; hidden hours submitted** (`TimesheetEditor.tsx:69-84,138-140`) **[FIXED — 2026-09-12]**
+  - [x] Zero-out (or confirm) hours for days that don't match the entry type when switching type — `handleEntryTypeChange` zeroes out Sat/Sun when switching to Regular and Mon–Fri when switching to Overtime, with an informational toast listing exactly what was removed (no silent data loss)
+  - [x] Mirror backend `validateEntries` client-side (regular=Mon–Fri, overtime=Sat–Sun) with inline messages — `getValidationErrors` now enforces the same day rules (plus non-negative and ≤24h/day checks) with messages matching the backend wording, shown in the editor's inline error list before any save/submit
+- [x] **H3 — Week ‹ › mutates the open timesheet** (`TimesheetEditor.tsx:94-124`, `timesheet.service.ts:226-231`) **[FIXED — 2026-09-12]**
+  - [x] Make the arrows **navigate** weeks (load/create that week's timesheet) instead of editing the open one's `weekStart` — the editor arrows now open the adjacent week's existing timesheet (same user+project) or create a fresh draft for that week; the open timesheet's `weekStart` is never mutated (navigation uses local-time math via `parseLocalDate`/`addWeeks`)
+  - [x] If week relocation is kept as a feature, require explicit confirmation and pre-check the `(userId, projectId, weekStart)` collision — relocation is **removed entirely**: the client can no longer change an open timesheet's week, and `updateTimesheet` now rejects any `weekStart` change (`Cannot move a timesheet to a different week…`), which is stronger than confirm + pre-check
+  - [x] Add a supported "create timesheet for past week" path on My Timesheets (aligns with Feature_Report §2.5) — the New Timesheet modal now has a **Week starting (Monday)** date picker (defaults to current week), snapped to Monday via `normalizeToMonday`, with the existing duplicate pre-check applied to the chosen week
+- [x] **H4 — Review permission mismatch (UI vs middleware)** (`ReviewPanel.tsx:37-49`, `access.ts:48-57`, `approval.service.ts:15-28`) **[FIXED — 2026-09-12]**
+  - [x] Pick one authority (backend route middleware) and delete the duplicated `canReviewTimesheet` implementations — `access.ts` remains the single authority (admin OR the timesheet's project `supervisorId`, covered by 6 tests in `access.test.ts`); `ReviewPanel`'s UI check now mirrors it exactly (drops the former employee's-supervisor and team-member allowances, so buttons no longer appear when the API would 403); the permissive copy in `utils/permissions.ts` was deleted, and the duplicate in `approval.service.ts` was removed — the service's defense-in-depth re-check now calls the **same** `canReviewTimesheet` from `access.ts` (covered by new `approvals-service.test.ts`)
   - [ ] Compute reviewability on the frontend from the same rule (admin or project's `supervisorId` only)
   - [ ] Hide Approve/Decline when review isn't possible; show an explanatory state instead
-- [ ] **H5 — Self-approval possible** (`access.ts:48-57`)
-  - [ ] Reject review when `timesheet.userId === reviewerId` (document any deliberate admin exception)
+- [x] **H5 — Self-approval possible** (`access.ts:48-57`)
+    - [x] Reject review when `timesheet.userId === reviewerId` (document any deliberate admin exception)
   - [ ] Test: a supervisor cannot approve/decline their own timesheet
 - [x] **H6 — No user directory for supervisors** (`routes/users.ts:9`) **[FIXED by C1 — safe directory projection]**
   - [x] Wire `GET /supervisors/:id/users` (plus project team membership) into `AppDataContext` for non-admins — resolved via C1's alternative: `GET /users` now returns the scoped directory for non-admins, which `AppDataContext` already stores
   - [x] Replace `users.find(...)` name lookups on supervisor pages / ReviewPanel with that source — no frontend change needed; all pages read the `users` array from context, which now populates for non-admins
-- [ ] **H7 — Deactivate without confirmation / false success** (`UserDetails.tsx:46-49,87`)
-  - [ ] Add a `ConfirmDialog` to deactivation (match the project-delete pattern)
-  - [ ] Check the result; surface the backend error (self-deactivation, last active admin) instead of unconditional success
+- [x] **H7 — Deactivate without confirmation / false success** (`UserDetails.tsx:46-49,87`)
+  - [x] Add a `ConfirmDialog` to deactivation (match the project-delete pattern) — added `<Modal>` confirmation; "Deactivate User" in the dropdown now opens it instead of firing instantly
+  - [x] Check the result; surface the backend error (self-deactivation, last active admin) instead of unconditional success — `handleDeactivate` now checks the returned user and `catch`es errors, toasting a real message (and navigates to `/login` if the admin deactivated themselves)
 - [ ] **H8 — Broken document downloads** (`admin/ProjectDetails.tsx:319-324`, `user/ProjectDetails.tsx:120-136`) **[partial — list fixed by C2; downloads still open]**
   - [x] Give the document store a working list endpoint (done in C2 — `GET /api/v1/documents` now returns the visible document set)
   - [ ] Route downloads through the authenticated `GET /:documentId/download` endpoint (fetch → blob → object URL) — still uses private blob URLs, which 403
@@ -274,15 +275,15 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
 - [ ] Test the cron deadline route with only `CRON_SECRET` (guards C3)
 - [ ] Test documents list/download against the real blob contract (guards C2/H8)
 - [ ] Tests for activities scoping (guards C4)
-- [ ] Tests for the self-approval block (guards H5) and review-permission parity (guards H4)
+- [x] Tests for the self-approval block (guards H5) and review-permission parity (guards H4)
 
 ### Progress summary
 | Tier | Findings | Fixed |
 |------|----------|-------|
 | 🔴 Critical | 4 | 3 (C1, C2, C3) |
-| 🟠 High | 8 | 1 (H6, by C1) |
+| 🟠 High | 8 | 3 (H6 by C1, H5, H7) |
 | 🟡 Medium | 18 | 0 |
 | ⚪ Low / hygiene | 10 | 0 |
-| 🧪 Test gaps | 5 | 0 (3 directory tests + 3 document-store tests added under C1/C2) |
+| 🧪 Test gaps | 5 | 1 (self-approval block for H5) |
 
 > Note: H8 is partially fixed — its "no document list" sub-problem is resolved by C2; downloads (private blob URLs, no employee download action) remain open.

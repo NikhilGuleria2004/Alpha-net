@@ -10,12 +10,17 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { formatDateRange } from '../../utils/date'
+import { addWeeks, formatDateRange, parseLocalDate, toLocalDateString } from '../../utils/date'
 import type { Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
-import { toLocalDateString } from '../../utils/date'
 
 const DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+// Mirror the backend day-of-week rules (backend/src/services/timesheet.service.ts:84-116):
+// regular entries are Mon–Fri only, overtime entries are Sat–Sun only, max 24h/day.
+const REGULAR_DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri']
+const OVERTIME_DAYS: DayKey[] = ['sat', 'sun']
+const MAX_DAILY_HOURS = 24
 
 function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, isLoading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; isLoading?: boolean }) {
   if (!isOpen) return null
@@ -37,7 +42,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 export function TimesheetEditor() {
   const { timesheetId } = useParams<{ timesheetId: string }>()
   const { user } = useAuth()
-  const { timesheets, projects: appProjects, saveDraft, submitTimesheet, withdrawTimesheet, refreshTimesheets } = useAppData()
+  const { timesheets, projects: appProjects, saveDraft, submitTimesheet, withdrawTimesheet, createTimesheet, refreshTimesheets } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
 
@@ -51,7 +56,7 @@ export function TimesheetEditor() {
     return [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }]
   })
   const [notes, setNotes] = useState(() => existingTimesheet?.notes || '')
-  const [weekStart, setWeekStart] = useState(() => existingTimesheet?.weekStart || (() => {
+  const [weekStart] = useState(() => existingTimesheet?.weekStart || (() => {
     const today = new Date()
     const day = today.getDay()
     const diff = today.getDate() - day + (day === 0 ? -6 : 1)
@@ -64,6 +69,7 @@ export function TimesheetEditor() {
   const [withdrawReason, setWithdrawReason] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isNavigatingWeek, setIsNavigatingWeek] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   const getValidationErrors = () => {
@@ -72,6 +78,33 @@ export function TimesheetEditor() {
       errors.push('Add at least one work item.')
     }
     entries.forEach((entry) => {
+      // H2 (QA.md): mirror backend validateEntries — regular = Mon–Fri only,
+      // overtime = Sat–Sun only — so the editor catches day-rule violations
+      // inline instead of relying on the backend to reject the save.
+      if (entry.entryType === 'regular') {
+        for (const day of OVERTIME_DAYS) {
+          const hours = entry.hours[day]
+          if (hours > 0) {
+            errors.push(`Regular entry "${entry.description}" has hours on ${day} (${hours}h). Regular entries must be Mon-Fri only.`)
+          }
+        }
+      } else if (entry.entryType === 'overtime') {
+        for (const day of REGULAR_DAYS) {
+          const hours = entry.hours[day]
+          if (hours > 0) {
+            errors.push(`Overtime entry "${entry.description}" has hours on ${day} (${hours}h). Overtime entries must be Sat-Sun only.`)
+          }
+        }
+      }
+      for (const day of DAYS) {
+        const hours = entry.hours[day]
+        if (!Number.isFinite(hours) || hours < 0) {
+          errors.push(`Invalid hours for ${day}: must be a non-negative number.`)
+        }
+        if (hours > MAX_DAILY_HOURS) {
+          errors.push(`Hours exceed daily maximum of ${MAX_DAILY_HOURS} for ${day}.`)
+        }
+      }
       const entryTotal = Object.values(entry.hours).reduce((sum, h) => sum + h, 0)
       if (entryTotal > 0 && !entry.description.trim()) {
         errors.push('Work items with hours require a description.')
@@ -91,36 +124,37 @@ export function TimesheetEditor() {
     return end
   }, [weekStart])
 
-  const canNavigatePrev = useMemo(() => {
-    if (!weekStart) return false
-    // Always allow navigating back to previous weeks — this is the primary
-    // use case for corrections.
-    return true
-  }, [weekStart])
-
-  const canNavigateNext = useMemo(() => {
-    if (!weekStart) return false
-    const today = new Date()
-    const currentWeekStart = new Date(today)
-    const day = today.getDay()
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1)
-    currentWeekStart.setDate(diff)
-    currentWeekStart.setHours(0, 0, 0, 0)
-    return new Date(weekStart) < currentWeekStart
-  }, [weekStart])
-
-  const handlePrevWeek = () => {
-    if (!canNavigatePrev || !weekStart) return
-    const start = new Date(weekStart)
-    start.setDate(start.getDate() - 7)
-    setWeekStart(toLocalDateString(start))
-  }
-
-  const handleNextWeek = () => {
-    if (!canNavigateNext || !weekStart) return
-    const start = new Date(weekStart)
-    start.setDate(start.getDate() + 7)
-    setWeekStart(toLocalDateString(start))
+  // H3 (QA.md): the week ‹ › controls must never mutate the open timesheet's
+  // weekStart — that silently relocated the whole timesheet to another week
+  // (hours shifted weeks; E11000 on the (userId, projectId, weekStart) unique
+  // index). They now truly navigate: open the adjacent week's existing
+  // timesheet for this project, or create a fresh draft for that week.
+  const handleNavigateWeek = async (direction: -1 | 1) => {
+    if (!existingTimesheet || !user || !project || isNavigatingWeek) return
+    const targetWeekStart = toLocalDateString(addWeeks(parseLocalDate(existingTimesheet.weekStart), direction))
+    const existing = timesheets.find((t) => t.userId === user.id && t.projectId === project.id && t.weekStart === targetWeekStart)
+    if (existing) {
+      navigate(`/user/timesheets/${existing.id}`)
+      return
+    }
+    setIsNavigatingWeek(true)
+    try {
+      const created = await createTimesheet({
+        userId: user.id,
+        projectId: project.id,
+        weekStart: targetWeekStart,
+        entries: [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
+        notes: '',
+      })
+      await refreshTimesheets()
+      addToast('info', `Created a timesheet for the week of ${targetWeekStart}.`)
+      navigate(`/user/timesheets/${created.id}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to open that week'
+      addToast('error', message)
+    } finally {
+      setIsNavigatingWeek(false)
+    }
   }
 
   const handleEntryChange = (entryId: string, day: DayKey, value: number) => {
@@ -136,7 +170,25 @@ export function TimesheetEditor() {
   }
 
   const handleEntryTypeChange = (entryId: string, entryType: TimesheetEntry['entryType']) => {
-    setEntries((prev) => prev.map((entry) => entry.id === entryId ? { ...entry, entryType } : entry))
+    // H2 (QA.md): when the type changes, hours on days the new type does not
+    // allow would otherwise be silently retained and only rejected by the
+    // backend. Zero them out and tell the user what was removed.
+    const forbiddenDays = entryType === 'regular' ? OVERTIME_DAYS : REGULAR_DAYS
+    setEntries((prev) => prev.map((entry) => {
+      if (entry.id !== entryId || entry.entryType === entryType) return entry
+      const removed: string[] = []
+      const hours = { ...entry.hours }
+      for (const day of forbiddenDays) {
+        if (hours[day] > 0) {
+          removed.push(`${day} ${hours[day]}h`)
+          hours[day] = 0
+        }
+      }
+      if (removed.length > 0) {
+        addToast('info', `Removed ${removed.join(', ')} — ${entryType} entries only allow ${entryType === 'regular' ? 'Mon–Fri' : 'Sat–Sun'}.`)
+      }
+      return { ...entry, entryType, hours }
+    }))
   }
 
   const handleAddEntry = () => {
@@ -185,7 +237,14 @@ export function TimesheetEditor() {
         entries,
         notes,
       }
-      await saveDraft(existingTimesheet.id, data)
+      // H1 (QA.md): check the result — a falsy return means the backend
+      // rejected the save (day rules, E11000 week collision), so do not
+      // show a success toast.
+      const updated = await saveDraft(existingTimesheet.id, data)
+      if (!updated) {
+        addToast('error', 'Failed to save draft. Please try again.')
+        return
+      }
       addToast('success', 'Draft saved')
       await refreshTimesheets()
     } catch (err) {
@@ -220,7 +279,12 @@ export function TimesheetEditor() {
         return
       }
 
-      await submitTimesheet(existingTimesheet.id)
+      const submitted = await submitTimesheet(existingTimesheet.id)
+      if (!submitted) {
+        // H1 (QA.md): no false success — the backend rejected the submission.
+        addToast('error', 'Failed to submit timesheet. Please try again.')
+        return
+      }
 
       // The submission notification + activity are created server-side by
       // timesheet.service.ts — the client previously fabricated duplicates via
@@ -243,7 +307,12 @@ export function TimesheetEditor() {
     if (!existingTimesheet) return
     setIsProcessing(true)
     try {
-      await withdrawTimesheet(existingTimesheet.id, withdrawReason)
+      const updated = await withdrawTimesheet(existingTimesheet.id, withdrawReason)
+      if (!updated) {
+        // H1 (QA.md): no false success — the backend rejected the withdrawal.
+        addToast('error', 'Failed to withdraw timesheet. Please try again.')
+        return
+      }
       addToast('success', 'Timesheet withdrawn')
       setIsWithdrawOpen(false)
       setWithdrawReason('')
@@ -279,9 +348,9 @@ export function TimesheetEditor() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border border-slate-200">
-            <button type="button" onClick={handlePrevWeek} disabled={!canNavigatePrev} className="rounded-l-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => handleNavigateWeek(-1)} disabled={isNavigatingWeek} aria-label="Open previous week" title="Open previous week" className="rounded-l-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronLeft className="h-4 w-4" /></button>
             <span className="px-4 py-2 text-sm font-medium text-slate-700">{weekStart ? formatDateRange(new Date(weekStart), weekEnd!) : '-'}</span>
-            <button type="button" onClick={handleNextWeek} disabled={!canNavigateNext} className="rounded-r-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronRight className="h-4 w-4" /></button>
+            <button type="button" onClick={() => handleNavigateWeek(1)} disabled={isNavigatingWeek} aria-label="Open next week" title="Open next week" className="rounded-r-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <StatusBadge status={status} />
         </div>
@@ -327,7 +396,7 @@ export function TimesheetEditor() {
                     </div>
                   </td>
                   {DAYS.map((day) => {
-                    const isWeekday = ['mon', 'tue', 'wed', 'thu', 'fri'].includes(day)
+                    const isWeekday = REGULAR_DAYS.includes(day)
                     const isEnabled = isReadOnly ? false : entry.entryType === 'regular' ? isWeekday : !isWeekday
                     return (
                       <td key={day} className="px-2 py-2 text-center sm:px-2 sm:py-2">

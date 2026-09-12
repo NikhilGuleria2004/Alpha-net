@@ -232,6 +232,16 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
     throw new Error('Cannot change the project of an existing timesheet')
   }
 
+  // H3 (QA.md): a timesheet's weekStart is immutable. Mutating it here moved
+  // every entry to another week and could collide with the (userId, projectId,
+  // weekStart) unique index. The client navigates/creates instead.
+  if (input.weekStart) {
+    const requestedWeek = normalizeToMonday(input.weekStart)
+    if (requestedWeek !== existing.weekStart) {
+      throw new Error('Cannot move a timesheet to a different week. Create a new timesheet for that week instead.')
+    }
+  }
+
   const weekStart = input.weekStart ? normalizeToMonday(input.weekStart) : existing.weekStart
   const validationErrors = validateEntries(input.entries)
   if (validationErrors.length > 0) {

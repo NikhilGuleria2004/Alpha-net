@@ -10,17 +10,6 @@ export function canManageUsers(user: User): boolean {
   return user.role === 'admin'
 }
 
-export function canReviewTimesheet(user: User, timesheet: Timesheet): boolean {
-  if (user.role === 'admin') return true
-  if (user.role !== 'user') return false
-  if (!user.isSupervisor) return false
-  const supervisorProjects = getSupervisedProjectIds(user.id)
-  const supervisorUsers = getSupervisedUserIds(user.id)
-  const inProject = supervisorProjects.includes(timesheet.projectId)
-  const isTeamMember = supervisorUsers.includes(timesheet.userId)
-  return inProject || isTeamMember
-}
-
 export function canWithdrawTimesheet(user: User, timesheet: Timesheet): boolean {
   if (user.id !== timesheet.userId) return false
   return timesheet.status === 'pending'

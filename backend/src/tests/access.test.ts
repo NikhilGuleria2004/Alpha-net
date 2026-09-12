@@ -222,6 +222,27 @@ describe('canReviewTimesheet', () => {
     mockGetDb(null, null)
     expect(await canReviewTimesheet('user1', 'user', true, '507f1f77bcf86cd799439012')).toBe(false)
   })
+
+  it('blocks a supervisor from reviewing their own submission (H5)', async () => {
+    const ownerId = new ObjectId('507f1f77bcf86cd799439011')
+    const projectId = new ObjectId('507f1f77bcf86cd799439014')
+    // the employee is also the project's supervisor — exactly the H5 scenario
+    mockGetDb(
+      { _id: new ObjectId('507f1f77bcf86cd799439039'), userId: ownerId, projectId },
+      { _id: projectId, supervisorId: ownerId },
+    )
+    expect(await canReviewTimesheet(ownerId.toString(), 'user', true, '507f1f77bcf86cd799439039')).toBe(false)
+  })
+
+  it('still allows admin to review their own submission (admins exempt from H5)', async () => {
+    const ownerId = new ObjectId('507f1f77bcf86cd799439011')
+    const projectId = new ObjectId('507f1f77bcf86cd799439014')
+    mockGetDb(
+      { _id: new ObjectId('507f1f77bcf86cd799439039'), userId: ownerId, projectId },
+      { _id: projectId, supervisorId: ownerId },
+    )
+    expect(await canReviewTimesheet(ownerId.toString(), 'admin', false, '507f1f77bcf86cd799439039')).toBe(true)
+  })
 })
 
 describe('canManageUser', () => {

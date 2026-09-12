@@ -10,7 +10,7 @@ import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate, toLocalDateString } from '../../utils/date'
+import { formatDate, getCurrentWeekStart, normalizeToMonday } from '../../utils/date'
 
 export function Timesheets() {
   const { user } = useAuth()
@@ -24,6 +24,7 @@ export function Timesheets() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newProjectId, setNewProjectId] = useState('')
   const [newDescription, setNewDescription] = useState('')
+  const [newWeekStart, setNewWeekStart] = useState(getCurrentWeekStart)
   const [isCreating, setIsCreating] = useState(false)
 
   const myTimesheets = useMemo(() => {
@@ -65,15 +66,21 @@ export function Timesheets() {
     setDateRange('')
   }
 
+  // H3 (QA.md): the New Timesheet modal supports any week now — defaulting to
+  // the current week but letting users create past-week drafts instead of
+  // relying on the editor's (now navigation-only) week arrows.
+  const handleOpenCreate = () => {
+    setNewProjectId('')
+    setNewDescription('')
+    setNewWeekStart(getCurrentWeekStart())
+    setIsCreateOpen(true)
+  }
+
   const handleCreateTimesheet = async () => {
     if (!user || !newProjectId || !newDescription.trim()) return
     setIsCreating(true)
     try {
-      const today = new Date()
-      const day = today.getDay()
-      const diff = today.getDate() - day + (day === 0 ? -6 : 1)
-      const monday = new Date(today.setDate(diff))
-      const weekStart = toLocalDateString(monday)
+      const weekStart = newWeekStart
 
       const existing = timesheets.find((t) => t.userId === user.id && t.projectId === newProjectId && t.weekStart === weekStart)
       if (existing) {
@@ -114,7 +121,7 @@ export function Timesheets() {
           <h1 className="text-2xl font-semibold text-slate-900">My Timesheets</h1>
           <p className="mt-1 text-sm text-slate-500">View and manage your timesheet submissions.</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} leftIcon={<Plus className="h-4 w-4" />}>New Timesheet</Button>
+        <Button onClick={handleOpenCreate} leftIcon={<Plus className="h-4 w-4" />}>New Timesheet</Button>
       </div>
 
       <Card>
@@ -186,9 +193,19 @@ export function Timesheets() {
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)} />
           <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">New Timesheet</h3>
-            <p className="mt-1 text-sm text-slate-500">Select a project to start a new timesheet for this week.</p>
+            <p className="mt-1 text-sm text-slate-500">Pick a project and the week you want to log.</p>
             <div className="mt-4">
               <Select label="Project" value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} options={[{ value: '', label: 'Select project' }, ...projectOptions]} />
+            </div>
+            <div className="mt-4">
+              <Input
+                label="Week starting (Monday)"
+                type="date"
+                value={newWeekStart}
+                onChange={(e) => setNewWeekStart(e.target.value ? normalizeToMonday(e.target.value) : getCurrentWeekStart())}
+                helperText="Any day in the week works — it is snapped to that week's Monday."
+                required
+              />
             </div>
             <div className="mt-4">
               <Input

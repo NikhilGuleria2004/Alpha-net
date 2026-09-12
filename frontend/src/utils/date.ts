@@ -77,3 +77,31 @@ export function toLocalDateString(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+
+// Parses a 'YYYY-MM-DD' string as *local* midnight. The app treats weekStart
+// strings as local dates; `new Date('2026-09-07')` would parse them as UTC and
+// can shift the day for negative timezones.
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+// Adds whole weeks to a local date.
+export function addWeeks(date: Date, weeks: number): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() + 7 * weeks)
+  return d
+}
+
+// Monday of the week containing `date` (local).
+export function mondayOf(date: Date): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d
+}
+
+// Snaps any 'YYYY-MM-DD' string to the Monday of its week (mirrors the
+// backend's normalizeToMonday in timesheet.service.ts).
+export function normalizeToMonday(dateStr: string): string {
+  return toLocalDateString(mondayOf(parseLocalDate(dateStr)))
+}

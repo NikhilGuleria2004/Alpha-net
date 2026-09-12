@@ -5,26 +5,12 @@ import { getTimesheetById } from './timesheet.service.js'
 import { getUserById } from './user.service.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
+import { canReviewTimesheet } from '../middleware/access.js'
 import type { Timesheet } from './timesheet.service.js'
 
 export interface ApprovalFilters {
   status?: string
   reviewerId?: string
-}
-
-export async function canReviewTimesheet(reviewerId: string, reviewerRole: string, reviewerIsSupervisor: boolean, timesheet: Timesheet): Promise<boolean> {
-  if (reviewerRole === 'admin') return true
-  if (reviewerRole === 'user' && reviewerIsSupervisor) {
-    const db = await getDb()
-    const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
-    if (!project) return false
-    if (project.supervisorId.toString() === reviewerId) return true
-    const user = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(timesheet.userId) })
-    if (user?.supervisorId?.toString() === reviewerId) return true
-    if (project.teamMemberIds.some((id: any) => id.toString() === reviewerId)) return true
-    return false
-  }
-  return false
 }
 
 export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet[]> {
@@ -92,7 +78,9 @@ export async function approveTimesheet(timesheetId: string, reviewerId: string):
 
   const reviewer = await getUserById(reviewerId)
   if (!reviewer) return null
-  const allowed = await canReviewTimesheet(reviewerId, reviewer.role, reviewer.isSupervisor, timesheet)
+  // H4 (QA.md): single review authority — access.ts's canReviewTimesheet is
+  // the same check the route middleware enforceTimesheetReview runs.
+  const allowed = await canReviewTimesheet(reviewerId, reviewer.role, reviewer.isSupervisor, timesheet.id)
   if (!allowed) {
     throw new Error('Not authorized to approve this timesheet')
   }
@@ -161,7 +149,8 @@ export async function declineTimesheet(timesheetId: string, reviewerId: string, 
 
   const reviewer = await getUserById(reviewerId)
   if (!reviewer) return null
-  const allowed = await canReviewTimesheet(reviewerId, reviewer.role, reviewer.isSupervisor, timesheet)
+  // H4 (QA.md): same shared authority as above.
+  const allowed = await canReviewTimesheet(reviewerId, reviewer.role, reviewer.isSupervisor, timesheet.id)
   if (!allowed) {
     throw new Error('Not authorized to decline this timesheet')
   }

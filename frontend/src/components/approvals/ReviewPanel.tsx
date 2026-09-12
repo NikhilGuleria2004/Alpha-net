@@ -7,7 +7,6 @@ import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { formatDate } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
-import type { User } from '../../types/auth'
 import type { Project } from '../../types/project'
 import { DeclineModal } from './DeclineModal'
 
@@ -34,18 +33,18 @@ interface ReviewPanelProps {
   timesheet: Timesheet
 }
 
-function canReviewTimesheet(reviewerId: string | undefined, reviewerRole: string | undefined, reviewerIsSupervisor: boolean | undefined, timesheet: Timesheet, users: User[], projects: Project[]): boolean {
+// H4 + H5 (QA.md): only an admin or the supervisor of THIS timesheet's project
+// may review, AND a user must not review their own submission (admins exempt).
+// This mirrors backend access.ts canReviewTimesheet so the UI never shows
+// Approve/Decline buttons that are about to 403.
+function canReviewTimesheet(reviewerId: string | undefined, reviewerRole: string | undefined, reviewerIsSupervisor: boolean | undefined, timesheet: Timesheet, projects: Project[]): boolean {
   if (!reviewerId || !reviewerRole) return false
   if (reviewerRole === 'admin') return true
-  if (reviewerRole === 'user' && reviewerIsSupervisor) {
-    const project = projects.find((p) => p.id === timesheet.projectId)
-    if (project?.supervisorId === reviewerId) return true
-    const user = users.find((u) => u.id === timesheet.userId)
-    if (user?.supervisorId === reviewerId) return true
-    if (project?.teamMemberIds.includes(reviewerId)) return true
-    return false
-  }
-  return false
+  if (reviewerRole !== 'user' || !reviewerIsSupervisor) return false
+  // H5: a user must not review their own submission
+  if (timesheet.userId === reviewerId) return false
+  const project = projects.find((p) => p.id === timesheet.projectId)
+  return project?.supervisorId === reviewerId
 }
 
 export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
@@ -67,7 +66,13 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
   const end = new Date(start)
   end.setDate(end.getDate() + 4)
 
-  const canReview = canReviewTimesheet(currentUser?.id, currentUser?.role, currentUser?.isSupervisor, timesheet, users, projects)
+        const canReview = canReviewTimesheet(
+    currentUser?.id,
+    currentUser?.role,
+    currentUser?.isSupervisor,
+    timesheet,
+    projects,
+  )
 
   const handleApprove = async () => {
     setIsProcessing(true)

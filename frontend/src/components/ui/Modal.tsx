@@ -9,8 +9,8 @@ interface ModalProps {
   onClose: () => void
   title?: string
   description?: string
-  size?: Size
-  children: ReactNode
+    size?: Size
+  children?: ReactNode
   footer?: ReactNode
   closeLabel?: string
 }

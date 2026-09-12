@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit3, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -9,6 +10,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
+import { Modal } from '../../components/ui/Modal'
 import { formatDate } from '../../utils/date'
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
@@ -23,8 +25,11 @@ function DropdownItem({ children, onClick, icon, destructive }: { children: Reac
 export function UserDetails() {
   const { userId } = useParams<{ userId: string }>()
   const { users, deactivateUser, refreshUsers, projects, timesheets, activities } = useAppData()
+  const { user: currentUser } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const user = users.find((u) => u.id === userId)
 
@@ -45,9 +50,27 @@ export function UserDetails() {
 
   const handleDeactivate = async () => {
     if (!user) return
-    await deactivateUser(user.id)
-    addToast('success', 'User deactivated successfully')
-    refreshUsers()
+    setIsProcessing(true)
+    try {
+      const updated = await deactivateUser(user.id)
+      if (updated) {
+        addToast('success', 'User deactivated successfully')
+        await refreshUsers()
+        if (currentUser?.id === user.id) {
+          navigate('/login')
+        }
+      } else {
+        addToast('error', 'Unable to deactivate user — please refresh and try again.')
+      }
+    } catch (err: any) {
+      const message =
+        err?.message ||
+        'Unable to deactivate user. You cannot deactivate yourself or the last active admin.'
+      addToast('error', message)
+    } finally {
+      setIsProcessing(false)
+      setIsConfirmOpen(false)
+    }
   }
 
   if (!user) {
@@ -84,7 +107,7 @@ export function UserDetails() {
             }
           >
             {user.status === 'active' && (
-              <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={handleDeactivate}>Deactivate User</DropdownItem>
+              <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={() => setIsConfirmOpen(true)}>Deactivate User</DropdownItem>
             )}
           </Dropdown>
         </div>
@@ -211,6 +234,27 @@ export function UserDetails() {
           </Card>
         </div>
       </div>
+
+      <Modal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        title="Deactivate User"
+        description={
+          user
+            ? `Are you sure you want to deactivate ${user.name}? They will lose access immediately. This action can be undone from the user list.`
+            : 'Are you sure you want to deactivate this user?'
+        }
+        size="sm"
+        closeLabel="Cancel"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsConfirmOpen(false)} disabled={isProcessing}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeactivate} disabled={isProcessing}>
+              {isProcessing ? 'Deactivating…' : 'Deactivate'}
+            </Button>
+          </>
+        }
+      />
     </div>
   )
 }

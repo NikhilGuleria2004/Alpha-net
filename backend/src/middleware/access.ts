@@ -51,6 +51,9 @@ export async function canReviewTimesheet(userId: string, role: string, isSupervi
   const db = await getDb()
   const timesheet = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: new ObjectId(timesheetId) })
   if (!timesheet) return false
+  // H5 (QA.md): separation of duties — a user must not review their own
+  // submission. Only admins (above) are allowed to self-review.
+  if (timesheet.userId.toString() === userId) return false
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
   if (project && project.supervisorId.toString() === userId) return true
   return false
