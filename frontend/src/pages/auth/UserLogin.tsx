@@ -12,7 +12,7 @@ export function UserLogin() {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
-  const { login, loginAsDemo } = useAuth()
+  const { login } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
 
@@ -36,20 +36,6 @@ export function UserLogin() {
     } catch {
       setErrors({ general: 'Invalid credentials. Please try again.' })
       addToast('error', 'Login failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleDemoLogin = async (demoId: 'user-demo' | 'supervisor-demo') => {
-    setIsLoading(true)
-    setErrors({})
-    try {
-      await loginAsDemo(demoId)
-      addToast('success', 'Welcome back')
-      navigate(demoId === 'supervisor-demo' ? '/supervisor/timesheets' : '/user/dashboard')
-    } catch {
-      setErrors({ general: 'Demo login failed. Please try again.' })
     } finally {
       setIsLoading(false)
     }
@@ -126,24 +112,6 @@ export function UserLogin() {
               Sign In
               <ArrowRight className="h-4 w-4" />
             </Button>
-
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-slate-500">or</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button type="button" variant="secondary" onClick={() => handleDemoLogin('user-demo')} disabled={isLoading}>
-                Continue as Demo User
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => handleDemoLogin('supervisor-demo')} disabled={isLoading}>
-                Continue as Demo Supervisor
-              </Button>
-            </div>
           </form>
           <Button type="button" variant="ghost" onClick={() => navigate('/register')} className="mt-4 w-full">
             Create an account
