@@ -69,15 +69,18 @@ describe('Security tests', () => {
     setupSecurityMocks()
   })
 
-  it('normal user can list all users', async () => {
+  it('normal user receives a scoped directory, not the full user list (QA C1)', async () => {
     mockUser('507f1f77bcf86cd799439011', 'user', false)
 
     const res = await request(createApp())
       .get('/api/v1/users/')
       .set('Authorization', 'Bearer valid-token')
 
+    // Contract change (QA C1): a 403 here broke the non-admin initial data
+    // load. The endpoint now returns 200 with only the scoped directory
+    // (self + project/team/org edges) instead of the admin-only full list.
     expect(res.status).toBe(200)
-    expect(res.body.users).toBeDefined()
+    expect(Array.isArray(res.body.users)).toBe(true)
   })
 
   it('normal user cannot access another user profile', async () => {

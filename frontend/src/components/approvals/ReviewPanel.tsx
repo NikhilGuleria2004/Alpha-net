@@ -83,6 +83,9 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         setIsApproveOpen(false)
         onClose()
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to approve timesheet'
+      addToast('error', message)
     } finally {
       setIsProcessing(false)
     }
@@ -100,6 +103,9 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         setIsDeclineOpen(false)
         onClose()
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to decline timesheet'
+      addToast('error', message)
     } finally {
       setIsProcessing(false)
     }

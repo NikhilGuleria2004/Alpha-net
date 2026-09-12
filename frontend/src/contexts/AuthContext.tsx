@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { flushSync } from 'react-dom'
 import type { User } from '../types/auth'
-import { login as authLogin, logout as authLogout, loginAsDemo as authLoginAsDemo, getCurrentUser, isAuthenticated as checkAuth } from '../services/authService'
+import { login as authLogin, logout as authLogout, loginAsDemo as authLoginAsDemo, getCurrentUser } from '../services/authService'
 
 interface AuthContextValue {
   user: User | null
@@ -20,16 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    checkAuth().then((authenticated) => {
-      if (cancelled) return
-      if (authenticated) {
-        getCurrentUser().then((currentUser) => {
-          if (!cancelled) {
-            setUser(currentUser)
-            setIsLoading(false)
-          }
-        })
-      } else {
+    getCurrentUser().then((currentUser) => {
+      if (!cancelled) {
+        setUser(currentUser)
         setIsLoading(false)
       }
     })
@@ -40,16 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleLogin = async (email: string, password: string) => {
     const loggedInUser = await authLogin(email, password)
-    flushSync(() => {
-      setUser(loggedInUser)
-    })
+    setUser(loggedInUser)
   }
 
   const handleLoginAsDemo = async (demoId: 'admin-demo' | 'user-demo' | 'supervisor-demo') => {
     const loggedInUser = await authLoginAsDemo(demoId)
-    flushSync(() => {
-      setUser(loggedInUser)
-    })
+    setUser(loggedInUser)
   }
 
   const handleLogout = async () => {

@@ -1,10 +1,6 @@
 {
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/express": "^5.0.6",
-    "@types/multer": "^1.4.12"
-  },
-  "dependencies": {
-    "multer": "^2.3.0"
+    "@types/express": "^5.0.6"
   }
 }

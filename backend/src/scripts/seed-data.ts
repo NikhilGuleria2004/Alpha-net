@@ -294,7 +294,7 @@ async function seedTimesheets(projectIds: string[], userIds: Map<string, string>
         const submittedAt = status === 'pending' || status === 'approved' || status === 'declined' || status === 'withdrawn' ? new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000) : undefined
         const review = status === 'approved' || status === 'declined' ? {
           reviewedBy: userIds.get(supervisors[Math.floor(Math.random() * supervisors.length)].employeeId)!,
-          reviewedAt: new Date(baseDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          reviewedAt: new Date(baseDate.getTime() + 7 * 24 * 60 * 60 * 1000),
           reason: status === 'declined' ? 'Incorrect hours logged on Thursday.' : undefined,
         } : undefined
 

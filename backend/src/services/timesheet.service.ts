@@ -7,7 +7,7 @@ export type TimesheetStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'w
 
 export interface TimesheetReview {
   reviewedBy: string
-  reviewedAt: string
+  reviewedAt: Date
   reason?: string
 }
 
@@ -19,8 +19,8 @@ export interface TimesheetEntry {
 }
 
 export interface SaveTimesheetInput {
-  projectId: string
-  weekStart: string
+  projectId?: string
+  weekStart?: string
   entries: TimesheetEntry[]
   notes: string
 }
@@ -71,6 +71,9 @@ function toTimesheet(doc: any): Timesheet {
 
 export function normalizeToMonday(dateStr: string): string {
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) {
+    throw new Error('Invalid date value')
+  }
   date.setUTCHours(0, 0, 0, 0)
   const day = date.getUTCDay()
   const diff = date.getUTCDate() - day + (day === 0 ? -6 : 1)
@@ -125,13 +128,14 @@ export function calcTotals(entries: TimesheetEntry[]): { regularHours: number; o
   return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours }
 }
 
-export async function getTimesheets(filters?: { userId?: string; userIds?: string[]; projectId?: string; status?: string }): Promise<Timesheet[]> {
+export async function getTimesheets(filters?: { userId?: string; userIds?: string[]; projectId?: string; status?: string; weekStart?: string }): Promise<Timesheet[]> {
   const db = await getDb()
   const query: Record<string, unknown> = {}
   if (filters?.userIds) query.userId = { $in: filters.userIds.map((id) => new ObjectId(id)) }
   else if (filters?.userId) query.userId = new ObjectId(filters.userId)
   if (filters?.projectId) query.projectId = new ObjectId(filters.projectId)
   if (filters?.status) query.status = filters.status
+  if (filters?.weekStart) query.weekStart = filters.weekStart
 
   const timesheets = await db.collection(COLLECTIONS.TIMESHEETS).find(query).toArray()
   return timesheets.map(toTimesheet)
@@ -146,6 +150,13 @@ export async function getTimesheetById(id: string): Promise<Timesheet | null> {
 
 export async function createTimesheet(input: SaveTimesheetInput, authenticatedUserId: string): Promise<Timesheet> {
   const db = await getDb()
+
+  if (!input.projectId) {
+    throw new Error('Project ID is required')
+  }
+  if (!input.weekStart) {
+    throw new Error('Week start is required')
+  }
 
   const weekStart = normalizeToMonday(input.weekStart)
   const userId = authenticatedUserId
@@ -214,16 +225,20 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
     throw new Error(`Cannot modify timesheet in ${existing.status} status`)
   }
 
-  const weekStart = normalizeToMonday(input.weekStart)
+  // projectId changes are not supported via update — moving a timesheet to a
+  // different project would require re-validating team membership and could
+  // collide with an existing timesheet in the target project.
+  if (input.projectId && input.projectId !== existing.projectId.toString()) {
+    throw new Error('Cannot change the project of an existing timesheet')
+  }
+
+  const weekStart = input.weekStart ? normalizeToMonday(input.weekStart) : existing.weekStart
   const validationErrors = validateEntries(input.entries)
   if (validationErrors.length > 0) {
     throw new Error(validationErrors.join('; '))
   }
 
   const totals = calcTotals(input.entries)
-  if (totals.totalHours <= 0) {
-    throw new Error('At least one hour is required before submission')
-  }
 
   const now = new Date()
   const update = {
@@ -236,22 +251,30 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
     updatedAt: now,
   }
 
-  const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
-    { _id: new ObjectId(id) },
-    { $set: update },
-    { returnDocument: 'after' }
-  )
-  if (!result) return null
-  const updated = toTimesheet(result)
+  try {
+    const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: update },
+      { returnDocument: 'after' }
+    )
+    if (!result) return null
+    const updated = toTimesheet(result)
 
-  await createActivity({
-    userId: authenticatedUserId,
-    projectId: updated.projectId,
-    timesheetId: updated.id,
-    description: `Timesheet for week ${updated.weekStart} was updated.`,
-  })
+    await createActivity({
+      userId: authenticatedUserId,
+      projectId: updated.projectId,
+      timesheetId: updated.id,
+      description: `Timesheet for week ${updated.weekStart} was updated.`,
+    })
 
-  return updated
+    return updated
+  } catch (err) {
+    // Handle unique index collision on (userId, projectId, weekStart)
+    if (err instanceof Error && err.message.includes('E11000')) {
+      throw new Error('A timesheet already exists for this project and week')
+    }
+    throw err
+  }
 }
 
 export async function submitTimesheet(id: string, authenticatedUserId: string): Promise<Timesheet | null> {
@@ -333,15 +356,16 @@ export async function withdrawTimesheet(id: string, authenticatedUserId: string,
     throw new Error(`Cannot withdraw timesheet in ${existing.status} status`)
   }
 
+  const now = new Date()
   const review: TimesheetReview = {
     reviewedBy: authenticatedUserId,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt: now,
     reason: reason || 'Withdrawn by owner',
   }
 
   const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: { status: 'withdrawn', review, updatedAt: new Date() } },
+    { $set: { status: 'withdrawn', review, updatedAt: now } },
     { returnDocument: 'after' }
   )
   if (!result) return null
@@ -392,14 +416,15 @@ export async function approveTimesheet(id: string, reviewerId: string): Promise<
     throw new Error(`Cannot approve timesheet in ${existing.status} status`)
   }
 
+  const now = new Date()
   const review: TimesheetReview = {
     reviewedBy: reviewerId,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt: now,
   }
 
   const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: { status: 'approved', review, updatedAt: new Date() } },
+    { $set: { status: 'approved', review, updatedAt: now } },
     { returnDocument: 'after' }
   )
   if (!result) return null
@@ -417,15 +442,16 @@ export async function declineTimesheet(id: string, reviewerId: string, reason: s
     throw new Error('Reason is required for declining')
   }
 
+  const now = new Date()
   const review: TimesheetReview = {
     reviewedBy: reviewerId,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt: now,
     reason: reason.trim(),
   }
 
   const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: { status: 'declined', review, updatedAt: new Date() } },
+    { $set: { status: 'declined', review, updatedAt: now } },
     { returnDocument: 'after' }
   )
   if (!result) return null

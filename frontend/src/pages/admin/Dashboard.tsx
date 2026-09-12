@@ -8,7 +8,14 @@ import { ActivityTimeline } from '../../components/dashboard/ActivityTimeline'
 import { DeadlineCard } from '../../components/dashboard/DeadlineCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { differenceInDays } from '../../utils/date'
+import { differenceInDays, getCurrentWeekStart } from '../../utils/date'
+
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export function AdminDashboard() {
   const { user } = useAuth()
@@ -54,6 +61,11 @@ export function AdminDashboard() {
       .slice(0, 5)
   }, [timesheets])
 
+  const currentWeekTimesheets = useMemo(() => {
+    const weekStart = getCurrentWeekStart()
+    return timesheets.filter((t) => t.weekStart === weekStart)
+  }, [timesheets])
+
   const getUserName = (id: string) => {
     const found = appUsers.find((u) => u.id === id)
     return found?.name || 'Unknown'
@@ -67,7 +79,7 @@ export function AdminDashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">Good morning, {user?.name?.split(' ')[0] || 'Admin'}</h1>
+        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{getGreeting()}, {user?.name?.split(' ')[0] || 'Admin'}</h1>
         <p className="mt-1 text-sm text-slate-500">Here's what's happening across Eniac today.</p>
       </div>
 
@@ -237,20 +249,20 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">Regular Hours</span>
                   <span className="text-sm font-medium text-slate-900">
-                    {timesheets.reduce((sum, t) => sum + t.regularHours, 0).toFixed(1)}h
+                    {currentWeekTimesheets.reduce((sum, t) => sum + t.regularHours, 0).toFixed(1)}h
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">Overtime</span>
                   <span className="text-sm font-medium text-slate-900">
-                    {timesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(1)}h
+                    {currentWeekTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(1)}h
                   </span>
                 </div>
                 <div className="border-t border-slate-200 pt-2.5 sm:pt-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-slate-700">Total</span>
                     <span className="text-sm font-semibold text-slate-900">
-                      {timesheets.reduce((sum, t) => sum + t.totalHours, 0).toFixed(1)}h
+                      {currentWeekTimesheets.reduce((sum, t) => sum + t.totalHours, 0).toFixed(1)}h
                     </span>
                   </div>
                 </div>
@@ -277,7 +289,6 @@ export function AdminDashboard() {
                       key={project.id}
                       projectName={project.name}
                       deadline={project.deadline}
-                      progress={Math.min(100, Math.max(0, 100 - project.daysRemaining * 2))}
                     />
                   ))}
                 </div>

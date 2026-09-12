@@ -1,6 +1,8 @@
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
+import { del } from '@vercel/blob'
+import { logger } from '../lib/logger.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 
@@ -63,21 +65,28 @@ function toProject(doc: any): Project {
     endDate: doc.endDate,
     deadline: doc.deadline,
     status: doc.status,
-    managerId: doc.managerId.toString(),
-    supervisorId: doc.supervisorId.toString(),
-    teamMemberIds: doc.teamMemberIds.map((id: any) => id.toString()),
-    documentIds: doc.documentIds.map((id: any) => id.toString()),
+    managerId: doc.managerId?.toString(),
+    supervisorId: doc.supervisorId?.toString(),
+    teamMemberIds: doc.teamMemberIds?.map((id: any) => id.toString()) ?? [],
+    documentIds: doc.documentIds?.map((id: any) => id.toString()) ?? [],
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
 }
 
-export async function getProjects(filters?: { status?: ProjectStatus; managerId?: string; supervisorId?: string }): Promise<Project[]> {
+export async function getProjects(filters?: { status?: ProjectStatus; managerId?: string; supervisorId?: string; search?: string }): Promise<Project[]> {
   const db = await getDb()
   const query: Record<string, unknown> = {}
   if (filters?.status) query.status = filters.status
   if (filters?.managerId) query.managerId = new ObjectId(filters.managerId)
   if (filters?.supervisorId) query.supervisorId = new ObjectId(filters.supervisorId)
+  if (filters?.search) {
+    query.$or = [
+      { name: { $regex: filters.search, $options: 'i' } },
+      { description: { $regex: filters.search, $options: 'i' } },
+      { client: { $regex: filters.search, $options: 'i' } },
+    ]
+  }
 
   const projects = await db.collection(COLLECTIONS.PROJECTS).find(query).toArray()
   return projects.map(toProject)
@@ -101,7 +110,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     startDate: input.startDate,
     endDate: input.endDate,
     deadline: input.deadline,
-    status: input.status,
+    status: input.status ?? 'draft',
     managerId: new ObjectId(input.managerId),
     supervisorId: new ObjectId(input.supervisorId),
     teamMemberIds: input.teamMemberIds.map((id) => new ObjectId(id)),
@@ -155,7 +164,40 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
 
 export async function deleteProject(id: string): Promise<boolean> {
   const db = await getDb()
-  const result = await db.collection(COLLECTIONS.PROJECTS).deleteOne({ _id: new ObjectId(id) })
+  const projectId = new ObjectId(id)
+
+  // 1. Delete document blobs + records
+  const documents = await db.collection(COLLECTIONS.DOCUMENTS).find({ projectId }).toArray()
+  for (const doc of documents) {
+    try {
+      await del(doc.storageKey)
+    } catch (err) {
+      logger.warn({ err, storageKey: doc.storageKey }, 'failed to delete blob during project deletion')
+    }
+  }
+  await db.collection(COLLECTIONS.DOCUMENTS).deleteMany({ projectId })
+
+  // 2. Delete timesheets for this project
+  await db.collection(COLLECTIONS.TIMESHEETS).deleteMany({ projectId })
+
+  // 3. Delete notifications referencing this project
+  await db.collection(COLLECTIONS.NOTIFICATIONS).deleteMany({ relatedId: projectId })
+
+  // 4. Delete activities for this project
+  await db.collection(COLLECTIONS.ACTIVITIES).deleteMany({ projectId })
+
+  // 5. Remove project references from users (teamMemberIds + supervisorId)
+  await db.collection(COLLECTIONS.USERS).updateMany(
+    { teamMemberIds: projectId },
+    { $pull: { teamMemberIds: projectId } as any }
+  )
+  await db.collection(COLLECTIONS.USERS).updateMany(
+    { supervisorId: projectId },
+    { $set: { supervisorId: null } as any }
+  )
+
+  // 6. Delete the project itself
+  const result = await db.collection(COLLECTIONS.PROJECTS).deleteOne({ _id: projectId })
   return result.deletedCount > 0
 }
 
@@ -256,4 +298,28 @@ export async function canAccessProject(userId: string, role: string, isSuperviso
   if (project.teamMemberIds.includes(userId)) return true
   if (isSupervisor && project.supervisorId === userId) return true
   return false
+}
+
+/**
+ * Returns the IDs of the projects the given account can read activity for.
+ * Mirrors the scoping in `getProjectsForUser`:
+ *   - admin → all project IDs
+ *   - supervisor → projects they supervise + projects of any subordinate
+ *   - user → projects they're a team member of
+ */
+export async function getAccessibleProjectIds(userId: string, role: string, isSupervisor: boolean): Promise<string[]> {
+  const db = await getDb()
+  if (role === 'admin') {
+    const projects = await db.collection(COLLECTIONS.PROJECTS).find({}).toArray()
+    return projects.map((p) => p._id.toString())
+  }
+  if (isSupervisor) {
+    const supervised = await db.collection(COLLECTIONS.PROJECTS).find({ supervisorId: new ObjectId(userId) }).toArray()
+    const member = await db.collection(COLLECTIONS.PROJECTS).find({ teamMemberIds: new ObjectId(userId) }).toArray()
+    const ids = new Set<string>()
+    for (const p of [...supervised, ...member]) ids.add(p._id.toString())
+    return Array.from(ids)
+  }
+  const projects = await db.collection(COLLECTIONS.PROJECTS).find({ teamMemberIds: new ObjectId(userId) }).toArray()
+  return projects.map((p) => p._id.toString())
 }

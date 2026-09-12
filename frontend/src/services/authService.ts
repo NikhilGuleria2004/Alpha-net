@@ -1,14 +1,12 @@
 import type { User } from '../types/auth'
-import apiClient from './apiClient'
-
-const STORAGE_KEY = 'eniac_access_token'
+import apiClient, { setAccessToken } from './apiClient'
 
 export async function login(email: string, password: string): Promise<User> {
   const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', {
     email,
     password,
   })
-  localStorage.setItem(STORAGE_KEY, response.accessToken)
+  setAccessToken(response.accessToken)
   return response.user
 }
 
@@ -23,7 +21,7 @@ export async function loginAsDemo(demoId: 'admin-demo' | 'user-demo' | 'supervis
   }
   const credentials = demoMap[demoId]
   const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', credentials)
-  localStorage.setItem(STORAGE_KEY, response.accessToken)
+  setAccessToken(response.accessToken)
   return response.user
 }
 
@@ -31,7 +29,7 @@ export async function logout(): Promise<void> {
   try {
     await apiClient.post<void>('/auth/logout')
   } finally {
-    localStorage.removeItem(STORAGE_KEY)
+    setAccessToken(null)
   }
 }
 

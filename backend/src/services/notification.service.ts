@@ -45,9 +45,24 @@ export async function createNotification(input: {
   }
 }
 
-export async function getNotificationsByUserId(userId: string): Promise<Notification[]> {
+export async function getNotificationsByUserId(
+  userId: string,
+  filters?: { read?: boolean; page?: number; limit?: number }
+): Promise<Notification[]> {
   const db = await getDb()
-  const notifications = await db.collection(COLLECTIONS.NOTIFICATIONS).find({ userId: new ObjectId(userId) }).sort({ createdAt: -1 }).toArray()
+  const query: Record<string, unknown> = { userId: new ObjectId(userId) }
+  if (filters?.read !== undefined) {
+    query.read = filters.read
+  }
+  const skip = filters?.page && filters?.limit ? (filters.page - 1) * filters.limit : 0
+  const limit = filters?.limit ?? 50
+  const notifications = await db
+    .collection(COLLECTIONS.NOTIFICATIONS)
+    .find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray()
   return notifications.map((n) => ({
     id: n._id.toString(),
     userId: n.userId.toString(),

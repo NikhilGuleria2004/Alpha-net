@@ -2,6 +2,7 @@ import { type Request, type Response } from 'express'
 import { getApprovals, approveTimesheet, declineTimesheet } from '../services/approval.service.js'
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
 import { declineTimesheetSchema } from '../schemas/timesheet.schema.js'
+import { logger } from '../lib/logger.js'
 
 export async function listApprovals(req: AuthenticatedRequest, res: Response) {
   try {
@@ -10,7 +11,8 @@ export async function listApprovals(req: AuthenticatedRequest, res: Response) {
     })
     res.json({ approvals })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to list approvals')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 

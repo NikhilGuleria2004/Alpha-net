@@ -101,6 +101,11 @@ export function Settings() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <strong>Note:</strong> These settings are stored locally in your browser and do not affect backend validation.
+        Timesheet rules (Mon–Fri, 40h week) are enforced server-side and cannot be changed here.
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>

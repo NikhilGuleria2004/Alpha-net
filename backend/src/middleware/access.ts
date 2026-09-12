@@ -88,6 +88,19 @@ export async function requireProjectEdit(req: AuthenticatedRequest, res: Respons
   next()
 }
 
+export async function requireAdminOrProjectEdit(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  // Allows admins and project supervisors to edit a project.
+  const projectId = (req.params.projectId ?? req.params.id) as string
+  if (!projectId) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Project ID is required' } })
+  }
+  const canEdit = await canEditProject(req.user!.userId, req.user!.role, req.user!.isSupervisor, projectId)
+  if (!canEdit) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Edit access denied to this project' } })
+  }
+  next()
+}
+
 export async function requireTimesheetAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const timesheetId = req.params.id as string
   if (!timesheetId) {

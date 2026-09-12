@@ -1,4 +1,4 @@
-export type NotificationType = 'submission' | 'approval' | 'decline' | 'withdrawal' | 'deadline' | 'assignment'
+export type NotificationType = 'submission' | 'approval' | 'decline' | 'withdrawal' | 'deadline' | 'assignment' | 'document'
 
 export interface Notification {
   id: string

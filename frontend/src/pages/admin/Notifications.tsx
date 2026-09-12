@@ -53,7 +53,7 @@ export function Notifications() {
     if (notification.relatedId) {
       if (notification.type === 'submission' || notification.type === 'approval' || notification.type === 'decline' || notification.type === 'withdrawal') {
         navigate(`/admin/timesheets`)
-      } else if (notification.type === 'deadline' || notification.type === 'assignment') {
+      } else if (notification.type === 'deadline' || notification.type === 'assignment' || notification.type === 'document') {
         navigate(`/admin/projects`)
       }
     }

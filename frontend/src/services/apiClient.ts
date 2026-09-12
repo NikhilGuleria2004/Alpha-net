@@ -1,12 +1,17 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-const ACCESS_TOKEN_KEY = 'eniac_access_token'
+
+// Access token stored in memory only — never in localStorage or sessionStorage.
+// This prevents XSS attacks from stealing the token via localStorage.getItem().
+// The refresh token is stored as an HttpOnly cookie by the backend, which is
+// not accessible to JavaScript and is therefore already protected from XSS.
+let accessToken: string | null = null
 
 function getAccessToken(): string | null {
-  try {
-    return localStorage.getItem(ACCESS_TOKEN_KEY)
-  } catch {
-    return null
-  }
+  return accessToken
+}
+
+function setAccessToken(token: string | null): void {
+  accessToken = token
 }
 
 async function parseResponse(response: Response): Promise<{ ok: boolean; data: unknown; status: number }> {
@@ -36,11 +41,7 @@ async function wait(ms: number): Promise<void> {
 let refreshPromise: Promise<boolean> | null = null
 
 function clearStoredToken(): void {
-  try {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-  } catch {
-    // ignore
-  }
+  accessToken = null
 }
 
 // Exchange the httpOnly refresh cookie for a fresh access token via POST
@@ -53,11 +54,7 @@ function attemptRefresh(): Promise<boolean> {
   refreshPromise = request<{ accessToken?: string }>('/auth/refresh', { method: 'POST' }, 0)
     .then((data) => {
       if (data?.accessToken) {
-        try {
-          localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
-        } catch {
-          // ignore
-        }
+        accessToken = data.accessToken
         return true
       }
       return false
@@ -154,5 +151,7 @@ export const apiClient = {
   }),
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 }
+
+export { setAccessToken }
 
 export default apiClient

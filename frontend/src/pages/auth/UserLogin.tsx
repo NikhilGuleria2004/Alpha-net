@@ -10,7 +10,6 @@ export function UserLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
   const { login, loginAsDemo } = useAuth()
@@ -121,21 +120,6 @@ export function UserLogin() {
                 </button>
               </div>
               {errors.password && <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                Remember me
-              </label>
-              <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700">
-                Forgot password?
-              </button>
             </div>
 
             <Button type="submit" loading={isLoading} disabled={isLoading} className="w-full">

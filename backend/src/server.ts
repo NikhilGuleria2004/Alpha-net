@@ -2,8 +2,16 @@ import 'dotenv/config'
 import { createApp } from './app.js'
 import { logger } from './lib/logger.js'
 import { ensureIndexes } from './lib/collections.js'
+import { validateEnv } from './lib/env.js'
 
 async function main() {
+  try {
+    validateEnv()
+  } catch (err) {
+    logger.error({ err }, 'environment validation failed')
+    process.exit(1)
+  }
+
   try {
     await ensureIndexes()
   } catch (err) {

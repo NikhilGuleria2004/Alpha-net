@@ -1,9 +1,10 @@
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
-import { hashPassword } from './auth.service.js'
+import { hashPassword, revokeAllUserSessions } from './auth.service.js'
 import { ObjectId } from 'mongodb'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
+import { invalidateUserCache } from '../middleware/auth.js'
 
 export interface User {
   id: string
@@ -43,13 +44,19 @@ export interface UpdateUserInput {
   password?: string
 }
 
-export async function getUsers(filters?: { role?: string; status?: string; isSupervisor?: boolean; supervisorId?: string }): Promise<User[]> {
+export async function getUsers(filters?: { role?: string; status?: string; isSupervisor?: boolean; supervisorId?: string; search?: string }): Promise<User[]> {
   const db = await getDb()
   const query: Record<string, unknown> = {}
   if (filters?.role) query.role = filters.role
   if (filters?.status) query.status = filters.status
   if (filters?.isSupervisor !== undefined) query.isSupervisor = filters.isSupervisor
   if (filters?.supervisorId) query.supervisorId = new ObjectId(filters.supervisorId)
+  if (filters?.search) {
+    query.$or = [
+      { name: { $regex: filters.search, $options: 'i' } },
+      { email: { $regex: filters.search, $options: 'i' } },
+    ]
+  }
 
   const users = await db.collection(COLLECTIONS.USERS).find(query).toArray()
   return users.map((u) => ({
@@ -152,6 +159,11 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   if (!result) return null
   const user = result
 
+  // Revoke all sessions when password is changed
+  if (input.password) {
+    await revokeAllUserSessions(id)
+  }
+
   const changes: string[] = []
   if (input.name !== undefined && input.name !== existing.name) changes.push(`name to "${input.name}"`)
   if (input.email !== undefined && input.email !== existing.email) changes.push(`email to "${input.email}"`)
@@ -224,6 +236,8 @@ export async function activateUser(id: string): Promise<User | null> {
 export async function deactivateUser(id: string): Promise<User | null> {
   const user = await updateUser(id, { status: 'inactive' })
   if (user) {
+    await revokeAllUserSessions(id)
+    invalidateUserCache(id)
     await createActivity({
       userId: user.id,
       description: `User "${user.name}" was deactivated.`,

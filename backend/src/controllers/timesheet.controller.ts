@@ -6,6 +6,7 @@ import { getTimesheets, getTimesheetById, createTimesheet, updateTimesheet, subm
 import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { createTimesheetSchema, updateTimesheetSchema } from '../schemas/timesheet.schema.js'
+import { logger } from '../lib/logger.js'
 
 export async function listTimesheets(req: AuthenticatedRequest, res: Response) {
   try {
@@ -30,10 +31,12 @@ export async function listTimesheets(req: AuthenticatedRequest, res: Response) {
       userIds,
       projectId: req.query.projectId ? String(req.query.projectId) : undefined,
       status: req.query.status ? String(req.query.status) : undefined,
+      weekStart: req.query.weekStart ? String(req.query.weekStart) : undefined,
     })
     res.json({ timesheets })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to list timesheets')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
@@ -50,7 +53,8 @@ export async function getTimesheet(req: AuthenticatedRequest, res: Response) {
     }
     res.json({ timesheet })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to get timesheet')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
@@ -74,8 +78,8 @@ export async function update(req: AuthenticatedRequest, res: Response) {
   try {
     const input = updateTimesheetSchema.parse(req.body)
     const timesheet = await updateTimesheet(req.params.id as string, {
-      projectId: input.projectId || '',
-      weekStart: input.weekStart || '',
+      projectId: input.projectId,
+      weekStart: input.weekStart,
       entries: input.entries || [],
       notes: input.notes || '',
     }, req.user!.userId)

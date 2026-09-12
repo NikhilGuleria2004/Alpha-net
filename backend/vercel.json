@@ -11,5 +11,11 @@
       "src": "/api/(.*)",
       "dest": "/api/index.ts"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/notifications/cron/deadline",
+      "schedule": "0 9 * * 1"
+    }
   ]
 }

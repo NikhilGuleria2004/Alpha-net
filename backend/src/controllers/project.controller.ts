@@ -8,6 +8,13 @@ import { ObjectId } from 'mongodb'
 
 export async function listProjects(req: AuthenticatedRequest, res: Response) {
   const projects = await getProjectsForUser(req.user!.userId, req.user!.role, req.user!.isSupervisor)
+  const search = req.query.q ? String(req.query.q) : undefined
+  if (search) {
+    const filtered = await getProjects({ search })
+    const projectIds = new Set(filtered.map((p) => p.id))
+    const filteredProjects = projects.filter((p) => projectIds.has(p.id))
+    return res.json({ projects: filteredProjects })
+  }
   res.json({ projects })
 }
 

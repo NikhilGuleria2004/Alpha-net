@@ -43,7 +43,7 @@ export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet
       status: 'pending',
       $or: [
         { projectId: { $in: [...supervisedProjectIds, ...memberProjectIds].map((id) => new ObjectId(id)) } },
-        { userId: { $in: [...supervisedUserIds, reviewerId.toString()].map((id) => new ObjectId(id)) } },
+        { userId: { $in: [...supervisedUserIds].map((id) => new ObjectId(id)) } },
       ],
     }).toArray()
     return timesheets.map((t) => ({

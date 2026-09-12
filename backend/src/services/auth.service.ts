@@ -32,9 +32,25 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash)
 }
 
+const MAX_SESSIONS_PER_USER = 5
+
 export async function createSession(userId: string, refreshToken: string) {
   const db = await getDb()
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+  // Prune oldest sessions if user has too many
+  const existingSessions = await db
+    .collection(COLLECTIONS.SESSIONS)
+    .find({ userId: new ObjectId(userId) })
+    .sort({ createdAt: 1 })
+    .toArray()
+
+  if (existingSessions.length >= MAX_SESSIONS_PER_USER) {
+    const sessionsToDelete = existingSessions.slice(0, existingSessions.length - MAX_SESSIONS_PER_USER + 1)
+    const sessionIds = sessionsToDelete.map((s) => s._id)
+    await db.collection(COLLECTIONS.SESSIONS).deleteMany({ _id: { $in: sessionIds } })
+  }
+
   await db.collection(COLLECTIONS.SESSIONS).insertOne({
     userId: new ObjectId(userId),
     refreshToken,
@@ -59,6 +75,11 @@ export async function deleteSession(refreshToken: string) {
 }
 
 export async function deleteUserSessions(userId: string) {
+  const db = await getDb()
+  await db.collection(COLLECTIONS.SESSIONS).deleteMany({ userId: new ObjectId(userId) })
+}
+
+export async function revokeAllUserSessions(userId: string): Promise<void> {
   const db = await getDb()
   await db.collection(COLLECTIONS.SESSIONS).deleteMany({ userId: new ObjectId(userId) })
 }

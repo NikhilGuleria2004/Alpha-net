@@ -39,6 +39,17 @@ export async function getTimesheetStatusBreakdown(filters: ReportFilters): Promi
   return response.data
 }
 
+function escapeCSVValue(value: string): string {
+  const escaped = value.replace(/"/g, '""')
+  const needsQuoting = /[",\r\n]/.test(value)
+  const isFormulaInjection = /^[=+\-@]/.test(value)
+  if (needsQuoting || isFormulaInjection) {
+    return `"${escaped}"`
+  }
+  return escaped
+}
+
+
 export async function exportToCSV(data: unknown[], filename: string): Promise<void> {
   if (!data.length) return
   const headers = Object.keys(data[0] as Record<string, unknown>)
@@ -48,8 +59,7 @@ export async function exportToCSV(data: unknown[], filename: string): Promise<vo
       headers
         .map((header) => {
           const value = (row as Record<string, unknown>)[header]
-          const stringified = String(value ?? '')
-          return stringified.includes(',') ? `"${stringified}"` : stringified
+          return escapeCSVValue(String(value ?? ''))
         })
         .join(',')
     ),

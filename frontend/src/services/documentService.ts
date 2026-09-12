@@ -1,12 +1,26 @@
 import type { Document } from '../types/document'
 import apiClient, { request } from './apiClient'
 
+/**
+ * Store-level listing (QA C2): returns every document the current user can see —
+ * admins get all documents across the org, supervisors/employees get only
+ * documents for projects they have access to. This is what the app's document
+ * store calls on login / refresh, so uploaded documents actually appear in the UI.
+ */
+export async function getAllDocuments(): Promise<Document[]> {
+  const response = await apiClient.get<{ documents: Document[] }>('/documents')
+  return response.documents ?? []
+}
+
 export async function getDocuments(projectId?: string): Promise<Document[]> {
   if (!projectId) {
-    return []
+    // No projectId — fall back to the store-level listing so a bare call does not
+    // return [] by construction (QA C2). The caller gets every document the user
+    // can see, not just a per-project slice. Per-project callers should use
+    // getDocumentsByProjectId(projectId) explicitly.
+    return getAllDocuments()
   }
-  const response = await apiClient.get<{ documents: Document[] }>(`/projects/${projectId}/documents`)
-  return response.documents
+  return getDocumentsByProjectId(projectId)
 }
 
 export async function getDocumentsByProjectId(projectId: string): Promise<Document[]> {

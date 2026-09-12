@@ -1,15 +1,39 @@
 import { type Request, type Response } from 'express'
-import { getDocumentsByProjectId, createDocument, deleteDocument, validateFile } from '../services/document.service.js'
+import { getDocumentsByProjectId, createDocument, deleteDocument, validateFile, getDocumentById, getAllDocuments, getDocumentsByProjectIds } from '../services/document.service.js'
+import { getProjectsForUser } from '../services/project.service.js'
 import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 import { requireProjectAccess } from '../middleware/access.js'
 import { createActivity } from '../services/activity.service.js'
 import { createNotification } from '../services/notification.service.js'
 import { getProjectById } from '../services/project.service.js'
-import { put, del } from '@vercel/blob'
+import { put, del, get } from '@vercel/blob'
+import { Readable } from 'node:stream'
+import { logger } from '../lib/logger.js'
 
 export async function listDocuments(req: AuthenticatedRequest, res: Response) {
   const documents = await getDocumentsByProjectId(req.params.projectId as string)
   res.json({ documents })
+}
+
+/**
+ * Store-level listing (QA C2): one fetch that returns every document the
+ * requester can see — admins get all, everyone else gets documents for the
+ * projects already visible to them (same visibility the /projects endpoint
+ * uses). This is what populates the app's document store on login.
+ */
+export async function listMyDocuments(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { userId, role, isSupervisor } = req.user!
+    if (role === 'admin') {
+      return res.json({ documents: await getAllDocuments() })
+    }
+    const projects = await getProjectsForUser(userId, role, isSupervisor)
+    const documents = await getDocumentsByProjectIds(projects.map((p) => p.id))
+    return res.json({ documents })
+  } catch (err) {
+    logger.error({ err }, 'failed to list accessible documents')
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load documents' } })
+  }
 }
 
 export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
@@ -34,7 +58,7 @@ export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
     const storageKey = `documents/${req.params.projectId}/${timestamp}-${sanitized}`
 
     const blob = await put(storageKey, file.buffer, {
-      access: 'public',
+      access: 'private',
       contentType: file.mimetype,
     })
 
@@ -66,14 +90,49 @@ export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
 
     res.status(201).json({ document })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to upload document')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
+  }
+}
+
+export async function downloadDocument(req: AuthenticatedRequest, res: Response) {
+  try {
+    const document = await getDocumentById(req.params.documentId as string)
+    if (!document) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
+
+    const blob = await download(document.storageKey, req.user!.userId)
+    res.setHeader('Content-Type', document.mimeType)
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(document.name)}"`)
+    res.setHeader('Content-Length', document.size.toString())
+    res.send(blob)
+  } catch (err) {
+    logger.error({ err }, 'failed to download document')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
 export async function removeDocument(req: AuthenticatedRequest, res: Response) {
-  const deleted = await deleteDocument(req.params.documentId as string)
-  if (!deleted) {
-    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+  try {
+    const document = await getDocumentById(req.params.documentId as string)
+    if (!document) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
+
+    const isAdmin = req.user!.role === 'admin'
+    const isUploader = document.uploadedBy === req.user!.userId
+    if (!isAdmin && !isUploader) {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only the uploader or an admin can delete this document' } })
+    }
+
+    const deleted = await deleteDocument(req.params.documentId as string)
+    if (!deleted) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
+    res.status(204).send()
+  } catch (err) {
+    logger.error({ err }, 'failed to delete document')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
-  res.status(204).send()
 }

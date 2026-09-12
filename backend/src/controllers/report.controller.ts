@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express'
 import { getHoursByProject, getHoursByEmployee, getOvertimeStats, getTimesheetStatusBreakdown } from '../services/report.service.js'
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
+import { logger } from '../lib/logger.js'
 
 export async function hoursByProject(req: AuthenticatedRequest, res: Response) {
   try {
@@ -14,7 +15,8 @@ export async function hoursByProject(req: AuthenticatedRequest, res: Response) {
     const data = await getHoursByProject(filters)
     res.json({ data })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to get hours by project')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
@@ -30,7 +32,8 @@ export async function hoursByEmployee(req: AuthenticatedRequest, res: Response) 
     const data = await getHoursByEmployee(filters)
     res.json({ data })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to get hours by employee')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
@@ -46,7 +49,8 @@ export async function overtime(req: AuthenticatedRequest, res: Response) {
     const data = await getOvertimeStats(filters)
     res.json({ data })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to get overtime stats')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
 
@@ -62,6 +66,7 @@ export async function timesheetStatus(req: AuthenticatedRequest, res: Response) 
     const data = await getTimesheetStatusBreakdown(filters)
     res.json({ data })
   } catch (err) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: (err as Error).message } })
+    logger.error({ err }, 'failed to get timesheet status breakdown')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }

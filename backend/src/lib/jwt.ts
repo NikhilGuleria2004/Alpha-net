@@ -1,6 +1,11 @@
 import { SignJWT, jwtVerify } from 'jose'
+import { parseObjectId } from './objectid.js'
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'change-me-in-production')
+const jwtSecret = process.env.JWT_SECRET
+if (!jwtSecret || jwtSecret.trim() === '') {
+  throw new Error('JWT_SECRET is required. Set it in your environment.')
+}
+const secret = new TextEncoder().encode(jwtSecret)
 
 export async function signAccessToken(payload: { userId: string; role: string; isSupervisor: boolean }) {
   const jwt = new SignJWT(payload as any)

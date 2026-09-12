@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { listDocuments, uploadDocument, removeDocument } from '../controllers/document.controller.js'
+import { listDocuments, uploadDocument, removeDocument, downloadDocument, listMyDocuments } from '../controllers/document.controller.js'
 import { authenticate } from '../middleware/auth.js'
 import { requireProjectAccess } from '../middleware/access.js'
 
@@ -16,7 +16,20 @@ export function documentsRoutes() {
 
   router.get('/', requireProjectAccess, listDocuments)
   router.post('/', requireProjectAccess, upload.single('file') as any, uploadDocument)
+  router.get('/:documentId/download', requireProjectAccess, downloadDocument)
   router.delete('/:documentId', requireProjectAccess, removeDocument)
 
+  return router
+}
+
+/**
+ * Top-level store listing (QA C2): GET /api/v1/documents returns every document
+ * visible to the requester. Separate from the nested per-project router above
+ * (which requires a :projectId param and per-project access checks).
+ */
+export function myDocumentsRoutes() {
+  const router = Router()
+  router.use(authenticate)
+  router.get('/', listMyDocuments)
   return router
 }

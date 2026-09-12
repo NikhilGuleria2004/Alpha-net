@@ -1,5 +1,11 @@
 import { Router } from 'express'
-import { listActivities, getUserActivities, getProjectActivities, getTimesheetActivities } from '../controllers/activity.controller.js'
+import {
+  listActivities,
+  getUserActivities,
+  getProjectActivities,
+  getTimesheetActivities,
+  createActivityForRequest,
+} from '../controllers/activity.controller.js'
 import { authenticate } from '../middleware/auth.js'
 
 export function activitiesRoutes() {
@@ -10,6 +16,7 @@ export function activitiesRoutes() {
   router.get('/users/:userId', getUserActivities)
   router.get('/projects/:projectId', getProjectActivities)
   router.get('/timesheets/:timesheetId', getTimesheetActivities)
+  router.post('/', createActivityForRequest)
 
   return router
 }

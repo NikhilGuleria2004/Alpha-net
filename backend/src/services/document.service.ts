@@ -142,3 +142,44 @@ export async function getDocumentById(id: string): Promise<Document | null> {
     createdAt: document.createdAt,
   }
 }
+
+// Store-level listing (QA C2): the app's document store needs one fetch that
+// returns documents across all projects the requester can see. Previously the
+// store initialized with a no-project call that returned [] by construction,
+// so every uploaded document vanished from the UI after a reload.
+export async function getAllDocuments(): Promise<Document[]> {
+  const db = await getDb()
+  const documents = await db.collection(COLLECTIONS.DOCUMENTS).find({}).sort({ createdAt: -1 }).toArray()
+  return documents.map((d) => ({
+    id: d._id.toString(),
+    projectId: d.projectId.toString(),
+    name: d.name,
+    size: d.size,
+    mimeType: d.mimeType,
+    storageKey: d.storageKey,
+    url: d.url,
+    uploadedBy: d.uploadedBy.toString(),
+    createdAt: d.createdAt,
+  }))
+}
+
+export async function getDocumentsByProjectIds(projectIds: string[]): Promise<Document[]> {
+  if (projectIds.length === 0) return []
+  const db = await getDb()
+  const documents = await db
+    .collection(COLLECTIONS.DOCUMENTS)
+    .find({ projectId: { $in: projectIds.map((id) => new ObjectId(id)) } })
+    .sort({ createdAt: -1 })
+    .toArray()
+  return documents.map((d) => ({
+    id: d._id.toString(),
+    projectId: d.projectId.toString(),
+    name: d.name,
+    size: d.size,
+    mimeType: d.mimeType,
+    storageKey: d.storageKey,
+    url: d.url,
+    uploadedBy: d.uploadedBy.toString(),
+    createdAt: d.createdAt,
+  }))
+}

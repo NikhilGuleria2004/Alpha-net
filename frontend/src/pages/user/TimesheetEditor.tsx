@@ -93,13 +93,9 @@ export function TimesheetEditor() {
 
   const canNavigatePrev = useMemo(() => {
     if (!weekStart) return false
-    const today = new Date()
-    const currentWeekStart = new Date(today)
-    const day = today.getDay()
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1)
-    currentWeekStart.setDate(diff)
-    currentWeekStart.setHours(0, 0, 0, 0)
-    return new Date(weekStart) < currentWeekStart
+    // Always allow navigating back to previous weeks — this is the primary
+    // use case for corrections.
+    return true
   }, [weekStart])
 
   const canNavigateNext = useMemo(() => {
@@ -161,8 +157,9 @@ export function TimesheetEditor() {
     for (const entry of entries) {
       if (entry.entryType === 'regular') {
         regularHours += entry.hours.mon + entry.hours.tue + entry.hours.wed + entry.hours.thu + entry.hours.fri
+      } else {
+        overtimeHours += entry.hours.sat + entry.hours.sun
       }
-      overtimeHours += entry.hours.sat + entry.hours.sun
     }
     return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours }
   }, [entries])
@@ -209,14 +206,6 @@ export function TimesheetEditor() {
     }
     setIsProcessing(true)
     try {
-      if (!existingTimesheet || !user || !project) return
-      const errors = getValidationErrors()
-      setValidationErrors(errors)
-      if (errors.length > 0) {
-        addToast('error', 'Please fix validation errors before submitting.')
-        return
-      }
-
       const data = {
         userId: user.id,
         projectId: project.id,

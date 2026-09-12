@@ -281,12 +281,13 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                           await markAsRead(notification.id)
                           if (notification.relatedId) {
                             const type = notification.type
+                            const prefix = user?.role === 'admin' ? '/admin' : user?.isSupervisor ? '/supervisor' : '/user'
                             if (type === 'submission' || type === 'approval' || type === 'decline' || type === 'withdrawal') {
-                              navigate('/user/submissions')
+                              navigate(`${prefix}/submissions`)
                             } else if (type === 'deadline' || type === 'assignment') {
-                              navigate('/user/projects')
+                              navigate(`${prefix}/projects`)
                             } else {
-                              navigate('/user/submissions')
+                              navigate(`${prefix}/submissions`)
                             }
                           }
                           setIsNotificationsOpen(false)

@@ -23,7 +23,11 @@ function createMockCollection() {
     findOne: vi.fn(),
     insertOne: vi.fn(),
     deleteOne: vi.fn(),
-    find: vi.fn(() => ({ toArray: vi.fn() })),
+    deleteMany: vi.fn(),
+    find: vi.fn(() => ({
+      sort: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })),
+      toArray: vi.fn().mockResolvedValue([]),
+    })),
     updateOne: vi.fn(),
     findOneAndUpdate: vi.fn(),
   }

@@ -14,6 +14,7 @@ import { getNotifications as fetchNotifications, markAsRead as markAsReadService
 import { getActivities as fetchActivities } from '../services/activityService'
 import { getDocuments as fetchDocuments, uploadProjectDocument as uploadDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
 import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
 
 interface AppDataContextValue {
   projects: Project[]
@@ -28,7 +29,7 @@ interface AppDataContextValue {
   refreshTimesheets: () => Promise<void>
   refreshNotifications: () => Promise<void>
   refreshActivities: () => Promise<void>
-  refreshDocuments: () => Promise<void>
+  refreshDocuments: () => Promise<Document[]>
   createProject: (data: CreateProjectInput) => Promise<Project>
   updateProject: (id: string, data: Partial<CreateProjectInput>) => Promise<Project | undefined>
   deleteProject: (id: string) => Promise<boolean>
@@ -54,6 +55,7 @@ const AppDataContext = createContext<AppDataContextValue | undefined>(undefined)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { addToast } = useToast()
   const [projects, setProjects] = useState<Project[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
@@ -75,22 +77,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       loadingRef.current = true
       setIsLoading(true)
       try {
-        const [projectsData, usersData, timesheetsData, activitiesData, documentsData, notificationsData] = await Promise.all([
+        // Promise.allSettled, not Promise.all (QA C1): a 403/500 on any single
+        // fetch must never discard the entire app's data. Previously the
+        // admin-only user directory rejected the whole load for every
+        // non-admin, leaving all dashboards silently empty.
+        const results = await Promise.allSettled([
           fetchProjects(),
           fetchUsers(),
           fetchTimesheets(),
           fetchActivities(),
           fetchDocuments(),
-          // Isolated failure: a notifications error must not break the rest of the initial load.
-          fetchNotifications().catch(() => [] as Notification[]),
+          fetchNotifications(),
         ])
         if (!cancelled) {
-          setProjects(projectsData)
-          setUsers(usersData)
-          setTimesheets(timesheetsData)
-          setActivities(activitiesData)
-          setDocuments(documentsData)
-          setNotifications(notificationsData)
+          const value = <T,>(index: number, fallback: T): T =>
+            results[index].status === 'fulfilled' ? (results[index] as PromiseFulfilledResult<T>).value : fallback
+          setProjects(value(0, [] as Project[]))
+          setUsers(value(1, [] as User[]))
+          setTimesheets(value(2, [] as Timesheet[]))
+          setActivities(value(3, [] as Activity[]))
+          setDocuments(value(4, [] as Document[]))
+          setNotifications(value(5, [] as Notification[]))
+          // Surface partial-load failures (QA C1 sub-item): a rejected fetch
+          // must be visible, not silently swallowed into empty dashboards.
+          const failedCount = results.filter((r) => r.status === 'rejected').length
+          if (failedCount > 0) {
+            addToast('error', `Some workspace data failed to load (${failedCount} of 6). Try refreshing the page.`)
+          }
         }
       } finally {
         if (!cancelled) {
@@ -99,11 +112,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    loadInitialData()
+    loadInitialData().catch(() => {
+      // Defensive: loadInitialData can no longer reject via allSettled, but
+      // never let an unexpected error surface as an unhandled rejection.
+    })
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, authLoading])
+  }, [isAuthenticated, authLoading, addToast])
 
   const refreshProjects = async () => {
     const data = await fetchProjects()
@@ -134,6 +150,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const refreshDocuments = async () => {
     const data = await fetchDocuments()
     setDocuments(data)
+    return data
   }
 
   const handleCreateProject = async (data: CreateProjectInput) => {

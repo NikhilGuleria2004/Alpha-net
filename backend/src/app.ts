@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit'
 import pinoHttp from 'pino-http'
 import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
-import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, reportsRoutes } from './routes/index.js'
+import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes } from './routes/index.js'
 
 export function createApp() {
   const app = express()
@@ -69,7 +69,12 @@ app.use(cors({
   app.use('/api/v1/approvals', approvalsRoutes())
   app.use('/api/v1/notifications', notificationsRoutes())
   app.use('/api/v1/activities', activitiesRoutes())
-  app.use('/api/v1/documents', documentsRoutes())
+  // Store-level document listing (QA C2): GET /api/v1/documents returns every
+  // document the requester can see — the app's document store hits this on login.
+  // The per-project /:projectId/documents endpoints remain nested under
+  // /api/v1/projects/:projectId/documents (mounted inside projectsRoutes), so the
+  // top-level mount must be myDocumentsRoutes, not documentsRoutes.
+  app.use('/api/v1/documents', myDocumentsRoutes())
   app.use('/api/v1/reports', reportsRoutes())
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
