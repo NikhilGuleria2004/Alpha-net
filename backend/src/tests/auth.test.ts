@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // @ts-ignore
 import request from 'supertest'
 import { createApp } from '../app.js'

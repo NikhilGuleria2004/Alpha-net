@@ -1,9 +1,56 @@
 import { type Request, type Response } from 'express'
+import { timingSafeEqual } from 'node:crypto'
 import { loginUser, logoutUser, getMe, refreshUserSession } from '../services/auth.service.js'
+import { registerUser, RegistrationConflictError } from '../services/user.service.js'
 import { authenticate } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { logger } from '../lib/logger.js'
-import { loginSchema } from '../schemas/auth.schema.js'
+import { loginSchema, registrationSchema } from '../schemas/auth.schema.js'
+
+function hasValidAdminPass(providedPass: string | undefined): boolean {
+  const configuredPass = process.env.ADMIN_REGISTRATION_SECRET
+  if (!configuredPass) {
+    return false
+  }
+
+  const provided = Buffer.from(providedPass ?? '')
+  const configured = Buffer.from(configuredPass)
+  return provided.length === configured.length && timingSafeEqual(provided, configured)
+}
+
+export async function register(req: Request, res: Response) {
+  let input: ReturnType<typeof registrationSchema.parse>
+  try {
+    input = registrationSchema.parse(req.body)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid registration details'
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
+
+  if (input.role === 'admin') {
+    const configuredPass = process.env.ADMIN_REGISTRATION_SECRET
+    if (!configuredPass || !hasValidAdminPass(input.adminPass)) {
+      return res.status(403).json({ error: { code: 'ADMIN_REGISTRATION_DISABLED', message: 'Admin registration is not available' } })
+    }
+  }
+
+  try {
+    const user = await registerUser({
+      name: input.name,
+      email: input.email,
+      employeeId: input.employeeId,
+      department: input.department,
+      password: input.password,
+    }, input.role)
+    return res.status(201).json({ user })
+  } catch (err) {
+    if (err instanceof RegistrationConflictError) {
+      return res.status(409).json({ error: { code: 'CONFLICT', message: err.message } })
+    }
+    logger.warn({ err }, 'registration failed')
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Unable to create account' } })
+  }
+}
 
 export async function login(req: Request, res: Response) {
   try {

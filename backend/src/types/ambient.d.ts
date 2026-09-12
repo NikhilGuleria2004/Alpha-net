@@ -31,5 +31,5 @@ declare module 'jose' {
 declare module '@vercel/blob' {
   export const put: any
   export const del: any
-  export const download: any
+  export const get: any
 }

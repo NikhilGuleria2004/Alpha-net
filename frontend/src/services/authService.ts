@@ -1,6 +1,22 @@
 import type { User } from '../types/auth'
 import apiClient, { setAccessToken } from './apiClient'
 
+export interface RegisterInput {
+  name: string
+  email: string
+  employeeId: string
+  department: string
+  password: string
+  confirmPassword: string
+  role: 'user' | 'admin'
+  adminPass?: string
+}
+
+export async function register(input: RegisterInput): Promise<User> {
+  const response = await apiClient.post<{ user: User }>('/auth/register', input)
+  return response.user
+}
+
 export async function login(email: string, password: string): Promise<User> {
   const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/login', {
     email,

@@ -23,6 +23,7 @@ export function Timesheets() {
   const [dateRange, setDateRange] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newProjectId, setNewProjectId] = useState('')
+  const [newDescription, setNewDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
   const myTimesheets = useMemo(() => {
@@ -65,7 +66,7 @@ export function Timesheets() {
   }
 
   const handleCreateTimesheet = async () => {
-    if (!user || !newProjectId) return
+    if (!user || !newProjectId || !newDescription.trim()) return
     setIsCreating(true)
     try {
       const today = new Date()
@@ -79,6 +80,7 @@ export function Timesheets() {
         addToast('info', 'A timesheet already exists for this week. Opening it...')
         setIsCreateOpen(false)
         setNewProjectId('')
+        setNewDescription('')
         navigate(`/user/timesheets/${existing.id}`)
         return
       }
@@ -87,13 +89,14 @@ export function Timesheets() {
         userId: user.id,
         projectId: newProjectId,
         weekStart,
-        entries: [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
+        entries: [{ id: `entry-${Date.now()}`, description: newDescription.trim(), entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
         notes: '',
       })
       await refreshTimesheets()
       addToast('success', 'Timesheet created')
       setIsCreateOpen(false)
       setNewProjectId('')
+      setNewDescription('')
       navigate(`/user/timesheets/${timesheet.id}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create timesheet'
@@ -187,9 +190,18 @@ export function Timesheets() {
             <div className="mt-4">
               <Select label="Project" value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} options={[{ value: '', label: 'Select project' }, ...projectOptions]} />
             </div>
+            <div className="mt-4">
+              <Input
+                label="Description"
+                placeholder="e.g. Project development, meetings, testing..."
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                required
+              />
+            </div>
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setIsCreateOpen(false)} disabled={isCreating}>Cancel</Button>
-              <Button onClick={handleCreateTimesheet} loading={isCreating} disabled={!newProjectId}>Create</Button>
+              <Button variant="secondary" onClick={() => { setIsCreateOpen(false); setNewDescription(''); }} disabled={isCreating}>Cancel</Button>
+              <Button onClick={handleCreateTimesheet} loading={isCreating} disabled={!newProjectId || !newDescription.trim()}>Create</Button>
             </div>
           </div>
         </div>

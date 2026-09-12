@@ -145,6 +145,9 @@ export function UserLogin() {
               </Button>
             </div>
           </form>
+          <Button type="button" variant="ghost" onClick={() => navigate('/register')} className="mt-4 w-full">
+            Create an account
+          </Button>
         </div>
       </div>
     </div>

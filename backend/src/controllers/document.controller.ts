@@ -102,11 +102,16 @@ export async function downloadDocument(req: AuthenticatedRequest, res: Response)
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
     }
 
-    const blob = await download(document.storageKey, req.user!.userId)
+    const blob = await get(document.storageKey, { access: 'private' })
+    if (!blob || blob.statusCode === 304) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document content not found' } })
+    }
+
+    const stream = Readable.fromWeb(blob.stream)
     res.setHeader('Content-Type', document.mimeType)
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(document.name)}"`)
     res.setHeader('Content-Length', document.size.toString())
-    res.send(blob)
+    stream.pipe(res)
   } catch (err) {
     logger.error({ err }, 'failed to download document')
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })

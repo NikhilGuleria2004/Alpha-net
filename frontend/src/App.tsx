@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { UserLogin } from './pages/auth/UserLogin'
+import { Register } from './pages/auth/Register'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { AppShellLayout } from './components/layout/AppShell'
 import { AdminDashboard } from './pages/admin/Dashboard'
@@ -38,6 +39,7 @@ function App() {
         <Route path="/" element={<Navigate to="/adminlog" replace />} />
         <Route path="/adminlog" element={<AdminLogin />} />
         <Route path="/userlog" element={<UserLogin />} />
+        <Route path="/register" element={<Register />} />
 
         <Route
           path="/admin"

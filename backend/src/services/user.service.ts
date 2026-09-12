@@ -93,6 +93,80 @@ export async function getUserById(id: string): Promise<User | null> {
   }
 }
 
+export interface RegisterUserInput {
+  name: string
+  email: string
+  employeeId: string
+  department: string
+  password: string
+}
+
+export class RegistrationConflictError extends Error {
+  code = 'CONFLICT'
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'RegistrationConflictError'
+  }
+}
+
+export async function registerUser(input: RegisterUserInput, role: 'user' | 'admin' = 'user'): Promise<User> {
+  const db = await getDb()
+  const email = input.email.trim().toLowerCase()
+  const employeeId = input.employeeId.trim()
+  const existingUser = await db.collection(COLLECTIONS.USERS).findOne({
+    $or: [{ email }, { employeeId }],
+  })
+  if (existingUser) {
+    throw new RegistrationConflictError('Email or employee ID already exists')
+  }
+
+  const passwordHash = await hashPassword(input.password)
+  const now = new Date()
+  const doc = {
+    name: input.name.trim(),
+    email,
+    employeeId,
+    department: input.department.trim(),
+    role,
+    isSupervisor: false,
+    status: 'active' as const,
+    supervisorId: null,
+    passwordHash,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  try {
+    const result = await db.collection(COLLECTIONS.USERS).insertOne(doc)
+    const registeredUser: User = {
+      id: result.insertedId.toString(),
+      name: doc.name,
+      email: doc.email,
+      employeeId: doc.employeeId,
+      department: doc.department,
+      role: doc.role,
+      isSupervisor: doc.isSupervisor,
+      status: doc.status,
+      supervisorId: null,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    }
+
+    await createActivity({
+      userId: registeredUser.id,
+      description: `User "${registeredUser.name}" registered.`,
+    })
+
+    return registeredUser
+  } catch (err) {
+    if ((err as { code?: number }).code === 11000) {
+      throw new RegistrationConflictError('Email or employee ID already exists')
+    }
+    throw err
+  }
+}
+
 export async function createUser(input: CreateUserInput): Promise<User> {
   const db = await getDb()
   const now = new Date()
