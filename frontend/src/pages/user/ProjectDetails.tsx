@@ -1,25 +1,44 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileDown } from 'lucide-react'
+import { ArrowLeft, Download } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
+import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/date'
 import { formatFileSize } from '../../utils/format'
+import { downloadDocument } from '../../services/documentService'
+import type { Document } from '../../types/document'
 
 export function ProjectDetails() {
   const { projectId } = useParams<{ projectId: string }>()
   const { user } = useAuth()
   const { projects, users, timesheets, documents } = useAppData()
+  const { addToast } = useToast()
   const navigate = useNavigate()
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const project = projects.find((p) => p.id === projectId)
   const manager = project ? users.find((u) => u.id === project.managerId) || null : null
   const supervisor = project ? users.find((u) => u.id === project.supervisorId) || null : null
   const projectDocuments = documents.filter((d) => d.projectId === projectId)
+
+  // Route downloads through the authenticated GET /documents/:id/download
+  // endpoint (QA H8) — the stored blob URL is private and 403s in the browser.
+  async function handleDownload(doc: Document) {
+    if (downloadingId) return
+    setDownloadingId(doc.id)
+    try {
+      await downloadDocument(doc.id, doc.name)
+    } catch (err) {
+      addToast('error', (err as Error)?.message || 'Failed to download document')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const myTimesheet = useMemo(() => {
     if (!user || !project) return undefined
@@ -117,7 +136,6 @@ export function ProjectDetails() {
           <Card>
             <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Documents</h3>
-              <Button variant="ghost" size="sm" leftIcon={<FileDown className="h-4 w-4" />}>Export</Button>
             </div>
             <div className="p-5">
               {projectDocuments.length === 0 ? (
@@ -130,6 +148,7 @@ export function ProjectDetails() {
                         <p className="text-sm font-medium text-slate-900">{doc.name}</p>
                         <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
                       </div>
+                      <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
                     </div>
                   ))}
                 </div>

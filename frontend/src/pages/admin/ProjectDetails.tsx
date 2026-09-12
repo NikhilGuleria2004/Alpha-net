@@ -16,6 +16,7 @@ import { Select } from '../../components/ui/Select'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
 import { formatDate } from '../../utils/date'
 import { formatFileSize } from '../../utils/format'
+import { downloadDocument } from '../../services/documentService'
 import type { Activity } from '../../types/activity'
 import type { Project } from '../../types/project'
 import type { Timesheet } from '../../types/timesheet'
@@ -304,6 +305,23 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
 }
 
 function DocumentsTab({ documents: projectDocuments }: { documents: Document[] }) {
+  const { addToast } = useToast()
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  // Route downloads through the authenticated GET /documents/:id/download
+  // endpoint (QA H8) — the stored blob URL is private and 403s in the browser.
+  async function handleDownload(doc: Document) {
+    if (downloadingId) return
+    setDownloadingId(doc.id)
+    try {
+      await downloadDocument(doc.id, doc.name)
+    } catch (err) {
+      addToast('error', (err as Error)?.message || 'Failed to download document')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {projectDocuments.length === 0 ? (
@@ -317,11 +335,7 @@ function DocumentsTab({ documents: projectDocuments }: { documents: Document[] }
                 <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
               </div>
               <div className="flex gap-2">
-                {doc.url ? (
-                  <a href={doc.url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Download document"><Download className="h-4 w-4" /></a>
-                ) : (
-                  <button type="button" disabled className="cursor-not-allowed rounded-lg p-2 text-slate-300" aria-label="Document unavailable"><Download className="h-4 w-4" /></button>
-                )}
+                <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
                 <button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="File type"><span className="text-xs font-medium uppercase">{doc.mimeType.split('/')[1] || doc.mimeType}</span></button>
               </div>
             </div>

@@ -70,7 +70,7 @@ Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 H
 - **Where:** `frontend/src/pages/admin/UserDetails.tsx:46-49, 87`.
 - "Deactivate User" calls `deactivateUser` **immediately** from the dropdown (no `ConfirmDialog`, unlike project deletion which confirms) and then unconditionally toasts **"User deactivated successfully"** — including when the backend refused (self-deactivation, last active admin). The result value is never checked.
 
-### H8. Document download is wired to private blob URLs, not the authenticated download endpoint
+### H8. Document download is wired to private blob URLs, not the authenticated download endpoint **[FIXED — 2026-09-12]**
 - **Where:** `frontend/src/pages/admin/ProjectDetails.tsx:319-324` links directly to `doc.url`; uploads use `access: 'private'` (`document.controller.ts:37-40`).
 - Vercel Blob **private** URLs are not publicly readable — the anchor 403s or breaks. The correct `GET /:documentId/download` endpoint (streams via `download(storageKey, userId)`) is never used by the frontend. `pages/user/ProjectDetails.tsx:120-136` has **no download action at all**, and its "Export" button has no `onClick` (decorative).
 
@@ -225,11 +225,12 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
 - [x] **H7 — Deactivate without confirmation / false success** (`UserDetails.tsx:46-49,87`)
   - [x] Add a `ConfirmDialog` to deactivation (match the project-delete pattern) — added `<Modal>` confirmation; "Deactivate User" in the dropdown now opens it instead of firing instantly
   - [x] Check the result; surface the backend error (self-deactivation, last active admin) instead of unconditional success — `handleDeactivate` now checks the returned user and `catch`es errors, toasting a real message (and navigates to `/login` if the admin deactivated themselves)
-- [ ] **H8 — Broken document downloads** (`admin/ProjectDetails.tsx:319-324`, `user/ProjectDetails.tsx:120-136`) **[partial — list fixed by C2; downloads still open]**
+- [x] **H8 — Broken document downloads** (`admin/ProjectDetails.tsx`, `user/ProjectDetails.tsx`) **[FIXED — 2026-09-12]**
   - [x] Give the document store a working list endpoint (done in C2 — `GET /api/v1/documents` now returns the visible document set)
-  - [ ] Route downloads through the authenticated `GET /:documentId/download` endpoint (fetch → blob → object URL) — still uses private blob URLs, which 403
-  - [ ] Add a working download action on the employee ProjectDetails
-  - [ ] Wire or remove the dead "Export" button
+  - [x] Route downloads through the authenticated `GET /documents/:documentId/download` endpoint (fetch → blob → object URL) — new `downloadBlob()` in `apiClient.ts` + `downloadDocument()` in `documentService.ts`; admin DocumentsTab now streams via the endpoint with a busy state and error toast instead of linking the private blob URL
+  - [x] Add a working download action on the employee ProjectDetails — per-document download button wired to the same endpoint
+  - [x] Wire or remove the dead "Export" button — removed (it had no handler and no backend report endpoint behind it)
+  - [x] Test: `documents-store.test.ts` gains a "Store-level document download (QA H8)" block (3 tests: streams bytes + headers for an authorized user, 403 for an unauthorized user, 404 for unknown id)
 
 ### 🟡 Medium
 - [ ] **M1** — Fix or remove `getUnreadNotifications` (`?unread=true` → `read=false`) (`notificationService.ts:8-12`)

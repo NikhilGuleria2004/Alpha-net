@@ -118,6 +118,47 @@ export async function downloadDocument(req: AuthenticatedRequest, res: Response)
   }
 }
 
+/**
+ * Store-level document download (QA H8): GET /api/v1/documents/:documentId/download
+ * streams a private blob through the authenticated endpoint instead of linking
+ * the private blob's public URL (which 403s). Access is scoped the same way as
+ * the C2 store listing — admins get any document; everyone else only documents
+ * whose project they can access.
+ */
+export async function downloadMyDocument(req: AuthenticatedRequest, res: Response) {
+  try {
+    const document = await getDocumentById(req.params.documentId as string)
+    if (!document) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
+
+    const { userId, role, isSupervisor } = req.user!
+    if (role !== 'admin') {
+      const visible = await getProjectsForUser(userId, role, isSupervisor)
+      const allowed = visible
+        .map((p) => p.id)
+        .includes(document.projectId)
+      if (!allowed) {
+        return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Access denied to this document' } })
+      }
+    }
+
+    const blob = await get(document.storageKey, { access: 'private' })
+    if (!blob || blob.statusCode === 304) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document content not found' } })
+    }
+
+    const stream = Readable.fromWeb(blob.stream)
+    res.setHeader('Content-Type', document.mimeType)
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(document.name)}"`)
+    res.setHeader('Content-Length', document.size.toString())
+    stream.pipe(res)
+  } catch (err) {
+    logger.error({ err }, 'failed to download document')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
+  }
+}
+
 export async function removeDocument(req: AuthenticatedRequest, res: Response) {
   try {
     const document = await getDocumentById(req.params.documentId as string)

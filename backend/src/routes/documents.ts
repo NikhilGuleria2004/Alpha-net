@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { listDocuments, uploadDocument, removeDocument, downloadDocument, listMyDocuments } from '../controllers/document.controller.js'
+import { listDocuments, uploadDocument, removeDocument, downloadDocument, listMyDocuments, downloadMyDocument } from '../controllers/document.controller.js'
 import { authenticate } from '../middleware/auth.js'
 import { requireProjectAccess } from '../middleware/access.js'
 
@@ -31,5 +31,6 @@ export function myDocumentsRoutes() {
   const router = Router()
   router.use(authenticate)
   router.get('/', listMyDocuments)
+  router.get('/:documentId/download', downloadMyDocument)
   return router
 }

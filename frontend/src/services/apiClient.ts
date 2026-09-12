@@ -152,6 +152,46 @@ export const apiClient = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 }
 
-export { setAccessToken }
+export { setAccessToken, getAccessToken }
+
+/**
+ * Authenticated binary download (QA H8): fetch → Blob for endpoints that stream
+ * file content (e.g. GET /documents/:id/download). Uses the same in-memory
+ * access token + credentials:include as request(), but returns the raw Blob
+ * instead of parsing JSON. The filename is extracted from Content-Disposition
+ * when the server provides one.
+ */
+export async function downloadBlob(endpoint: string): Promise<{ blob: Blob; filename: string | null }> {
+  const url = `${API_BASE_URL}${endpoint}`
+  const token = getAccessToken()
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    let message = 'Download failed'
+    try {
+      const data = (await response.json()) as { error?: { message?: string } }
+      message = data?.error?.message || message
+    } catch {
+      // Non-JSON error body — keep the generic message.
+    }
+    throw new Error(message)
+  }
+  const blob = await response.blob()
+  const disposition = response.headers.get('content-disposition')
+  let filename: string | null = null
+  if (disposition) {
+    const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="([^"]+)"/)
+    if (match) {
+      try {
+        filename = decodeURIComponent(match[1] ?? match[2])
+      } catch {
+        filename = match[1] ?? match[2] ?? null
+      }
+    }
+  }
+  return { blob, filename }
+}
 
 export default apiClient

@@ -6,6 +6,7 @@ import { createApp } from "../app.js"
 import { getDb } from "../lib/mongodb.js"
 import { verifyAccessToken } from "../lib/jwt.js"
 import { COLLECTIONS } from "../lib/collections.js"
+import { get as getBlob } from "@vercel/blob"
 vi.mock("../lib/mongodb.js")
 vi.mock("../lib/jwt.js")
 vi.mock("@vercel/blob")
@@ -94,5 +95,69 @@ describe('Documents store listing (QA C2)', () => {
     const res = await request(createApp()).get('/api/v1/documents').set('Authorization', 'Bearer user-token')
     expect(res.status).toBe(200)
     expect(res.body.documents).toEqual([])
+  })
+})
+
+describe('Store-level document download (QA H8)', () => {
+  beforeEach(() => { setupMocks() })
+
+  function mockBlobDownload(content = 'file-bytes') {
+    vi.mocked(getBlob).mockResolvedValue({
+      stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(content)); c.close() } }),
+    } as any)
+  }
+
+  it('streams the private blob for a user who can access the project', async () => {
+    // Invoke the controller directly with a Writable-based fake response:
+    // supertest's HTTP client cannot parse a streamed binary body
+    // (HPE_CLOSED_CONNECTION) even though the endpoint returns 200 with
+    // correct headers. Direct invocation asserts headers + piped bytes.
+    const { downloadMyDocument } = await import('../controllers/document.controller.js')
+    const { Writable } = await import('node:stream')
+    const userId = new ObjectId().toString()
+    const projectId = new ObjectId().toString()
+    const doc = { _id: new ObjectId(), projectId: new ObjectId(projectId), name: 'plan.pdf', size: 9, mimeType: 'application/pdf', storageKey: 'sk', url: 'https://blob.example/sk', uploadedBy: new ObjectId(userId), createdAt: new Date() }
+    setupMocks([doc])
+    vi.mocked(getProjectsForUser).mockResolvedValue([{ id: projectId } as any])
+    vi.mocked(documentsCollection.findOne).mockResolvedValue(doc)
+    mockBlobDownload()
+    const headers: Record<string, string> = {}
+    const chunks: Buffer[] = []
+    const sink = new Writable({ write(c, _e, cb) { chunks.push(Buffer.from(c)); cb() } })
+    const fakeRes = Object.assign(sink, {
+      setHeader: (k: string, v: string) => { headers[k.toLowerCase()] = v },
+      status: (code: number) => { (fakeRes as any).statusCode = code; return fakeRes },
+      json: vi.fn(),
+    }) as any
+    await downloadMyDocument({ params: { documentId: doc._id.toString() }, user: { userId, role: 'user', isSupervisor: false } } as any, fakeRes)
+    await new Promise<void>((resolve) => { if (sink.writableFinished) resolve(); else sink.on('finish', () => resolve()) })
+    expect(headers['content-type']).toContain('application/pdf')
+    expect(headers['content-disposition']).toContain('plan.pdf')
+    expect(Buffer.concat(chunks).toString()).toBe('file-bytes')
+    expect(vi.mocked(getBlob)).toHaveBeenCalledWith('sk', { access: 'private' })
+  })
+
+  it('rejects a user who cannot access the document project with 403', async () => {
+    const userId = new ObjectId().toString()
+    const projectId = new ObjectId().toString()
+    const docId = new ObjectId()
+    const doc = { _id: docId, projectId: new ObjectId(projectId), name: 'secret.pdf', size: 9, mimeType: 'application/pdf', storageKey: 'sk', url: 'https://blob.example/sk', uploadedBy: new ObjectId(), createdAt: new Date() }
+    setupMocks([doc])
+    vi.mocked(getProjectsForUser).mockResolvedValue([])
+    vi.mocked(documentsCollection.findOne).mockResolvedValue(doc)
+    mockUser(userId, 'user', false)
+    const res = await request(createApp()).get(`/api/v1/documents/${docId.toString()}/download`).set('Authorization', 'Bearer user-token')
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('FORBIDDEN')
+  })
+
+  it('returns 404 for an unknown document id', async () => {
+    const userId = new ObjectId().toString()
+    setupMocks([])
+    vi.mocked(documentsCollection.findOne).mockResolvedValue(null)
+    mockUser(userId, 'admin', false)
+    const res = await request(createApp()).get(`/api/v1/documents/${new ObjectId().toString()}/download`).set('Authorization', 'Bearer admin-token')
+    expect(res.status).toBe(404)
+    expect(res.body.error.code).toBe('NOT_FOUND')
   })
 })

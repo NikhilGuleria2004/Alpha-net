@@ -1,5 +1,5 @@
 import type { Document } from '../types/document'
-import apiClient, { request } from './apiClient'
+import apiClient, { downloadBlob, request } from './apiClient'
 
 /**
  * Store-level listing (QA C2): returns every document the current user can see —
@@ -46,5 +46,28 @@ export async function deleteDocument(projectId: string, id: string): Promise<boo
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Authenticated document download (QA H8): streams the private blob through
+ * GET /documents/:id/download (which verifies project access server-side) and
+ * saves it locally via an object URL. The stored Document.url is a private blob
+ * URL that 403s in the browser, so it must not be linked directly.
+ */
+export async function downloadDocument(id: string, fallbackName: string): Promise<void> {
+  const { blob, filename } = await downloadBlob(`/documents/${id}/download`)
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = filename || fallbackName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } finally {
+    // Give the click a tick to start before revoking — avoids truncating the
+    // download in Chromium-based browsers.
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
   }
 }
