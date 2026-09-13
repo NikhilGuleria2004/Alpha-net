@@ -1,121 +1,113 @@
 import { useState, useEffect } from 'react'
-import { User, Bell, Palette } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
+import { Bell, Sun } from 'lucide-react'
+import { useTheme } from '../../contexts/ThemeContext'
 import { Card } from '../../components/ui/Card'
-import { Input } from '../../components/ui/Input'
 import { Switch } from '../../components/ui/Switch'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../contexts/ToastContext'
+import { getMyNotificationPrefs, putMyNotificationPrefs } from '../../services/settingsService'
 
 export function Settings() {
-  const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const { addToast } = useToast()
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [employeeId, setEmployeeId] = useState('')
-  const [department, setDepartment] = useState('')
   const [submissionNotifications, setSubmissionNotifications] = useState(true)
   const [deadlineReminders, setDeadlineReminders] = useState(true)
   const [approvalNotifications, setApprovalNotifications] = useState(true)
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
-    if (user) {
-      setName(user.name)
-      setEmail(user.email)
-      setEmployeeId(user.employeeId)
-      setDepartment(user.department)
-    }
-    const stored = localStorage.getItem('eniac_user_settings')
-    if (stored) {
+    let cancelled = false
+    async function load() {
       try {
-        const data = JSON.parse(stored)
-        if (data.submissionNotifications !== undefined) setSubmissionNotifications(data.submissionNotifications)
-        if (data.deadlineReminders !== undefined) setDeadlineReminders(data.deadlineReminders)
-        if (data.approvalNotifications !== undefined) setApprovalNotifications(data.approvalNotifications)
-        if (data.theme) setTheme(data.theme)
+        const prefs = await getMyNotificationPrefs()
+        if (cancelled) return
+        setSubmissionNotifications(prefs.submissionNotifications)
+        setDeadlineReminders(prefs.deadlineReminders)
+        setApprovalNotifications(prefs.approvalNotifications)
       } catch {
-        // ignore
+        if (!cancelled) addToast('error', 'Failed to load notification preferences')
+      } finally {
+        if (!cancelled) setIsLoading(false)
       }
     }
-    const savedTheme = localStorage.getItem('eniac_theme')
-    if (savedTheme === 'dark' || savedTheme === 'light') {
-      setTheme(savedTheme)
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark')
-    }
-  }, [user])
-
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme)
-    localStorage.setItem('eniac_theme', newTheme)
-    document.documentElement.classList.toggle('dark', newTheme === 'dark')
-  }
+    load()
+    return () => { cancelled = true }
+  }, [addToast])
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    const data = {
-      submissionNotifications,
-      deadlineReminders,
-      approvalNotifications,
-      theme,
+    try {
+      await putMyNotificationPrefs({
+        submissionNotifications,
+        deadlineReminders,
+        approvalNotifications,
+      })
+      addToast('success', 'Settings saved successfully')
+    } catch {
+      addToast('error', 'Failed to save settings')
+    } finally {
+      setIsSaving(false)
     }
-    localStorage.setItem('eniac_user_settings', JSON.stringify(data))
-    addToast('success', 'Settings saved successfully')
-    setIsSaving(false)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage your profile and preferences.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your profile and preferences.</p>
         </div>
-        <Button onClick={handleSave} loading={isSaving}>
+        <Button onClick={handleSave} loading={isSaving} disabled={isLoading}>
           Save Changes
         </Button>
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+            <Sun className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+            <h2 className="text-lg font-semibold text-foreground">Appearance</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input label="Employee ID" value={employeeId} disabled />
-          <Input label="Department" value={department} disabled />
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Dark Mode</p>
+              <p className="text-xs text-muted-foreground">Switch between light and dark themes. Your preference is saved on this device.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === 'dark'}
+              aria-label="Toggle dark mode"
+              onClick={toggleTheme}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                theme === 'dark' ? 'bg-indigo-600' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 rounded-full bg-card shadow-sm ring-0 transition-transform duration-200 ease-in-out ${
+                  theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
+            <h2 className="text-lg font-semibold text-foreground">Notification Preferences</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
           <Switch label="Submission Notifications" description="Notify when timesheets are submitted" checked={submissionNotifications} onChange={setSubmissionNotifications} />
           <Switch label="Deadline Reminders" description="Send reminders before project deadlines" checked={deadlineReminders} onChange={setDeadlineReminders} />
           <Switch label="Approval Notifications" description="Notify when timesheets are approved or declined" checked={approvalNotifications} onChange={setApprovalNotifications} />
-        </div>
-      </Card>
-
-      <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Appearance</h2>
-          </div>
-        </div>
-        <div className="p-5">
-          <Switch label="Dark Mode" description="Toggle dark mode for the application" checked={theme === 'dark'} onChange={(checked) => handleThemeChange(checked ? 'dark' : 'light')} />
+          <p className="text-xs text-muted-foreground">Notification preferences are saved to your account and sync across devices.</p>
         </div>
       </Card>
     </div>

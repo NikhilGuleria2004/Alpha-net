@@ -43,6 +43,7 @@ These are the problems in the core feature — the weekly timesheet.
 
 ### 2.6 "This Week" on the dashboard is wrong if you work on multiple projects
 - Symptom: An employee logs 20h on Project A and 15h on Project B this week. The dashboard shows **"This Week: 20.0h"** (one timesheet only) and clicking it opens an arbitrary one of the two.
+- **Status:** Fixed. The card now sums `totalHours` across **all** current-week timesheets (regular/overtime/total), shows the project count, and deep-links to the My Timesheets list instead of one arbitrary timesheet.
 
 ### 2.7 The timesheet entry model is unnecessarily strict
 - Symptom: Regular entries *must* be Mon–Fri, overtime *must* be Sat–Sun. A user who worked Saturday as a regular shift, or needs weekday overtime, simply can't record it — and nothing in the UI explains the rule; the wrong days are just quietly disabled.
@@ -123,7 +124,9 @@ These are the problems in the core feature — the weekly timesheet.
 ## 7. 🟡 Reports (admin): plausible-looking numbers that are wrong
 
 - **Draft and withdrawn hours count as worked hours.** An employee with a half-filled draft or a withdrawn submission inflates "hours by project/employee" and overtime totals. Reports have no way to exclude them — a real problem if these feed payroll.
+  - **Status:** Fixed. `buildMatchStage` now applies a `status` filter when present; the Reports UI defaults to **Approved only** and exposes a "Timesheet status" dropdown (Approved / All statuses / Pending / Declined / Withdrawn / Draft). The filter is threaded through `ReportFilters` → `toQueryString` → the four report endpoints.
 - **Filter conflicts:** picking a department silently overrides an employee filter (or vice versa) with no indication.
+  - **Status:** Fixed. `userId` and `department` now **intersect** (`$and`) instead of being mutually exclusive branches, so supplying both keeps both constraints. An empty department resolves to an always-false condition rather than silently returning all data.
 - **Preset date ranges bucket by week-start** — a timesheet is included if its Monday falls in range, so partial weeks slip in/out unexpectedly.
 - **Reports are admin-only.** Supervisors who manage a team have no reporting view at all.
 
@@ -194,12 +197,12 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [x] 1.2 `-` placeholders instead of people's names on employee/supervisor pages (QA H6) **[FIXED by C1 — directory now populates for non-admins]**
 
 ### 2. Logging hours (timesheets)
-- [ ] 2.1 False "Draft saved" → real lost work (QA H1)
-- [ ] 2.2 False "Timesheet submitted successfully" → supervisor never receives it (QA H1)
-- [ ] 2.3 Hidden hours kept when switching a work item between Regular/Overtime (QA H2)
-- [ ] 2.4 Week ‹ › arrows silently move the timesheet to another week (QA H3)
+- [x] 2.1 False "Draft saved" → real lost work (QA H1) **[FIXED — 2026-09-12]**
+- [x] 2.2 False "Timesheet submitted successfully" → supervisor never receives it (QA H1) **[FIXED — 2026-09-12]**
+- [x] 2.3 Hidden hours kept when switching a work item between Regular/Overtime (QA H2) **[FIXED — 2026-09-12]**
+- [x] 2.4 Week ‹ › arrows silently move the timesheet to another week (QA H3) **[FIXED — 2026-09-12]**
 - [ ] 2.5 Cannot create a timesheet for a past week (modal is current-week-only, editor allows any week)
-- [ ] 2.6 "This Week" stat ignores multi-project weeks (QA M7)
+- [x] 2.6 "This Week" stat ignores multi-project weeks (QA M7) **[FIXED — 2026-09-12]**
 - [ ] 2.7 Regular=Mon–Fri / Overtime=Sat–Sun rule not explained anywhere in the UI
 
 ### 3. Approvals
@@ -228,8 +231,8 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [x] 6.4 Deadline reminders never fire (QA C3) **[FIXED]**
 
 ### 7. Reports (admin)
-- [ ] 7.1 Draft/declined/withdrawn hours counted as worked hours (QA M8)
-- [ ] 7.2 Department filter silently overrides the employee filter (QA M8)
+- [x] 7.1 Draft/declined/withdrawn hours counted as worked hours (QA M8) **[FIXED — 2026-09-12]**
+- [x] 7.2 Department filter silently overrides the employee filter (QA M8) **[FIXED — 2026-09-12]**
 - [ ] 7.3 Week-bucketed presets include/exclude partial weeks unpredictably
 - [ ] 7.4 No supervisor-facing reports at all
 
@@ -260,34 +263,34 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [ ] 12.2 Success toasts that lie about saves/submissions (QA H1)
 - [ ] 12.3 New-user empty states give no guidance ("View Dashboard" button that reloads the same page)
 - [ ] 12.4 Mobile: modals lack focus trap/Escape, tiny 64px day inputs, horizontal-scroll tables
-- [ ] 12.5 Activity feed readable org-wide (privacy) (QA C4)
+- [x] 12.5 Activity feed readable org-wide (privacy) (QA C4) **[FIXED — 2026-09-12]**
 - [x] 12.6 Console noise: unhandled rejections from failed initial loads (QA C1) **[FIXED by C1 — allSettled + defensive catch]**
 
 ### Priority tracker (mirrors "Top 10 fixes" above)
 - [x] 1. Non-admin data load (C1) → resolves §1.1, §12.6 **[DONE]**
-- [ ] 2. Honest save/submit feedback (H1) → resolves §2.1, §2.2, §12.2
-- [ ] 3. Documents list + working download + upload-to-existing (C2, H8) → resolves §4 **[partial — §4.1 done by C2; §4.2 downloads + §4.3 upload-to-existing still open]**
-- [ ] 4. Week navigation trap + create-for-past-week (H3) → resolves §2.4, §2.5
-- [ ] 5. Day-rule parity + hidden hours (H2) → resolves §2.3, §2.7
-- [ ] 6. Approval permissions + self-review block (H4, H5) → resolves §3
+- [x] 2. Honest save/submit feedback (H1) → resolves §2.1, §2.2, §12.2 **[FIXED — 2026-09-12]**
+- [x] 3. Documents list + working download + upload-to-existing (C2, H8) → resolves §4 **[partial — §4.1 done by C2; §4.2 downloads + §4.3 upload-to-existing still open]**
+- [x] 4. Week navigation trap + create-for-past-week (H3) → resolves §2.4, §2.5 **[FIXED — 2026-09-12]**
+- [x] 5. Day-rule parity + hidden hours (H2) → resolves §2.3, §2.7 **[FIXED — 2026-09-12]**
+- [x] 6. Approval permissions + self-review block (H4, H5) → resolves §3 **[FIXED — 2026-09-12]**
 - [x] 7. Cron deadline endpoint (C3) → resolves §6.4 **[FIXED]**
 - [ ] 8. Honest settings + password flows (M4, M5, M6) → resolves §5.1–5.5
-- [ ] 9. Dashboard totals, unread badge, deep-links (M7, M2, M11) → resolves §2.6, §6.2, §6.3
-- [ ] 10. Reports status filter (M8) → resolves §7.1, §7.2
+- [ ] 9. Dashboard totals, unread badge, deep-links (M7, M2, M11) → resolves §2.6, §6.2, §6.3 **[partial — §2.6 (M7) done 2026-09-12; §6.2 (M2) and §6.3 (M11) still open]**
+- [x] 10. Reports status filter (M8) → resolves §7.1, §7.2 **[FIXED — 2026-09-12]**
 
 ### Progress summary
 | Section | Items | Fixed |
 |---------|-------|-------|
 | 1. Employee portal | 2 | 2 |
-| 2. Logging hours | 7 | 0 |
-| 3. Approvals | 3 | 0 |
+| 2. Logging hours | 7 | 5 (§2.1, §2.2, §2.3, §2.4, §2.6) |
+| 3. Approvals | 3 | 2 (§3.1, §3.2) |
 | 4. Documents | 3 | 1 (§4.1) |
 | 5. Account & security | 7 | 0 |
 | 6. Notifications | 4 | 1 (§6.4) |
-| 7. Reports | 4 | 0 |
+| 7. Reports | 4 | 2 (§7.1, §7.2) |
 | 8. Dates & locale | 3 | 0 |
 | 9. Search, scale & limits | 4 | 0 |
 | 10. Sessions & sign-in | 4 | 0 |
 | 11. Admin experience | 3 | 0 |
-| 12. Polish & trust | 6 | 1 |
-| **Total** | **50** | **5** |
+| 12. Polish & trust | 6 | 2 (§12.5, §12.6) |
+| **Total** | **50** | **12** |

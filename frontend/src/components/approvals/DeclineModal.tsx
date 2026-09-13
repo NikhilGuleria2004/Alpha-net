@@ -26,7 +26,7 @@ export function DeclineModal({ isOpen, onClose, onConfirm, reason, onReasonChang
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Decline Timesheet" size="md">
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">A reason is required</p>
+        <p className="text-sm text-muted-foreground">A reason is required</p>
         <Textarea
           placeholder="Enter the reason for declining this timesheet..."
           value={reason}

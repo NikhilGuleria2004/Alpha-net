@@ -14,9 +14,9 @@ export function Checkbox({ checked, onChange, label, disabled = false, className
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
       />
-      <span className="text-sm text-slate-700">{label}</span>
+      <span className="text-sm text-foreground">{label}</span>
     </label>
   )
 }

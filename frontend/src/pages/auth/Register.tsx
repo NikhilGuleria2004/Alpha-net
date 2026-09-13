@@ -109,7 +109,7 @@ export function Register() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-muted">
       <div className="hidden w-1/2 bg-slate-900 lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600">
@@ -126,8 +126,8 @@ export function Register() {
             Back to sign in
           </Button>
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Create your account</h1>
-            <p className="mt-2 text-sm text-slate-500">Register as a team member or request an administrator account.</p>
+            <h1 className="text-3xl font-semibold text-foreground">Create your account</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Register as a team member or request an administrator account.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
@@ -146,39 +146,39 @@ export function Register() {
 
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="register-password">Password</label>
+                <label className="mb-1 block text-sm font-medium text-foreground" htmlFor="register-password">Password</label>
                 <div className="relative">
                   <input
                     id="register-password"
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(event) => updateField('password', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.password)}
                   />
-                  <button type="button" onClick={() => setShowPassword((previous) => !previous)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  <button type="button" onClick={() => setShowPassword((previous) => !previous)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground" aria-label={showPassword ? 'Hide password' : 'Show password'}>
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.password ? <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p> : <p className="mt-1 text-xs text-slate-500">Use at least 8 characters with uppercase, lowercase, and a number.</p>}
+                {errors.password ? <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p> : <p className="mt-1 text-xs text-muted-foreground">Use at least 8 characters with uppercase, lowercase, and a number.</p>}
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="register-confirm-password">Confirm Password</label>
+                <label className="mb-1 block text-sm font-medium text-foreground" htmlFor="register-confirm-password">Confirm Password</label>
                 <div className="relative">
                   <input
                     id="register-confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
                     onChange={(event) => updateField('confirmPassword', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
                     placeholder="Repeat your password"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.confirmPassword)}
                   />
-                  <button type="button" onClick={() => setShowConfirmPassword((previous) => !previous)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600" aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}>
+                  <button type="button" onClick={() => setShowConfirmPassword((previous) => !previous)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground" aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}>
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -203,7 +203,7 @@ export function Register() {
               Create Account
             </Button>
 
-            <p className="text-center text-sm text-slate-600">
+            <p className="text-center text-sm text-foreground">
               Already have an account?{' '}
               <button type="button" onClick={() => navigate('/userlog')} className="font-medium text-indigo-600 hover:text-indigo-700">
                 Sign in

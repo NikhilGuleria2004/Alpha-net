@@ -15,15 +15,24 @@ export async function listTimesheets(req: AuthenticatedRequest, res: Response) {
     let userIds: string[] | undefined
 
     if (role === 'admin') {
-      userIds = undefined
+      // Admins see the whole org by default; an optional userId narrows to one user.
+      userIds = req.query.userId ? [String(req.query.userId)] : undefined
     } else if (isSupervisor) {
       const db = await getDb()
       const subordinates = await db
         .collection(COLLECTIONS.USERS)
         .find({ supervisorId: new ObjectId(requestUserId) })
         .toArray()
-      userIds = [requestUserId, ...subordinates.map((u) => u._id.toString())]
+      const scope = new Set([requestUserId, ...subordinates.map((u) => u._id.toString())])
+      if (req.query.userId) {
+        // Intersect (don't widen): a supervisor can only filter within their scope.
+        const requested = String(req.query.userId)
+        userIds = scope.has(requested) ? [requested] : []
+      } else {
+        userIds = [...scope]
+      }
     } else {
+      // Regular users see only their own timesheets; ignore any userId filter.
       userIds = [requestUserId]
     }
 

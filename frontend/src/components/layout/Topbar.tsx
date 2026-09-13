@@ -144,12 +144,12 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   const recentNotifications = notifications.slice(0, 5)
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={onToggleMobile}
-          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:hidden"
+          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground md:hidden"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
@@ -160,13 +160,13 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               const isLast = index === breadcrumbs.length - 1
               return (
                 <li key={index} className="flex items-center gap-2">
-                  {index > 0 && <span className="text-slate-400">/</span>}
+                  {index > 0 && <span className="text-muted-foreground">/</span>}
                   {isLast || !crumb.href ? (
-                    <span className="font-medium text-slate-900" aria-current="page">
+                    <span className="font-medium text-foreground" aria-current="page">
                       {crumb.label}
                     </span>
                   ) : (
-                    <button type="button" onClick={() => navigate(crumb.href!)} className="text-slate-500 hover:text-indigo-600">
+                    <button type="button" onClick={() => navigate(crumb.href!)} className="text-muted-foreground hover:text-indigo-600">
                       {crumb.label}
                     </button>
                   )}
@@ -182,28 +182,28 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           <button
             type="button"
             onClick={() => setIsSearchOpen((prev) => !prev)}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-400 hover:border-slate-400 hover:text-slate-600"
+            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:border-border hover:text-muted-foreground"
             aria-label="Open search"
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search projects, users...</span>
-            <kbd className="ml-2 hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-400 sm:inline-block">⌘K</kbd>
+            <kbd className="ml-2 hidden rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground sm:inline-block">⌘K</kbd>
           </button>
           {isSearchOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg sm:w-80" role="search">
+            <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-border bg-card shadow-lg sm:w-80" role="search">
               <div className="p-3">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search projects, users, timesheets..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   aria-label="Search projects, users, timesheets"
                   autoFocus
                 />
               </div>
               {searchResults.length > 0 && (
-                <div className="max-h-80 overflow-y-auto border-t border-slate-200 p-2">
+                <div className="max-h-80 overflow-y-auto border-t border-border p-2">
                   {searchResults.map((result) => (
                     <button
                       key={`${result.type}-${result.id}`}
@@ -213,21 +213,21 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                         setIsSearchOpen(false)
                         setSearchQuery('')
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-left hover:bg-slate-50"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-left hover:bg-muted"
                     >
-                      {result.type === 'project' && <FolderKanban className="h-4 w-4 text-slate-400" />}
-                      {result.type === 'user' && <User className="h-4 w-4 text-slate-400" />}
-                      {result.type === 'timesheet' && <Clock3 className="h-4 w-4 text-slate-400" />}
+                      {result.type === 'project' && <FolderKanban className="h-4 w-4 text-muted-foreground" />}
+                      {result.type === 'user' && <User className="h-4 w-4 text-muted-foreground" />}
+                      {result.type === 'timesheet' && <Clock3 className="h-4 w-4 text-muted-foreground" />}
                       <div className="min-w-0">
-                        <p className="truncate text-slate-700">{result.name}</p>
-                        <p className="text-xs text-slate-500">{result.type}</p>
+                        <p className="truncate text-foreground">{result.name}</p>
+                        <p className="text-xs text-muted-foreground">{result.type}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
               {searchQuery && searchResults.length === 0 && (
-                <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-500">No results found</div>
+                <div className="border-t border-border p-4 text-center text-sm text-muted-foreground">No results found</div>
               )}
             </div>
           )}
@@ -237,7 +237,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           <button
             type="button"
             onClick={() => setIsNotificationsOpen((prev) => !prev)}
-            className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -248,10 +248,10 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
             )}
           </button>
           {isNotificationsOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-72 sm:w-80 rounded-xl border border-slate-200 bg-white shadow-lg">
-              <div className="border-b border-slate-200 px-4 py-3">
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 sm:w-80 rounded-xl border border-border bg-card shadow-lg">
+              <div className="border-b border-border px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                   {unreadCount > 0 && (
                     <button
                       type="button"
@@ -292,13 +292,13 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                           }
                           setIsNotificationsOpen(false)
                         }}
-                        className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 ${notification.read ? 'opacity-60' : 'bg-indigo-50/50'}`}
+                        className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted ${notification.read ? 'opacity-60' : 'bg-indigo-50/50'}`}
                       >
                         <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900">{notification.title}</p>
-                          <p className="mt-0.5 text-xs text-slate-500">{notification.message}</p>
-                          <p className="mt-1 text-xs text-slate-400">{new Date(notification.createdAt).toLocaleDateString()}</p>
+                          <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{notification.message}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleDateString()}</p>
                         </div>
                       </button>
                     ))}
@@ -313,22 +313,22 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           <button
             type="button"
             onClick={() => setIsProfileOpen((prev) => !prev)}
-            className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-slate-100"
+            className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-muted"
             aria-label="User menu"
           >
             <Avatar name={user?.name || ''} size="sm" />
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+              <p className="text-sm font-medium text-foreground">{user?.name}</p>
+              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
             </div>
-            <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" />
+            <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
           </button>
           {isProfileOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-              <div className="border-b border-slate-200 px-4 py-3">
-                <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-                <p className="text-xs text-slate-500">{user?.email}</p>
-                <p className="text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+            <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-border bg-card py-1 shadow-lg">
+              <div className="border-b border-border px-4 py-3">
+                <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
               </div>
               <button
                 type="button"
@@ -336,7 +336,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                   setIsProfileOpen(false)
                   navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
               >
                 <User className="h-4 w-4" />
                 Profile
@@ -347,12 +347,12 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                   setIsProfileOpen(false)
                   navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
                 }}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
               >
                 <Settings className="h-4 w-4" />
                 Settings
               </button>
-              <div className="my-1 border-t border-slate-200" />
+              <div className="my-1 border-t border-border" />
               <button
                 type="button"
                 onClick={handleLogout}

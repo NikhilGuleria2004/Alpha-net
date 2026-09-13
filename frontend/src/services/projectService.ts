@@ -12,13 +12,16 @@ export async function getProjectById(id: string): Promise<Project | undefined> {
 }
 
 export async function getProjectsByUserId(userId: string): Promise<Project[]> {
-  const response = await apiClient.get<{ projects: Project[] }>(`/projects?userId=${userId}`)
-  return response.projects
+  // No server-side userId filter exists on GET /projects (it returns the
+  // caller's visible set). Filter that scoped list client-side by membership.
+  const all = await getProjects()
+  return all.filter((p) => p.teamMemberIds.includes(userId) || p.supervisorId === userId || p.managerId === userId)
 }
 
 export async function getProjectsBySupervisorId(supervisorId: string): Promise<Project[]> {
-  const response = await apiClient.get<{ projects: Project[] }>(`/projects?supervisorId=${supervisorId}`)
-  return response.projects
+  // Same: no server-side supervisorId param — filter the visible set locally.
+  const all = await getProjects()
+  return all.filter((p) => p.supervisorId === supervisorId)
 }
 
 export async function createProject(data: CreateProjectInput): Promise<Project> {

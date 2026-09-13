@@ -63,7 +63,7 @@ export function Notifications() {
     <button
       type="button"
       onClick={() => handleNotificationClick(notification)}
-      className={`flex w-full gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors hover:bg-slate-50 ${
+      className={`flex w-full gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted ${
         !notification.read ? 'border-l-4 border-l-indigo-500' : ''
       }`}
     >
@@ -71,9 +71,9 @@ export function Notifications() {
         {!notification.read && <span className="block h-2.5 w-2.5 rounded-full bg-indigo-600" />}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">{notification.title}</p>
-        <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
-        <p className="mt-2 text-xs text-slate-400">{formatDate(notification.createdAt)}</p>
+        <p className="text-sm font-medium text-foreground">{notification.title}</p>
+        <p className="mt-1 text-sm text-foreground">{notification.message}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{formatDate(notification.createdAt)}</p>
       </div>
     </button>
   )
@@ -82,8 +82,8 @@ export function Notifications() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Notifications</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'You are all caught up'}
           </p>
         </div>
@@ -106,7 +106,7 @@ export function Notifications() {
             <>
               {grouped.today.length > 0 && (
                 <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Today</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Today</h2>
                   <div className="space-y-3">
                     {grouped.today.map((notification) => (
                       <NotificationItem key={notification.id} notification={notification} />
@@ -116,7 +116,7 @@ export function Notifications() {
               )}
               {grouped.earlier.length > 0 && (
                 <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Earlier</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Earlier</h2>
                   <div className="space-y-3">
                     {grouped.earlier.map((notification) => (
                       <NotificationItem key={notification.id} notification={notification} />

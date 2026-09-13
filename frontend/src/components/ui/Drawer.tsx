@@ -61,23 +61,23 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={drawerRef}
-        className={`relative h-full w-full ${sizeClasses[size]} bg-white shadow-xl transition-transform`}
+        className={`relative h-full w-full ${sizeClasses[size]} bg-card shadow-xl transition-transform`}
       >
         {title && (
-          <div className="border-b border-slate-200 px-6 py-4">
-            <h2 id="drawer-title" className="text-lg font-semibold text-slate-900">
+          <div className="border-b border-border px-6 py-4">
+            <h2 id="drawer-title" className="text-lg font-semibold text-foreground">
               {title}
             </h2>
           </div>
         )}
         <div className="flex h-full flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
-          {footer && <div className="border-t border-slate-200 px-6 py-4">{footer}</div>}
+          {footer && <div className="border-t border-border px-6 py-4">{footer}</div>}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

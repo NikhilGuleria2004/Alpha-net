@@ -45,16 +45,16 @@ export function UserLogin() {
     <div className="flex min-h-screen">
       <div className="hidden bg-slate-900 lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+          <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-card/10">
             <span className="text-3xl font-bold text-white">A</span>
           </div>
           <h1 className="text-4xl font-bold text-white">Eniac</h1>
           <p className="mt-4 text-lg text-slate-300">Internal Project Management</p>
-          <p className="mt-2 text-slate-400">Manage your projects, timesheets and submissions.</p>
+          <p className="mt-2 text-muted-foreground">Manage your projects, timesheets and submissions.</p>
           <div className="mt-12 flex justify-center gap-4">
-            <div className="h-2 w-2 rounded-full bg-slate-500" />
+            <div className="h-2 w-2 rounded-full bg-muted0" />
             <div className="h-2 w-2 rounded-full bg-slate-700" />
-            <div className="h-2 w-2 rounded-full bg-slate-500" />
+            <div className="h-2 w-2 rounded-full bg-muted0" />
           </div>
         </div>
       </div>
@@ -65,10 +65,10 @@ export function UserLogin() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
               <span className="text-lg font-bold">A</span>
             </div>
-            <span className="text-2xl font-bold text-slate-900">Eniac</span>
+            <span className="text-2xl font-bold text-foreground">Eniac</span>
           </div>
-          <h2 className="text-2xl font-semibold text-slate-900">Employee Portal</h2>
-          <p className="mt-1 text-sm text-slate-500">Sign in to your employee account</p>
+          <h2 className="text-2xl font-semibold text-foreground">Employee Portal</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your employee account</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
@@ -86,20 +86,20 @@ export function UserLogin() {
               autoComplete="email"
             />
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

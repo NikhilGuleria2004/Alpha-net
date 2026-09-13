@@ -7,7 +7,7 @@ export async function getNotifications(): Promise<Notification[]> {
 }
 
 export async function getUnreadNotifications(): Promise<Notification[]> {
-  const response = await apiClient.get<{ notifications: Notification[] }>('/notifications?unread=true')
+  const response = await apiClient.get<{ notifications: Notification[] }>('/notifications?read=false')
   return response.notifications
 }
 

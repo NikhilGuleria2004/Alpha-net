@@ -12,18 +12,8 @@ export async function getTimesheetById(id: string): Promise<Timesheet | undefine
   return response.timesheet
 }
 
-export async function getTimesheetsByUserId(userId: string): Promise<Timesheet[]> {
-  const response = await apiClient.get<{ timesheets: Timesheet[] }>(`/timesheets?userId=${userId}`)
-  return response.timesheets
-}
-
 export async function getTimesheetsByProjectId(projectId: string): Promise<Timesheet[]> {
   const response = await apiClient.get<{ timesheets: Timesheet[] }>(`/timesheets?projectId=${projectId}`)
-  return response.timesheets
-}
-
-export async function getTimesheetsBySupervisorId(supervisorId: string): Promise<Timesheet[]> {
-  const response = await apiClient.get<{ timesheets: Timesheet[] }>(`/timesheets?supervisorId=${supervisorId}`)
   return response.timesheets
 }
 
@@ -67,12 +57,16 @@ export async function createTimesheet(data: SaveTimesheetInput): Promise<Timeshe
   return response.timesheet
 }
 
-export async function searchTimesheets(query: string): Promise<Timesheet[]> {
+export async function searchTimesheets(query: string, opts?: { projectName?: (id: string) => string | undefined; userName?: (id: string) => string | undefined }): Promise<Timesheet[]> {
   const all = await getTimesheets()
   const lower = query.toLowerCase()
+  // Match on human-meaningful text (notes + resolved project/user names), not
+  // raw Mongo ids. Name resolvers are injected by callers that hold the lookup
+  // tables; without them we fall back to notes + ids only.
   return all.filter((t) => {
-    const projectMatch = t.projectId.toLowerCase().includes(lower)
     const noteMatch = t.notes.toLowerCase().includes(lower)
-    return projectMatch || noteMatch
+    const projectName = opts?.projectName?.(t.projectId)?.toLowerCase() ?? ''
+    const userName = opts?.userName?.(t.userId)?.toLowerCase() ?? ''
+    return noteMatch || (projectName !== '' && projectName.includes(lower)) || (userName !== '' && userName.includes(lower))
   })
 }

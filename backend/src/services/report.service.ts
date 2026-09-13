@@ -1,6 +1,7 @@
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
+import type { TimesheetStatus } from './timesheet.service.js'
 
 export interface HoursByProject {
   projectId: string
@@ -39,6 +40,11 @@ export interface ReportFilters {
   projectId?: string
   userId?: string
   department?: string
+  // QA M8: hours aggregations previously counted draft/declined/withdrawn
+  // timesheets as worked hours, inflating payroll/BI totals. A status filter is
+  // now applied when present; the Reports UI defaults to "approved" so the
+  // numbers users act on are correct out of the box. Pass 'all' to opt out.
+  status?: TimesheetStatus | 'all'
 }
 
 async function getDepartmentUserIds(department: string): Promise<string[]> {
@@ -61,12 +67,30 @@ function buildMatchStage(filters: ReportFilters, userIdsInDepartment?: string[])
     match.projectId = new ObjectId(filters.projectId)
   }
 
+  // QA M8: userId and department used to be mutually exclusive branches, so
+  // supplying both let the department branch silently overwrite the userId
+  // filter. They now intersect: a row must match whichever conditions are set.
+  const userConditions: Record<string, unknown>[] = []
   if (filters.userId) {
-    match.userId = new ObjectId(filters.userId)
+    userConditions.push({ userId: new ObjectId(filters.userId) })
+  }
+  if (filters.department) {
+    if (!userIdsInDepartment || userIdsInDepartment.length === 0) {
+      // No users in this department — nothing can match. Represented as an
+      // always-false condition so the caller doesn't need special-casing.
+      userConditions.push({ userId: new ObjectId('000000000000000000000000') })
+    } else {
+      userConditions.push({ userId: { $in: userIdsInDepartment.map((id) => new ObjectId(id)) } })
+    }
+  }
+  if (userConditions.length === 1) {
+    Object.assign(match, userConditions[0])
+  } else if (userConditions.length > 1) {
+    match.$and = userConditions
   }
 
-  if (filters.department && userIdsInDepartment && userIdsInDepartment.length > 0) {
-    match.userId = { $in: userIdsInDepartment.map((id) => new ObjectId(id)) }
+  if (filters.status && filters.status !== 'all') {
+    match.status = filters.status
   }
 
   return match

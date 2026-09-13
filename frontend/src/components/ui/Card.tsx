@@ -12,7 +12,7 @@ export function Card({ children, className = '', onClick, hoverable = false }: C
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl border border-slate-200 bg-white shadow-sm ${interactive ? 'cursor-pointer transition-shadow hover:shadow-md' : ''} ${className}`}
+      className={`rounded-xl border border-border bg-card shadow-sm ${interactive ? 'cursor-pointer transition-shadow hover:shadow-md' : ''} ${className}`}
     >
       {children}
     </div>
@@ -25,7 +25,7 @@ interface CardHeaderProps {
 }
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
-  return <div className={`border-b border-slate-200 px-5 py-4 ${className}`}>{children}</div>
+  return <div className={`border-b border-border px-5 py-4 ${className}`}>{children}</div>
 }
 
 interface CardBodyProps {
@@ -43,5 +43,5 @@ interface CardFooterProps {
 }
 
 export function CardFooter({ children, className = '' }: CardFooterProps) {
-  return <div className={`border-t border-slate-200 px-5 py-4 ${className}`}>{children}</div>
+  return <div className={`border-t border-border px-5 py-4 ${className}`}>{children}</div>
 }

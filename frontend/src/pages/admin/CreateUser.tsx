@@ -79,36 +79,36 @@ export function CreateUser() {
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate('/admin/users')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create New User</h1>
-          <p className="mt-1 text-sm text-slate-500">Add a new team member to Eniac.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Create New User</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Add a new team member to Eniac.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">User Information</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">User Information</h2>
           </div>
           <div className="p-5 space-y-5">
             <Input label="Full Name" value={form.name} onChange={(e) => updateField('name', e.target.value)} error={errors.name} required />
             <Input label="Email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} error={errors.email} required />
             <Input label="Employee ID" value={form.employeeId} onChange={(e) => updateField('employeeId', e.target.value)} error={errors.employeeId} required />
             <div>
-              <label htmlFor="create-user-password" className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+              <label htmlFor="create-user-password" className="mb-1 block text-sm font-medium text-foreground">Password</label>
               <div className="relative">
                 <input
                   id="create-user-password"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -117,7 +117,7 @@ export function CreateUser() {
               {errors.password ? (
                 <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
               ) : (
-                <p className="mt-1 text-sm text-slate-500">At least 8 characters with an uppercase letter, lowercase letter, and number. Share it with the user so they can sign in.</p>
+                <p className="mt-1 text-sm text-muted-foreground">At least 8 characters with an uppercase letter, lowercase letter, and number. Share it with the user so they can sign in.</p>
               )}
             </div>
             <Select label="Department" value={form.department} onChange={(e) => updateField('department', e.target.value)} options={[{ value: '', label: 'Select department' }, ...departments.map((d) => ({ value: d, label: d }))]} error={errors.department} required />
@@ -128,8 +128,8 @@ export function CreateUser() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Supervisor Permissions</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Supervisor Permissions</h2>
           </div>
           <div className="p-5 space-y-5">
             <label className="flex items-center gap-3">
@@ -137,11 +137,11 @@ export function CreateUser() {
                 type="checkbox"
                 checked={form.isSupervisor}
                 onChange={(e) => updateField('isSupervisor', e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
               />
               <div>
-                <p className="text-sm font-medium text-slate-700">Enable Supervisor Capability</p>
-                <p className="text-xs text-slate-500">This user can review assigned users' timesheets.</p>
+                <p className="text-sm font-medium text-foreground">Enable Supervisor Capability</p>
+                <p className="text-xs text-muted-foreground">This user can review assigned users' timesheets.</p>
               </div>
             </label>
           </div>

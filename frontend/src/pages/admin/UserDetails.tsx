@@ -15,7 +15,7 @@ import { formatDate } from '../../utils/date'
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -90,12 +90,12 @@ export function UserDetails() {
             <Avatar name={user.name} size="lg" />
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold text-slate-900">{user.name}</h1>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                <h1 className="text-2xl font-semibold text-foreground">{user.name}</h1>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
             </div>
           </div>
         </div>
@@ -116,31 +116,31 @@ export function UserDetails() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Profile</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Profile</h3>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Employee ID</p>
-                <p className="mt-1 text-sm text-slate-900">{user.employeeId}</p>
+                <p className="text-sm font-medium text-muted-foreground">Employee ID</p>
+                <p className="mt-1 text-sm text-foreground">{user.employeeId}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Status</p>
-                <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Department</p>
-                <p className="mt-1 text-sm text-slate-900">{user.department}</p>
+                <p className="text-sm font-medium text-muted-foreground">Department</p>
+                <p className="mt-1 text-sm text-foreground">{user.department}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Role</p>
-                <p className="mt-1 text-sm text-slate-900">{user.role === 'admin' ? 'Administrator' : 'User'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Role</p>
+                <p className="mt-1 text-sm text-foreground">{user.role === 'admin' ? 'Administrator' : 'User'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Supervisor</p>
-                <p className="mt-1 text-sm text-slate-900">{user.isSupervisor ? 'Yes' : 'No'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Supervisor</p>
+                <p className="mt-1 text-sm text-foreground">{user.isSupervisor ? 'Yes' : 'No'}</p>
               </div>
             </div>
           </Card>
@@ -148,8 +148,8 @@ export function UserDetails() {
 
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Assigned Projects ({assignedProjects.length})</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Assigned Projects ({assignedProjects.length})</h3>
             </div>
             <div className="p-5">
               {assignedProjects.length === 0 ? (
@@ -157,10 +157,10 @@ export function UserDetails() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {assignedProjects.map((project) => (
-                    <div key={project.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50">
+                    <div key={project.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-muted">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{project.name}</p>
-                        <p className="text-xs text-slate-500">{project.client} • Due {formatDate(project.deadline)}</p>
+                        <p className="text-sm font-medium text-foreground">{project.name}</p>
+                        <p className="text-xs text-muted-foreground">{project.client} • Due {formatDate(project.deadline)}</p>
                       </div>
                       <StatusBadge status={project.status} size="sm" />
                     </div>
@@ -171,8 +171,8 @@ export function UserDetails() {
           </Card>
 
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Recent Submissions</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Recent Submissions</h3>
             </div>
             <div className="p-5">
               {userTimesheets.length === 0 ? (
@@ -180,12 +180,12 @@ export function UserDetails() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
+                    <thead className="bg-muted">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Week</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Project</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Hours</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Project</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hours</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                      <tbody className="divide-y divide-slate-200">
@@ -195,10 +195,10 @@ export function UserDetails() {
                          const end = new Date(start)
                          end.setDate(end.getDate() + 4)
                          return (
-                          <tr key={t.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 text-sm text-slate-700">{formatDate(start)} – {formatDate(end)}</td>
-                            <td className="px-4 py-3 text-sm text-slate-700">{project?.name || '-'}</td>
-                            <td className="px-4 py-3 text-right text-sm text-slate-700">{t.totalHours.toFixed(1)}h</td>
+                          <tr key={t.id} className="hover:bg-muted">
+                            <td className="px-4 py-3 text-sm text-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                            <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
+                            <td className="px-4 py-3 text-right text-sm text-foreground">{t.totalHours.toFixed(1)}h</td>
                             <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                           </tr>
                         )
@@ -211,8 +211,8 @@ export function UserDetails() {
           </Card>
 
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Recent Activity</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
             </div>
             <div className="p-5">
               {userActivities.length === 0 ? (
@@ -223,8 +223,8 @@ export function UserDetails() {
                     <div key={activity.id} className="flex gap-4">
                       <Avatar name={users.find((u) => u.id === activity.userId)?.name || 'Unknown'} size="sm" />
                       <div>
-                        <p className="text-sm text-slate-700">{activity.description}</p>
-                        <p className="text-xs text-slate-500">{formatDate(activity.createdAt)}</p>
+                        <p className="text-sm text-foreground">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(activity.createdAt)}</p>
                       </div>
                     </div>
                   ))}

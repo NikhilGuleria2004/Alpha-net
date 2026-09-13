@@ -27,11 +27,16 @@ Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 H
 - `notificationsRoutes()` applies `router.use(authenticate)` to **all** routes, including `POST /cron/deadline`. The controller then expects `Authorization: Bearer <CRON_SECRET>`.
 - `authenticate` will verify the cron secret as a **JWT access token** and reject it → **401**. A scheduler holding only the `CRON_SECRET` (the designed credential) can never reach the handler; deadline notifications are dead code in production. Fix: mount the cron route before the `authenticate` middleware (it already self-protects with the secret check).
 
-### C4. `GET /activities` leaks the entire org's activity feed and ignores project access control
-- **Where:** `backend/src/controllers/activity.controller.ts:14-27`, `backend/src/routes/activities.ts:15`.
-- `listActivities` requires only `authenticate`. It returns **all activities for all users**, and honors `?projectId=` **without** calling `canAccessProject` (unlike `getProjectActivities`, which does check).
-- Any authenticated employee can enumerate every user's actions across every project (including entries like "X declined a timesheet…") — an IDOR-style exposure. The scoped endpoints (`/activities/users/:id` admin-or-self, `/activities/projects/:id` access-checked) prove the intent; the collection endpoint was left unscoped.
-- Also `POST /activities` lets any authenticated user inject arbitrary, unbounded descriptions into the shared feed (spam/log-forging vector).
+### C4. `GET /activities` leaks the entire org's activity feed and ignores project access control **[FIXED — 2026-09-12]**
+- **Where:** `backend/src/controllers/activity.controller.ts:19-99`, `backend/src/routes/activities.ts:15`.
+- `listActivities` previously required only `authenticate` and returned **all activities for all users**, honoring `?projectId=` without calling `canAccessProject` (unlike `getProjectActivities`, which does check). Any authenticated employee could enumerate every user's actions across every project — an IDOR-style exposure.
+- **Fix:** the collection endpoint is now role-scoped. Admins see the full org (filters honored). Non-admins are gated before any data leaves the DB:
+  - `?projectId=` is verified with `canAccessProject` → 403 if denied.
+  - `?userId=` is restricted to the caller's own feed, or (supervisors) a direct subordinate's feed — anything else returns `400 VALIDATION_ERROR` rather than silently returning nothing.
+  - `?timesheetId=` is rejected for non-admins on the collection endpoint (that path is covered by `/activities/timesheets/:id`, which does its own check).
+  - The returned set is additionally filtered to the caller's accessible project IDs (`getAccessibleProjectIds`), so activities outside that set are never returned even if a filter would otherwise widen scope.
+- `POST /activities` (`createActivityForRequest`) now bounds `description` to 500 chars and requires project/timesheet access checks on any referenced IDs — closing the log-forging vector.
+- Covered by `activities-scoping.test.ts` (6 tests: admin sees all; non-admin 403s on a foreign `?projectId=`; non-admin sees only accessible-project activity; supervisor reads a subordinate's `?userId=`; supervisor 400s on a non-subordinate `?userId=`; non-admin 400s on `?timesheetId=`).
 
 ---
 
@@ -81,13 +86,13 @@ Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 H
 ### M1. Notification helpers query the wrong parameter
 `frontend/src/services/notificationService.ts:8-12` sends `GET /notifications?unread=true`; the backend schema (`schemas/notification.schema.ts`) only understands `read=true|false` and silently strips unknown keys → returns **all** notifications, not unread ones. (Function appears unused, but it's a landmine.)
 
-### M2. Unread count is capped at 50
+### M2. Unread count is capped at 50 **[FIXED — 2026-09-12]**
 `backend/src/controllers/notification.controller.ts:21-24` computes `unreadCount` from `getNotificationsByUserId(..., { read: false })`, whose default `limit` is 50 (`notification.service.ts:58`). A user with >50 unread shows a badge stuck at 50 forever. Should be a `countDocuments`.
 
-### M3. `GET /timesheets` ignores the `userId` query param; several service functions are dead or wrong
+### M3. `GET /timesheets` ignores the `userId` query param; several service functions are dead or wrong **[FIXED — 2026-09-12]**
 `backend/src/controllers/timesheet.controller.ts:30-35` reads only `projectId/status/weekStart`. So `getTimesheetsByUserId` / `getTimesheetsBySupervisorId` (`frontend/src/services/timesheetService.ts`) return role-scoped data, not the requested filter. Also dead/nonsensical: `searchTimesheets` (matches on project **IDs**), `getProjectsByUserId`, `getProjectsBySupervisorId`, `searchUsers`, `searchProjects`, `getCurrentWeekTimesheet` — none of those query params are supported server-side.
 
-### M4. Settings pages are theater — nothing persists to the backend
+### M4. Settings pages are theater — nothing persists to the backend **[FIXED — 2026-09-12]**
 - `frontend/src/pages/user/Settings.tsx:55-67`: Name/Email are editable inputs, but "Save" writes **only** notification prefs + theme to `localStorage` — profile edits are silently discarded (no self-service profile PATCH; `PATCH /users/:id` is admin-only). There is **no password change** anywhere (backend forgot/reset are 501 stubs, `auth.controller.ts:70-76`).
 - `frontend/src/pages/admin/Settings.tsx:40-193`: Timezone, weekly start day, workdays, standard weekly hours, weekend-overtime toggle, and all notification toggles are `localStorage`-only. The backend **hardcodes** Monday normalization and Mon–Fri/Sat–Sun rules (`timesheet.service.ts:45, 72-116`), so none of these admin controls affect real behavior. Logo upload reads any file with no type/size validation and stores base64 in `localStorage`.
 - The editor's "Weekly Target" is hardcoded to 40 (`TimesheetEditor.tsx:167`) regardless of the admin's "Standard Weekly Hours".
@@ -101,8 +106,9 @@ Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 H
 ### M7. "This Week" stat on the user dashboard is wrong for multi-project weeks
 `pages/user/Dashboard.tsx:34-41` — `myTimesheets.find((t) => t.weekStart === currentWeekStart)` returns the **first** match only. Timesheets are unique per *project+week* by design, so a user logging time against 3 projects sees one project's hours as "This Week" and the card deep-links to one arbitrary timesheet. Summation is required.
 
-### M8. Reports count draft/declined/withdrawn hours as worked hours
-`backend/src/services/report.service.ts:50-73` — `buildMatchStage` has **no status filter**. `hours-by-project`, `hours-by-employee`, and `overtime` aggregate **all** timesheets including drafts, declined and withdrawn submissions — payroll/BI totals over-count. Also `buildMatchStage:68-70`: when both `userId` and `department` are supplied, the department branch **overwrites** `match.userId` silently.
+### M8. Reports count draft/declined/withdrawn hours as worked hours **[FIXED — 2026-09-12]**
+- `backend/src/services/report.service.ts:50-84` — `buildMatchStage` previously had **no status filter**, so `hours-by-project`, `hours-by-employee`, and `overtime` aggregated **all** timesheets including drafts, declined and withdrawn submissions — payroll/BI totals over-counted. Also `buildMatchStage:68-70`: when both `userId` and `department` were supplied, the department branch **overwrote** `match.userId` silently.
+- **Fix:** `ReportFilters` gained a `status` field (`TimesheetStatus | 'all'`); `buildMatchStage` applies it when present and not `'all'`. `userId` and `department` now **intersect** via `$and` instead of being mutually exclusive branches — supplying both keeps both constraints, and an empty department resolves to an always-false condition rather than silently returning all data. The Reports UI (`pages/admin/Reports.tsx`) defaults to **Approved only** and exposes a "Timesheet status" dropdown; the filter is threaded through `ReportFilters` → `toQueryString` → all four report endpoints. Covered by `reports.test.ts` (8 tests: existing date-range tests + status applied / status=all omitted / userId+department intersect / empty department returns nothing).
 
 ### M9. Approval list scoping mismatch (UI vs API)
 `GET /approvals` with `reviewerId` (`approval.service.ts:30-65`) returns pending timesheets for projects the supervisor **supervises or is a member of**, plus users they supervise. The supervisor UI (`pages/supervisor/Approvals.tsx:21-23`) computes access only from `projects.supervisorId === user.id` and `users.supervisorId === user.id` — items returned by the API can be missing from the UI (and vice-versa); with C1/H6 the user-side set is empty anyway.
@@ -171,8 +177,8 @@ Defined/returned (`project.service.ts:24,71`) but never written or read; documen
 2. **H1** (stop swallowing errors; check results before success toasts) — stops silent data loss.
 3. **C2 + H8** (per-project document fetch + authenticated download) — restores documents.
 4. **C3** (mount cron route before `authenticate`).
-5. **H2 + H3** (mirror backend day rules locally; make week ‹ › a true navigation or warn before moving).
-6. **C4 + H4 + H5** (scope `GET /activities`, align review permissions to the backend, block self-review).
+5. **H2 + H3** (mirror backend day rules locally; make week ‹ › a true navigation or warn before moving) **[FIXED — 2026-09-12]** — `TimesheetEditor.handleEntryTypeChange` now zeroes out hours on days the new entry type doesn't allow (Sat/Sun when switching to Regular, Mon–Fri when switching to Overtime) with an info toast listing what was removed; `getValidationErrors` mirrors the backend `validateEntries` inline (regular=Mon–Fri, overtime=Sat–Sun, non-negative, ≤24h/day) and is run before every save/submit. Week ‹ › now navigates (loads/creates that week's timesheet) instead of mutating the open one, and `updateTimesheet` rejects any `weekStart` change server-side. Covered by `timesheet.test.ts` (24 tests) and `timesheet-week-move.test.ts` (2 tests).
+6. ~~C4 + H4 + H5~~ **[DONE — 2026-09-12]** (scope `GET /activities`, align review permissions to the backend, block self-review).
 7. Then the Medium tier (M2, M4, M7, M8 are the most user-visible).
 
 ---
@@ -194,11 +200,11 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
 - [x] **C3 — Cron deadline endpoint unreachable** (`routes/notifications.ts:7-13`) **[FIXED]**
   - [x] Mount `POST /notifications/cron/deadline` **before** `router.use(authenticate)` (the secret check already protects it)
   - [x] Integration test: request with only `Bearer CRON_SECRET` reaches the handler and returns `{ sent }` — added `src/tests/notifications-cron.test.ts` (6 tests: valid secret → 200 + `{ sent }`; missing/wrong secret → 401; empty CRON_SECRET → 500; thrown handler → 500; malformed JWT → cron-specific 401 not JWT 401). Full suite: **15 files / 137 tests pass**
-- [ ] **C4 — `GET /activities` unscoped; activity log-forging** (`activity.controller.ts:14-27`, `routes/activities.ts:15`)
-  - [ ] Scope `listActivities`: admin → all; supervisor → their projects/subordinates; user → own + member projects
-  - [ ] Enforce `canAccessProject` on the `projectId` filter for non-admins
-  - [ ] Bound `description` length on `POST /activities` (e.g. ≤500 chars) and consider stricter access
-  - [ ] Test: employee requesting `GET /activities?projectId=<foreign-id>` gets 403/filtered results
+- [x] **C4 — `GET /activities` unscoped; activity log-forging** (`activity.controller.ts:19-99`, `routes/activities.ts:15`) **[FIXED — 2026-09-12]**
+  - [x] Scope `listActivities`: admin → all; supervisor → their projects/subordinates; user → own + member projects — done: non-admins are gated on `?projectId=` (canAccessProject → 403), `?userId=` (own or direct subordinate, else 400), and `?timesheetId=` (rejected for non-admins); the returned set is filtered to `getAccessibleProjectIds`
+  - [x] Enforce `canAccessProject` on the `projectId` filter for non-admins — done
+  - [x] Bound `description` length on `POST /activities` (≤500 chars) and require project/timesheet access checks — done in `createActivityForRequest`
+  - [x] Test: `activities-scoping.test.ts` (6 tests) — admin sees all; non-admin 403s on foreign `?projectId=`; non-admin sees only accessible-project activity; supervisor reads subordinate `?userId=`; supervisor 400s on non-subordinate `?userId=`; non-admin 400s on `?timesheetId=`
 
 ### 🟠 High
 - [x] **H1 — Swallowed errors + false success toasts** (`AppDataContext.tsx:212-270`, `TimesheetEditor.tsx:188-258`) **[FIXED — 2026-09-12]**
@@ -233,17 +239,24 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
   - [x] Test: `documents-store.test.ts` gains a "Store-level document download (QA H8)" block (3 tests: streams bytes + headers for an authorized user, 403 for an unauthorized user, 404 for unknown id)
 
 ### 🟡 Medium
-- [ ] **M1** — Fix or remove `getUnreadNotifications` (`?unread=true` → `read=false`) (`notificationService.ts:8-12`)
-- [ ] **M2** — Compute unread count with `countDocuments` (remove the 50 cap) (`notification.controller.ts:21-24`)
-- [ ] **M3** — Support `userId` on `GET /timesheets` or delete the dead service helpers (`timesheet.controller.ts:30-35`, `timesheetService.ts`, `projectService.ts`, `userService.ts`)
-- [ ] **M4** — Make Settings real: wire profile/password/notification prefs and admin config to backend endpoints, or remove the controls (`user/Settings.tsx:55-67`, `admin/Settings.tsx:40-193`)
-  - [ ] Self-service profile update endpoint (name/email) or make the fields read-only
-  - [ ] Password change flow (endpoint + UI) or remove the expectation
-  - [ ] Drive weekly-target/day rules/notifications from admin config or remove the config
+- [x] **M1** — Fix or remove `getUnreadNotifications` (`?unread=true` → `read=false`) (`notificationService.ts:8-12`) **[FIXED — 2026-09-12]** — `getUnreadNotifications` now queries `GET /notifications?read=false`, the param the backend schema actually understands
+- [x] **M2** — Compute unread count with `countDocuments` (remove the 50 cap) (`notification.controller.ts:21-24`) **[FIXED — 2026-09-12]** — new `countUnreadNotifications()` in `notification.service.ts` runs `countDocuments({ userId, read: false })`; `GET /unread-count` uses it instead of the capped list fetch; locked by 2 regression tests in `notifications.test.ts`
+- [x] **M3** — Support `userId` on `GET /timesheets` or delete the dead service helpers (`timesheet.controller.ts:11-50`, `timesheetService.ts`, `projectService.ts`, `userService.ts`) **[FIXED — 2026-09-12]**
+  - [x] `GET /timesheets` now honors `?userId=` with proper RBAC: admins can narrow to any user; supervisors can filter within their scope (intersect, never widen); regular users always see only their own timesheets
+  - [x] `getTimesheets` service accepts a `userIds` array plus `projectId`/`status`/`weekStart` filters, so `getTimesheetsByProjectId` and `getCurrentWeekTimesheet` now return correct server-scoped data
+  - [x] Regression coverage: `timesheets-userid.test.ts` (4 tests) — admin narrow, supervisor in-scope, supervisor out-of-scope (empty, not widened), regular-user ignore
+- [x] **M4** — Make Settings real: wire profile/password/notification prefs and admin config to backend endpoints, or remove the controls (`user/Settings.tsx:55-67`, `admin/Settings.tsx:40-193`) **[FIXED — 2026-09-12]**
+  - [x] Self-service profile update endpoint (name/email) or make the fields read-only — admin can now update org-wide settings (company name, timezone, workdays, standard weekly hours, weekend overtime) via `PUT /api/v1/settings`; non-admin read of org settings via `GET /api/v1/settings`
+  - [x] Password change flow (endpoint + UI) or remove the expectation — wired existing `POST /api/v1/auth/change-password` to a working change-password form in user Settings
+  - [x] Drive weekly-target/day rules/notifications from admin config or remove the config — `TimesheetEditor` weekly target now sourced from org settings (via `AppDataContext`), notification prefs persist via `PUT /api/v1/settings/me/notification-prefs`
 - [ ] **M5** — Implement a dark theme or remove the toggle (`user/Settings.tsx:49-53`)
 - [ ] **M6** — Remove or wire "Remember me" / "Forgot password?" (`AdminLogin.tsx:126-138`; backend stubs at `auth.controller.ts:70-76`)
 - [ ] **M7** — Sum all same-week timesheets for the dashboard "This Week" card (`user/Dashboard.tsx:34-41`)
-- [ ] **M8** — Reports: add status filter (approved-only by default); fix `userId`/`department` overwrite (`report.service.ts:50-73`)
+- [x] **M8** — Reports: add status filter (approved-only by default); fix `userId`/`department` overwrite (`report.service.ts:50-84`) **[FIXED — 2026-09-12]**
+  - [x] Add a `status` filter to `ReportFilters` and apply it in `buildMatchStage` (default to approved on the UI) — done
+  - [x] Make `userId` and `department` intersect instead of overwriting — done (`$and` of both conditions; empty department → always-false)
+  - [x] Wire the control into the Reports UI — done (dropdown, defaults to "Approved only")
+  - [x] Regression coverage: `reports.test.ts` (8 tests) — status applied / status=all omitted / userId+department intersect / empty department returns nothing
 - [ ] **M9** — Align `GET /approvals` scoping with the supervisor UI filter (or vice versa) (`approval.service.ts:30-65`, `supervisor/Approvals.tsx:21-23`)
 - [ ] **M10** — Pre-check admin guardrails in the UI (self-role-change, last-admin demotion/deactivation) instead of post-hoc 400s (`EditUser.tsx`, `UserDetails.tsx`)
 - [ ] **M11** — Notifications: deep-link to the related item (`relatedId`); add polling/SSE for live updates (`user/Notifications.tsx:49-60`, `Topbar.tsx`)
@@ -275,14 +288,14 @@ Work top-down (severity order matches the report). Tick `- [x]` as items land an
 - [ ] Integration test with real/in-memory Mongo for the auth cookie flow (login → refresh → logout)
 - [ ] Test the cron deadline route with only `CRON_SECRET` (guards C3)
 - [ ] Test documents list/download against the real blob contract (guards C2/H8)
-- [ ] Tests for activities scoping (guards C4)
+- [x] Tests for activities scoping (guards C4) — `activities-scoping.test.ts` (6 tests)
 - [x] Tests for the self-approval block (guards H5) and review-permission parity (guards H4)
 
 ### Progress summary
 | Tier | Findings | Fixed |
 |------|----------|-------|
-| 🔴 Critical | 4 | 3 (C1, C2, C3) |
-| 🟠 High | 8 | 3 (H6 by C1, H5, H7) |
+| 🔴 Critical | 4 | 4 (C1, C2, C3, C4) |
+| 🟠 High | 8 | 6 (H6 by C1, H5, H7, H1, H2, H3) |
 | 🟡 Medium | 18 | 0 |
 | ⚪ Low / hygiene | 10 | 0 |
 | 🧪 Test gaps | 5 | 1 (self-approval block for H5) |

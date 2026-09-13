@@ -3,16 +3,20 @@ import { getHoursByProject, getHoursByEmployee, getOvertimeStats, getTimesheetSt
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
 import { logger } from '../lib/logger.js'
 
+function buildFilters(req: AuthenticatedRequest['query'] & { status?: string }) {
+  return {
+    startDate: req.startDate ? String(req.startDate) : undefined,
+    endDate: req.endDate ? String(req.endDate) : undefined,
+    projectId: req.projectId ? String(req.projectId) : undefined,
+    userId: req.userId ? String(req.userId) : undefined,
+    department: req.department ? String(req.department) : undefined,
+    status: req.status ? String(req.status) : undefined,
+  }
+}
+
 export async function hoursByProject(req: AuthenticatedRequest, res: Response) {
   try {
-    const filters = {
-      startDate: req.query.startDate ? String(req.query.startDate) : undefined,
-      endDate: req.query.endDate ? String(req.query.endDate) : undefined,
-      projectId: req.query.projectId ? String(req.query.projectId) : undefined,
-      userId: req.query.userId ? String(req.query.userId) : undefined,
-      department: req.query.department ? String(req.query.department) : undefined,
-    }
-    const data = await getHoursByProject(filters)
+    const data = await getHoursByProject(buildFilters(req.query))
     res.json({ data })
   } catch (err) {
     logger.error({ err }, 'failed to get hours by project')
@@ -22,14 +26,7 @@ export async function hoursByProject(req: AuthenticatedRequest, res: Response) {
 
 export async function hoursByEmployee(req: AuthenticatedRequest, res: Response) {
   try {
-    const filters = {
-      startDate: req.query.startDate ? String(req.query.startDate) : undefined,
-      endDate: req.query.endDate ? String(req.query.endDate) : undefined,
-      projectId: req.query.projectId ? String(req.query.projectId) : undefined,
-      userId: req.query.userId ? String(req.query.userId) : undefined,
-      department: req.query.department ? String(req.query.department) : undefined,
-    }
-    const data = await getHoursByEmployee(filters)
+    const data = await getHoursByEmployee(buildFilters(req.query))
     res.json({ data })
   } catch (err) {
     logger.error({ err }, 'failed to get hours by employee')
@@ -39,14 +36,7 @@ export async function hoursByEmployee(req: AuthenticatedRequest, res: Response) 
 
 export async function overtime(req: AuthenticatedRequest, res: Response) {
   try {
-    const filters = {
-      startDate: req.query.startDate ? String(req.query.startDate) : undefined,
-      endDate: req.query.endDate ? String(req.query.endDate) : undefined,
-      projectId: req.query.projectId ? String(req.query.projectId) : undefined,
-      userId: req.query.userId ? String(req.query.userId) : undefined,
-      department: req.query.department ? String(req.query.department) : undefined,
-    }
-    const data = await getOvertimeStats(filters)
+    const data = await getOvertimeStats(buildFilters(req.query))
     res.json({ data })
   } catch (err) {
     logger.error({ err }, 'failed to get overtime stats')
@@ -56,14 +46,7 @@ export async function overtime(req: AuthenticatedRequest, res: Response) {
 
 export async function timesheetStatus(req: AuthenticatedRequest, res: Response) {
   try {
-    const filters = {
-      startDate: req.query.startDate ? String(req.query.startDate) : undefined,
-      endDate: req.query.endDate ? String(req.query.endDate) : undefined,
-      projectId: req.query.projectId ? String(req.query.projectId) : undefined,
-      userId: req.query.userId ? String(req.query.userId) : undefined,
-      department: req.query.department ? String(req.query.department) : undefined,
-    }
-    const data = await getTimesheetStatusBreakdown(filters)
+    const data = await getTimesheetStatusBreakdown(buildFilters(req.query))
     res.json({ data })
   } catch (err) {
     logger.error({ err }, 'failed to get timesheet status breakdown')

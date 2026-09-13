@@ -26,11 +26,11 @@ export function Progress({ value, max = 100, variant = 'default', label, showVal
     <div className={`w-full ${className}`}>
       {(label || showValue) && (
         <div className="mb-1 flex items-center justify-between">
-          {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
-          {showValue && <span className="text-sm text-slate-500">{Math.round(percentage)}%</span>}
+          {label && <span className="text-sm font-medium text-foreground">{label}</span>}
+          {showValue && <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>}
         </div>
       )}
-      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-300 ${variantClasses[variant]}`}
           style={{ width: `${percentage}%` }}

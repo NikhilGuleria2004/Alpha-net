@@ -76,21 +76,21 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`hidden md:flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}
+        className={`hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
                 <span className="text-sm font-bold">A</span>
               </div>
-              <span className="text-lg font-semibold text-slate-900">Eniac</span>
+              <span className="text-lg font-semibold text-foreground">Eniac</span>
             </div>
           )}
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
@@ -101,7 +101,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           {Object.entries(grouped).map(([section, items]) => (
             <div key={section} className="mb-4">
               {!isCollapsed && (
-                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {sectionLabels[section as SectionKey]}
                 </p>
               )}
@@ -115,11 +115,11 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
                         className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                           isActive
                             ? 'bg-indigo-50 text-indigo-700'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                         }`}
                         title={isCollapsed ? item.label : undefined}
                       >
-                        <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>{item.icon}</span>
+                        <span className={isActive ? 'text-indigo-600' : 'text-muted-foreground'}>{item.icon}</span>
                         {!isCollapsed && <span>{item.label}</span>}
                       </NavLink>
                     </li>
@@ -130,13 +130,13 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-border p-4">
           <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
             <Avatar name={user?.name || ''} size="sm" />
             {!isCollapsed && (
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
-                <p className="truncate text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+                <p className="truncate text-sm font-medium text-foreground">{user?.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
               </div>
             )}
           </div>
@@ -144,7 +144,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <LogOut className="h-4 w-4" />
               Sign out
@@ -159,19 +159,19 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
         aria-hidden="true"
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-xl transition-transform duration-300 md:hidden ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card shadow-xl transition-transform duration-300 md:hidden ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
               <span className="text-sm font-bold">A</span>
             </div>
-            <span className="text-lg font-semibold text-slate-900">Eniac</span>
+            <span className="text-lg font-semibold text-foreground">Eniac</span>
           </div>
           <button
             type="button"
             onClick={onMobileClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -180,7 +180,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
         <nav className="overflow-y-auto px-2 py-4">
           {Object.entries(grouped).map(([section, items]) => (
             <div key={section} className="mb-4">
-              <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {sectionLabels[section as SectionKey]}
               </p>
               <ul className="space-y-1">
@@ -194,10 +194,10 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
                         className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                           isActive
                             ? 'bg-indigo-50 text-indigo-700'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                         }`}
                       >
-                        <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>{item.icon}</span>
+                        <span className={isActive ? 'text-indigo-600' : 'text-muted-foreground'}>{item.icon}</span>
                         <span>{item.label}</span>
                       </NavLink>
                     </li>
@@ -207,18 +207,18 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             </div>
           ))}
         </nav>
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-border p-4">
           <div className="flex items-center gap-3">
             <Avatar name={user?.name || ''} size="sm" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
-              <p className="truncate text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+              <p className="truncate text-sm font-medium text-foreground">{user?.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
             Sign out

@@ -65,12 +65,12 @@ export function Projects() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">My Projects</h1>
-        <p className="mt-1 text-sm text-slate-500">Projects you are currently assigned to.</p>
+        <h1 className="text-2xl font-semibold text-foreground">My Projects</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Projects you are currently assigned to.</p>
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1">
               <Input
@@ -96,21 +96,21 @@ export function Projects() {
               {filteredProjects.map((project) => {
                 const currentWeekHours = getCurrentWeekHours(project.id)
                 return (
-                  <div key={project.id} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 hover:bg-slate-50">
+                  <div key={project.id} className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 hover:bg-muted">
                     <div>
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-slate-900">{project.name}</h3>
+                        <h3 className="text-sm font-semibold text-foreground">{project.name}</h3>
                         <StatusBadge status={project.status} size="sm" />
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">{project.client}</p>
-                      <div className="mt-3 flex items-center gap-4 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-muted-foreground">{project.client}</p>
+                      <div className="mt-3 flex items-center gap-4 text-xs text-foreground">
                         <span className="flex items-center gap-1">
                           <CalendarDays className="h-3.5 w-3.5" />
                           Due {formatDate(project.deadline)}
                         </span>
                         <DeadlineIndicator deadline={project.deadline} />
                       </div>
-                      <div className="mt-3 text-xs text-slate-600">
+                      <div className="mt-3 text-xs text-foreground">
                         <span className="font-medium">This week:</span> {currentWeekHours.toFixed(1)}h logged
                       </div>
                     </div>

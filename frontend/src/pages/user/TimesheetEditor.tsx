@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Save, Send, Edit3 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -11,6 +11,7 @@ import { Textarea } from '../../components/ui/Textarea'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { addWeeks, formatDateRange, parseLocalDate, toLocalDateString } from '../../utils/date'
+import { getOrgSettings } from '../../services/settingsService'
 import type { Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
 
@@ -27,9 +28,9 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>Cancel</Button>
           <Button onClick={onConfirm} loading={isLoading}>{confirmLabel || 'Confirm'}</Button>
@@ -71,6 +72,21 @@ export function TimesheetEditor() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [weeklyTarget, setWeeklyTarget] = useState(40)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadTarget() {
+      try {
+        const settings = await getOrgSettings()
+        if (!cancelled) setWeeklyTarget(settings.standardWeeklyHours)
+      } catch {
+        // keep the 40h default if settings can't be loaded
+      }
+    }
+    loadTarget()
+    return () => { cancelled = true }
+  }, [])
 
   const getValidationErrors = () => {
     const errors: string[] = []
@@ -216,7 +232,6 @@ export function TimesheetEditor() {
     return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours }
   }, [entries])
 
-  const weeklyTarget = 40
   const progressPercent = Math.min(100, Math.max(0, (totals.totalHours / weeklyTarget) * 100))
   const isAboveTarget = totals.totalHours > weeklyTarget
 
@@ -342,23 +357,23 @@ export function TimesheetEditor() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => navigate('/user/timesheets')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Weekly Timesheet</h1>
-            {project && <p className="text-sm text-slate-500">{project.name}</p>}
+            <h1 className="text-2xl font-semibold text-foreground">Weekly Timesheet</h1>
+            {project && <p className="text-sm text-muted-foreground">{project.name}</p>}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-lg border border-slate-200">
-            <button type="button" onClick={() => handleNavigateWeek(-1)} disabled={isNavigatingWeek} aria-label="Open previous week" title="Open previous week" className="rounded-l-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="px-4 py-2 text-sm font-medium text-slate-700">{weekStart ? formatDateRange(new Date(weekStart), weekEnd!) : '-'}</span>
-            <button type="button" onClick={() => handleNavigateWeek(1)} disabled={isNavigatingWeek} aria-label="Open next week" title="Open next week" className="rounded-r-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"><ChevronRight className="h-4 w-4" /></button>
+          <div className="flex items-center rounded-lg border border-border">
+            <button type="button" onClick={() => handleNavigateWeek(-1)} disabled={isNavigatingWeek} aria-label="Open previous week" title="Open previous week" className="rounded-l-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="px-4 py-2 text-sm font-medium text-foreground">{weekStart ? formatDateRange(new Date(weekStart), weekEnd!) : '-'}</span>
+            <button type="button" onClick={() => handleNavigateWeek(1)} disabled={isNavigatingWeek} aria-label="Open next week" title="Open next week" className="rounded-r-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <StatusBadge status={status} />
         </div>
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Timesheet Entries</h2>
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-lg font-semibold text-foreground">Timesheet Entries</h2>
         </div>
         {validationErrors.length > 0 && (
           <div className="border-b border-red-200 bg-red-50 px-5 py-3">
@@ -370,24 +385,24 @@ export function TimesheetEditor() {
         )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+            <thead className="bg-muted">
               <tr>
-                <th className="sm:sticky sm:left-0 sm:z-10 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Work Item</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Mon</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Tue</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Wed</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Thu</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Fri</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Sat</th>
-                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 sm:py-3">Sun</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Total</th>
-                {!isReadOnly && <th className="sm:sticky sm:right-0 sm:z-10 bg-slate-50 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500 sm:px-4 sm:py-3">Actions</th>}
+                <th className="sm:sticky sm:left-0 sm:z-10 bg-muted px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 sm:py-3">Work Item</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Mon</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Tue</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Wed</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Thu</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Fri</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Sat</th>
+                <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:py-3">Sun</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 sm:py-3">Total</th>
+                {!isReadOnly && <th className="sm:sticky sm:right-0 sm:z-10 bg-muted px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 sm:py-3">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+            <tbody className="divide-y divide-slate-200 bg-card">
               {entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td className="sm:sticky sm:left-0 sm:z-10 bg-white px-3 py-2 sm:px-4 sm:py-2">
+                  <td className="sm:sticky sm:left-0 sm:z-10 bg-card px-3 py-2 sm:px-4 sm:py-2">
                     <div className="flex flex-col gap-2">
                       <Input value={entry.description} onChange={(e) => handleDescriptionChange(entry.id, e.target.value)} placeholder="Work item description" disabled={isReadOnly} />
                       {!isReadOnly && (
@@ -408,59 +423,59 @@ export function TimesheetEditor() {
                           value={entry.hours[day as keyof typeof entry.hours] || ''}
                           onChange={(e) => handleEntryChange(entry.id, day, parseFloat(e.target.value) || 0)}
                           disabled={!isEnabled}
-                          className={`w-16 rounded-lg border px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isEnabled ? 'border-slate-300' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                          className={`w-16 rounded-lg border px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isEnabled ? 'border-border' : 'border-slate-100 bg-muted text-muted-foreground'}`}
                         />
                       </td>
                     )
                   })}
-                  <td className="px-3 py-2 text-right text-sm font-medium text-slate-900 sm:px-4 sm:py-2">{calcEntryTotal(entry).toFixed(1)}</td>
+                  <td className="px-3 py-2 text-right text-sm font-medium text-foreground sm:px-4 sm:py-2">{calcEntryTotal(entry).toFixed(1)}</td>
                   {!isReadOnly && (
-                    <td className="sm:sticky sm:right-0 sm:z-10 bg-white px-3 py-2 text-right sm:px-4 sm:py-2">
-                      <button type="button" onClick={() => handleRemoveEntry(entry.id)} className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                    <td className="sm:sticky sm:right-0 sm:z-10 bg-card px-3 py-2 text-right sm:px-4 sm:py-2">
+                      <button type="button" onClick={() => handleRemoveEntry(entry.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </td>
                   )}
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-slate-50">
+            <tfoot className="bg-muted">
               <tr>
-                <td colSpan={9} className="px-3 py-2 text-right text-sm font-semibold text-slate-900 sm:px-4 sm:py-2">Total Hours</td>
-                <td className="px-3 py-2 text-right text-sm font-semibold text-slate-900 sm:px-4 sm:py-2">{totals.totalHours.toFixed(1)}h</td>
+                <td colSpan={9} className="px-3 py-2 text-right text-sm font-semibold text-foreground sm:px-4 sm:py-2">Total Hours</td>
+                <td className="px-3 py-2 text-right text-sm font-semibold text-foreground sm:px-4 sm:py-2">{totals.totalHours.toFixed(1)}h</td>
                 {!isReadOnly && <td />}
               </tr>
             </tfoot>
           </table>
         </div>
         {!isReadOnly && (
-          <div className="border-t border-slate-200 px-5 py-3">
+          <div className="border-t border-border px-5 py-3">
             <Button variant="secondary" size="sm" onClick={handleAddEntry} leftIcon={<Plus className="h-4 w-4" />}>Add Work Item</Button>
           </div>
         )}
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Timesheet Summary</h2>
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-lg font-semibold text-foreground">Timesheet Summary</h2>
         </div>
         <div className="p-5">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Regular Hours</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{totals.regularHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{totals.regularHours.toFixed(1)}h</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Overtime</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{totals.overtimeHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Overtime</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{totals.overtimeHours.toFixed(1)}h</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Total Hours</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{totals.totalHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Total Hours</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{totals.totalHours.toFixed(1)}h</p>
             </div>
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600">Weekly Target</span>
-              <span className={`font-medium ${isAboveTarget ? 'text-amber-600' : 'text-slate-900'}`}>{totals.totalHours.toFixed(1)}h / {weeklyTarget}h</span>
+              <span className="text-foreground">Weekly Target</span>
+              <span className={`font-medium ${isAboveTarget ? 'text-amber-600' : 'text-foreground'}`}>{totals.totalHours.toFixed(1)}h / {weeklyTarget}h</span>
             </div>
             <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
               <div className={`h-full rounded-full transition-all ${isAboveTarget ? 'bg-amber-500' : 'bg-indigo-600'}`} style={{ width: `${progressPercent}%` }} />
@@ -471,8 +486,8 @@ export function TimesheetEditor() {
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Weekly Notes</h2>
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-lg font-semibold text-foreground">Weekly Notes</h2>
         </div>
         <div className="p-5">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any notes for this week..." rows={3} disabled={isReadOnly} />
@@ -522,9 +537,9 @@ function WithdrawModal({ isOpen, onClose, onConfirm, reason, onReasonChange, isL
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-900">Withdraw Timesheet</h3>
-        <p className="mt-2 text-sm text-slate-500">Optionally provide a reason for withdrawing this timesheet.</p>
+      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">Withdraw Timesheet</h3>
+        <p className="mt-2 text-sm text-muted-foreground">Optionally provide a reason for withdrawing this timesheet.</p>
         <div className="mt-4">
           <Textarea value={reason} onChange={(e) => onReasonChange(e.target.value)} placeholder="Reason for withdrawal (optional)" rows={3} />
         </div>

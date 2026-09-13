@@ -6,17 +6,20 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { AppDataProvider } from './contexts/AppDataContext'
 import { NotificationProvider } from './contexts/NotificationContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <ToastProvider>
-        <AppDataProvider>
-          <NotificationProvider>
-            <App />
-          </NotificationProvider>
-        </AppDataProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <AppDataProvider>
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
+          </AppDataProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

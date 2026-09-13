@@ -55,7 +55,7 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
         <div
           role="tablist"
           onKeyDown={handleKeyDown}
-          className="flex flex-wrap items-center gap-1 border-b border-slate-200"
+          className="flex flex-wrap items-center gap-1 border-b border-border"
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
@@ -71,7 +71,7 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
                 className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isActive
                     ? 'border-b-2 border-indigo-600 text-indigo-600'
-                    : 'text-slate-500 hover:text-slate-700'
+                    : 'text-muted-foreground hover:text-foreground'
                 } ${tab.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
               >
                 {tab.label}
@@ -101,7 +101,7 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
 }
 
 export function TabList({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-1 border-b border-slate-200">{children}</div>
+  return <div className="flex flex-wrap items-center gap-1 border-b border-border">{children}</div>
 }
 
 export function TabTrigger({ id, children, disabled, activeTab, setActiveTab }: { id: string; children: ReactNode; disabled?: boolean; activeTab: string; setActiveTab: (id: string) => void }) {
@@ -113,7 +113,7 @@ export function TabTrigger({ id, children, disabled, activeTab, setActiveTab }: 
       disabled={disabled}
       onClick={() => setActiveTab(id)}
       className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        isActive ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-700'
+        isActive ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-muted-foreground hover:text-foreground'
       } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       {children}

@@ -89,7 +89,7 @@ export function Users() {
   }
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortKey !== column) return <span className="text-slate-400" />
+    if (sortKey !== column) return <span className="text-muted-foreground" />
     return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
   }
 
@@ -97,8 +97,8 @@ export function Users() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage Eniac users and permissions.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Users</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage Eniac users and permissions.</p>
         </div>
         <Button onClick={() => navigate('/admin/users/new')} leftIcon={<Plus className="h-4 w-4" />}>
           Create User
@@ -106,7 +106,7 @@ export function Users() {
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
@@ -138,7 +138,7 @@ export function Users() {
             </div>
           ) : (
             <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+              <thead className="bg-muted">
                 <tr>
                   {[
                     { key: 'name', label: 'Name' },
@@ -149,37 +149,37 @@ export function Users() {
                     { key: 'isSupervisor', label: 'Supervisor' },
                     { key: 'status', label: 'Status' },
                   ].map((col) => (
-                    <th key={col.key} onClick={() => handleSort(col.key)} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 cursor-pointer select-none hover:text-slate-700">
+                    <th key={col.key} onClick={() => handleSort(col.key)} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">
                       <span className="inline-flex items-center gap-1">{col.label}<SortIcon column={col.key} /></span>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filteredUsers.map((user) => {
                   return (
-                    <tr key={user.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/users/${user.id}`)}>
+                    <tr key={user.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/users/${user.id}`)}>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.name} size="sm" />
-                          <span className="font-medium text-slate-900">{user.name}</span>
+                          <span className="font-medium text-foreground">{user.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{user.employeeId}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.department}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.role === 'admin' ? 'Admin' : 'User'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.isSupervisor ? 'Yes' : 'No'}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{user.employeeId}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{user.email}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{user.department}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{user.role === 'admin' ? 'Admin' : 'User'}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{user.isSupervisor ? 'Yes' : 'No'}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
                           {user.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <Dropdown
                           trigger={
-                            <button type="button" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                            <button type="button" className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           }
@@ -214,7 +214,7 @@ export function Users() {
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>

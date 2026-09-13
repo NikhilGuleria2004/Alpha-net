@@ -110,6 +110,91 @@ describe('GET /api/v1/reports/hours-by-project', () => {
     const pipeline = aggregateMock.mock.calls[0][0]
     expect(pipeline[0].$match).toMatchObject({ weekStart: { $gte: '2026-08-25' } })
   })
+
+  // QA M8: hours aggregations previously counted draft/declined/withdrawn
+  // timesheets as worked hours. The status filter is now applied to the match
+  // stage and defaults to 'approved' on the Reports UI.
+  it('applies a status filter when one is supplied', async () => {
+    const aggregateMock = vi.fn((_pipeline: Record<string, unknown>[]) => ({ toArray: vi.fn().mockResolvedValue([]) }))
+    timesheetsCollection.aggregate = aggregateMock as any
+
+    await request(createApp())
+      .get('/api/v1/reports/hours-by-project')
+      .set('Authorization', 'Bearer valid-token')
+      .query({ status: 'approved' })
+
+    const pipeline = aggregateMock.mock.calls[0][0]
+    expect(pipeline[0].$match).toMatchObject({ status: 'approved' })
+  })
+
+  it('omits the status filter when status=all or absent', async () => {
+    const aggregateMock = vi.fn((_pipeline: Record<string, unknown>[]) => ({ toArray: vi.fn().mockResolvedValue([]) }))
+    timesheetsCollection.aggregate = aggregateMock as any
+
+    await request(createApp())
+      .get('/api/v1/reports/hours-by-project')
+      .set('Authorization', 'Bearer valid-token')
+      .query({ status: 'all' })
+
+    const pipeline = aggregateMock.mock.calls[0][0]
+    expect((pipeline[0].$match as Record<string, unknown>).status).toBeUndefined()
+  })
+})
+
+// QA M8: userId and department used to be mutually exclusive branches in
+// buildMatchStage, so supplying both let the department branch silently
+// overwrite the userId filter. They now intersect.
+describe('report userId/department filter interaction', () => {
+  beforeEach(() => {
+    mockAdmin()
+  })
+
+  it('intersects userId and department rather than letting department overwrite userId', async () => {
+    const aggregateMock = vi.fn((_pipeline: Record<string, unknown>[]) => ({ toArray: vi.fn().mockResolvedValue([]) }))
+    timesheetsCollection.aggregate = aggregateMock as any
+
+    // Pretend the department has exactly one user — the one the userId filter
+    // already targets — so the intersection is non-empty and observable.
+    vi.mocked(usersCollection.find).mockReturnValue({
+      sort: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([{ _id: new ObjectId('507f1f77bcf86cd799439012') }]) })),
+      toArray: vi.fn().mockResolvedValue([{ _id: new ObjectId('507f1f77bcf86cd799439012') }]),
+    } as any)
+
+    await request(createApp())
+      .get('/api/v1/reports/hours-by-project')
+      .set('Authorization', 'Bearer valid-token')
+      .query({ userId: '507f1f77bcf86cd799439012', department: 'Engineering' })
+
+    const pipeline = aggregateMock.mock.calls[0][0]
+    // Both conditions must be present and AND-ed; a single $in would mean
+    // department overwrote userId.
+    expect(pipeline[0].$match.$and).toBeDefined()
+    expect(pipeline[0].$match.$and).toEqual([
+      { userId: new ObjectId('507f1f77bcf86cd799439012') },
+      expect.objectContaining({ userId: expect.any(Object) }),
+    ])
+  })
+
+  it('returns nothing when the department has no users (empty intersection)', async () => {
+    const aggregateMock = vi.fn((_pipeline: Record<string, unknown>[]) => ({ toArray: vi.fn().mockResolvedValue([]) }))
+    timesheetsCollection.aggregate = aggregateMock as any
+
+    vi.mocked(usersCollection.find).mockReturnValue({
+      sort: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })),
+      toArray: vi.fn().mockResolvedValue([]),
+    } as any)
+
+    await request(createApp())
+      .get('/api/v1/reports/hours-by-project')
+      .set('Authorization', 'Bearer valid-token')
+      .query({ department: 'Nope' })
+
+    const pipeline = aggregateMock.mock.calls[0][0]
+    // An always-false condition rather than a silent all-data return. When only
+    // department is supplied and it resolves to no users, the match carries an
+    // impossible userId so the aggregation matches nothing.
+    expect(pipeline[0].$match).toHaveProperty('userId')
+  })
 })
 
 describe('report admin gate', () => {

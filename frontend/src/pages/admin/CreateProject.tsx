@@ -120,15 +120,15 @@ export function CreateProject() {
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate('/admin/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Create New Project</h1>
-          <p className="mt-1 text-sm text-slate-500">Set up a new project or statement of work.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Create New Project</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Set up a new project or statement of work.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
           </div>
           <div className="p-5 space-y-5">
             <Input label="Project Name" value={form.name} onChange={(e) => updateField('name', e.target.value)} error={errors.name} required />
@@ -139,8 +139,8 @@ export function CreateProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Timeline</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Timeline</h2>
           </div>
           <div className="p-5 space-y-5">
             <div className="grid gap-5 sm:grid-cols-3">
@@ -152,8 +152,8 @@ export function CreateProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Project Manager</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Project Manager</h2>
           </div>
           <div className="p-5">
             <Select value={form.managerId} onChange={(e) => updateField('managerId', e.target.value)} options={users.filter((u) => u.role === 'admin').map((u) => ({ value: u.id, label: u.name }))} error={errors.managerId} required />
@@ -161,8 +161,8 @@ export function CreateProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Team</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Team</h2>
           </div>
           <div className="p-5 space-y-4">
             {form.teamMemberIds.length > 0 && (
@@ -171,10 +171,10 @@ export function CreateProject() {
                   const member = users.find((u) => u.id === userId)
                   if (!member) return null
                   return (
-                    <div key={userId} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <div key={userId} className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
                       <Avatar name={member.name} size="sm" />
-                      <span className="text-sm text-slate-700">{member.name}</span>
-                      <button type="button" onClick={() => updateField('teamMemberIds', form.teamMemberIds.filter((id) => id !== userId))} className="text-slate-400 hover:text-slate-600" aria-label="Remove">×</button>
+                      <span className="text-sm text-foreground">{member.name}</span>
+                      <button type="button" onClick={() => updateField('teamMemberIds', form.teamMemberIds.filter((id) => id !== userId))} className="text-muted-foreground hover:text-foreground" aria-label="Remove">×</button>
                     </div>
                   )
                 })}
@@ -185,8 +185,8 @@ export function CreateProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Supervisor</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Supervisor</h2>
           </div>
           <div className="p-5">
             <Select value={form.supervisorId} onChange={(e) => updateField('supervisorId', e.target.value)} options={supervisorOptions.map((u) => ({ value: u.id, label: u.name }))} error={errors.supervisorId} placeholder="Select a supervisor" required />
@@ -194,12 +194,12 @@ export function CreateProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Documents</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Documents</h2>
           </div>
           <div className="p-5">
             <div
-              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50"
+              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50"
               onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500') }}
               onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-500') }}
               onDrop={(e) => {
@@ -212,9 +212,9 @@ export function CreateProject() {
               <div className="mb-3 rounded-full bg-indigo-50 p-3 text-indigo-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
-              <p className="text-sm font-medium text-slate-700">Drop files here</p>
-              <p className="mt-1 text-xs text-slate-500">or browse from your computer</p>
-              <p className="mt-2 text-xs text-slate-400">PDF, DOCX, XLSX, PNG, JPG up to 10MB</p>
+              <p className="text-sm font-medium text-foreground">Drop files here</p>
+              <p className="mt-1 text-xs text-muted-foreground">or browse from your computer</p>
+              <p className="mt-2 text-xs text-muted-foreground">PDF, DOCX, XLSX, PNG, JPG up to 10MB</p>
               <input
                 type="file"
                 multiple
@@ -223,17 +223,17 @@ export function CreateProject() {
                 className="hidden"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" className="mt-4 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <label htmlFor="file-upload" className="mt-4 cursor-pointer rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
                 Browse Files
               </label>
             </div>
             {documents.length > 0 && (
               <div className="mt-4 space-y-2">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+                  <div key={doc.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{doc.file.name}</p>
-                      <p className="text-xs text-slate-500">{(doc.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                      <p className="text-sm font-medium text-foreground">{doc.file.name}</p>
+                      <p className="text-xs text-muted-foreground">{(doc.file.size / (1024 * 1024)).toFixed(1)} MB</p>
                     </div>
                     <button type="button" onClick={() => setDocuments((prev) => prev.filter((d) => d.id !== doc.id))} className="text-sm text-red-600 hover:text-red-700">Remove</button>
                   </div>
@@ -255,18 +255,18 @@ export function CreateProject() {
           <Input placeholder="Search users..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} autoFocus />
           <div className="max-h-80 overflow-y-auto space-y-2">
             {filteredAvailableUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
+              <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted">
                 <div className="flex items-center gap-3">
                   <Avatar name={u.name} size="sm" />
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{u.name}</p>
-                    <p className="text-xs text-slate-500">{u.email}</p>
+                    <p className="text-sm font-medium text-foreground">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
                 </div>
                 <Button size="sm" onClick={() => { updateField('teamMemberIds', [...form.teamMemberIds, u.id]); setUserSearch('') }}>Add</Button>
               </div>
             ))}
-            {filteredAvailableUsers.length === 0 && <p className="text-sm text-slate-500 text-center py-4">No users found.</p>}
+            {filteredAvailableUsers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No users found.</p>}
           </div>
         </div>
       </Modal>

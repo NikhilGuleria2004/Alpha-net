@@ -111,15 +111,15 @@ export function EditProject() {
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate(`/admin/projects/${project.id}`)} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Edit Project</h1>
-          <p className="mt-1 text-sm text-slate-500">Update project details and settings.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Edit Project</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Update project details and settings.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
           </div>
           <div className="p-5 space-y-5">
             <Input label="Project Name" value={form.name} onChange={(e) => updateField('name', e.target.value)} error={errors.name} required />
@@ -130,8 +130,8 @@ export function EditProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Timeline</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Timeline</h2>
           </div>
           <div className="p-5 space-y-5">
             <div className="grid gap-5 sm:grid-cols-3">
@@ -143,8 +143,8 @@ export function EditProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Project Manager</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Project Manager</h2>
           </div>
           <div className="p-5">
             <Select value={form.managerId} onChange={(e) => updateField('managerId', e.target.value)} options={users.filter((u) => u.role === 'admin').map((u) => ({ value: u.id, label: u.name }))} error={errors.managerId} required />
@@ -152,8 +152,8 @@ export function EditProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Team</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Team</h2>
           </div>
           <div className="p-5 space-y-4">
               {form.teamMemberIds.length > 0 && (
@@ -162,10 +162,10 @@ export function EditProject() {
                     const member = users.find((u) => u.id === userId)
                     if (!member) return null
                     return (
-                      <div key={userId} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                      <div key={userId} className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
                         <Avatar name={member.name} size="sm" />
-                        <span className="text-sm text-slate-700">{member.name}</span>
-                        <button type="button" onClick={() => updateField('teamMemberIds', form.teamMemberIds.filter((id) => id !== userId))} className="text-slate-400 hover:text-slate-600" aria-label="Remove">×</button>
+                        <span className="text-sm text-foreground">{member.name}</span>
+                        <button type="button" onClick={() => updateField('teamMemberIds', form.teamMemberIds.filter((id) => id !== userId))} className="text-muted-foreground hover:text-foreground" aria-label="Remove">×</button>
                       </div>
                     )
                   })}
@@ -176,8 +176,8 @@ export function EditProject() {
         </Card>
 
         <Card>
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Supervisor</h2>
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Supervisor</h2>
           </div>
           <div className="p-5">
             <Select value={form.supervisorId} onChange={(e) => updateField('supervisorId', e.target.value)} options={supervisorOptions.map((u) => ({ value: u.id, label: u.name }))} error={errors.supervisorId} placeholder="Select a supervisor" required />
@@ -195,18 +195,18 @@ export function EditProject() {
           <Input placeholder="Search users..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} autoFocus />
           <div className="max-h-80 overflow-y-auto space-y-2">
             {filteredAvailableUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
+              <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted">
                 <div className="flex items-center gap-3">
                   <Avatar name={u.name} size="sm" />
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{u.name}</p>
-                    <p className="text-xs text-slate-500">{u.email}</p>
+                    <p className="text-sm font-medium text-foreground">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
                 </div>
                 <Button size="sm" onClick={() => { updateField('teamMemberIds', [...form.teamMemberIds, u.id]); setUserSearch('') }}>Add</Button>
               </div>
             ))}
-            {filteredAvailableUsers.length === 0 && <p className="text-sm text-slate-500 text-center py-4">No available users found.</p>}
+            {filteredAvailableUsers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No available users found.</p>}
           </div>
         </div>
       </Modal>

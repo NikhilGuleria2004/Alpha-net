@@ -3,14 +3,14 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '' }: SkeletonProps) {
-  return <div className={`animate-pulse rounded bg-slate-200 ${className}`} />
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />
 }
 
 export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; columns?: number }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
+        <thead className="bg-muted">
           <tr>
             {Array.from({ length: columns }).map((_, i) => (
               <th key={i} className="px-4 py-3">
@@ -19,7 +19,7 @@ export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; column
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 bg-white">
+        <tbody className="divide-y divide-slate-200 bg-card">
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <tr key={rowIndex}>
               {Array.from({ length: columns }).map((_, colIndex) => (
@@ -39,7 +39,7 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-slate-200 bg-white p-5">
+        <div key={i} className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-start justify-between gap-3">
             <Skeleton className="h-5 w-2/3" />
             <Skeleton className="h-5 w-16" />

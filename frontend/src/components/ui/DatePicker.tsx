@@ -44,39 +44,39 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
   return (
     <div className="relative w-full">
       {label && (
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           {label}
         </label>
       )}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-slate-300'} bg-white px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+        className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-border'} bg-card px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
       >
-        {selectedDate ? format(selectedDate, 'MMM d, yyyy') : <span className="text-slate-400">{placeholder}</span>}
+        {selectedDate ? format(selectedDate, 'MMM d, yyyy') : <span className="text-muted-foreground">{placeholder}</span>}
       </button>
       {isOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div className="absolute left-0 top-full z-30 mt-1 rounded-xl border border-border bg-card p-4 shadow-lg">
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
               onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
-              className="rounded-lg p-1 hover:bg-slate-100"
+              className="rounded-lg p-1 hover:bg-muted"
             >
-              <ChevronLeft className="h-5 w-5 text-slate-600" />
+              <ChevronLeft className="h-5 w-5 text-muted-foreground" />
             </button>
-            <span className="font-semibold text-slate-900">{format(currentMonth, 'MMMM yyyy')}</span>
+            <span className="font-semibold text-foreground">{format(currentMonth, 'MMMM yyyy')}</span>
             <button
               type="button"
               onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-              className="rounded-lg p-1 hover:bg-slate-100"
+              className="rounded-lg p-1 hover:bg-muted"
             >
-              <ChevronRight className="h-5 w-5 text-slate-600" />
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
           <div className="mb-2 grid grid-cols-7 gap-1">
             {weekDays.map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-slate-500">
+              <div key={day} className="text-center text-xs font-medium text-muted-foreground">
                 {day}
               </div>
             ))}
@@ -99,7 +99,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
                         ? 'cursor-not-allowed text-slate-300'
                         : isSelected
                           ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'text-slate-700 hover:bg-slate-100'
+                          : 'text-foreground hover:bg-muted'
                   }`}
                 >
                   {format(date, 'd')}
@@ -111,7 +111,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
             >
               Close
             </button>
@@ -119,7 +119,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
         </div>
       )}
       {error && <p className="mt-1 text-sm text-red-600" role="alert">{error}</p>}
-      {helperText && !error && <p className="mt-1 text-sm text-slate-500">{helperText}</p>}
+      {helperText && !error && <p className="mt-1 text-sm text-muted-foreground">{helperText}</p>}
     </div>
   )
 }

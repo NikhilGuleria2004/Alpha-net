@@ -91,7 +91,7 @@ export function Projects() {
   }
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortKey !== column) return <span className="text-slate-400" />
+    if (sortKey !== column) return <span className="text-muted-foreground" />
     return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
   }
 
@@ -99,8 +99,8 @@ export function Projects() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Projects</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage Eniac projects and statements of work.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Projects</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage Eniac projects and statements of work.</p>
         </div>
         <Button onClick={() => navigate('/admin/projects/new')} leftIcon={<Plus className="h-4 w-4" />}>
           New Project
@@ -108,7 +108,7 @@ export function Projects() {
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
@@ -141,7 +141,7 @@ export function Projects() {
             </div>
           ) : (
             <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+              <thead className="bg-muted">
                 <tr>
                   {[
                     { key: 'name', label: 'Project' },
@@ -155,7 +155,7 @@ export function Projects() {
                     <th
                       key={col.key}
                       onClick={() => handleSort(col.key)}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 cursor-pointer select-none hover:text-slate-700"
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground"
                     >
                       <span className="inline-flex items-center gap-1">
                         {col.label}
@@ -163,20 +163,20 @@ export function Projects() {
                       </span>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filteredProjects.map((project) => {
                   const manager = appUsers.find((u) => u.id === project.managerId)
                   return (
-                    <tr key={project.id || project.name} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/projects/${project.id}`)}>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">{project.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{project.sowNumber}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{project.client}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{formatDate(project.startDate)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{formatDate(project.endDate)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
+                    <tr key={project.id || project.name} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/projects/${project.id}`)}>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">{project.name}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{project.sowNumber}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{project.client}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(project.startDate)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(project.endDate)}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">
                         <div className="flex items-center gap-1">
                           <Avatar name={manager?.name || ''} size="sm" />
                           <span>+{project.teamMemberIds.length}</span>
@@ -188,7 +188,7 @@ export function Projects() {
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <Dropdown
                           trigger={
-                            <button type="button" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                            <button type="button" className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           }

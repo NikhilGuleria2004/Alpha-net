@@ -75,6 +75,13 @@ export async function getNotificationsByUserId(
   }))
 }
 
+export async function countUnreadNotifications(userId: string): Promise<number> {
+  const db = await getDb()
+  return db
+    .collection(COLLECTIONS.NOTIFICATIONS)
+    .countDocuments({ userId: new ObjectId(userId), read: false })
+}
+
 export async function markNotificationAsRead(id: string, userId: string): Promise<boolean> {
   const db = await getDb()
   // Ownership constraint prevents IDOR: a user can only mark their OWN

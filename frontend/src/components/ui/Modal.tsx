@@ -70,24 +70,24 @@ export function Modal({ isOpen, onClose, title, description, size = 'md', childr
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto rounded-none sm:rounded-xl bg-white shadow-xl transition-all`}
+        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto rounded-none sm:rounded-xl bg-card shadow-xl transition-all`}
       >
         {(title || description) && (
-          <div className="border-b border-slate-200 px-6 py-4">
+          <div className="border-b border-border px-6 py-4">
             {title && (
-              <h2 id="modal-title" className="text-lg font-semibold text-slate-900">
+              <h2 id="modal-title" className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
             )}
-            {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
           </div>
         )}
         <div className="px-6 py-4">{children}</div>
-        {footer && <div className="border-t border-slate-200 px-6 py-4">{footer}</div>}
+        {footer && <div className="border-t border-border px-6 py-4">{footer}</div>}
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

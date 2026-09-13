@@ -39,11 +39,11 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           role="alert"
         >
           <div className="shrink-0">{iconMap[toast.type]}</div>
-          <p className="flex-1 text-sm text-slate-800">{toast.message}</p>
+          <p className="flex-1 text-sm text-foreground">{toast.message}</p>
           <button
             type="button"
             onClick={() => onDismiss(toast.id)}
-            className="shrink-0 rounded-lg p-1 text-slate-400 hover:text-slate-600"
+            className="shrink-0 rounded-lg p-1 text-muted-foreground hover:text-muted-foreground"
             aria-label="Dismiss notification"
           >
             <X className="h-4 w-4" />

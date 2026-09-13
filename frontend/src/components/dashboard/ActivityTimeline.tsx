@@ -13,7 +13,7 @@ interface ActivityTimelineProps {
 }
 
 const colorClasses: Record<string, string> = {
-  default: 'bg-slate-100 text-slate-600',
+  default: 'bg-muted text-foreground',
   success: 'bg-emerald-50 text-emerald-600',
   warning: 'bg-amber-50 text-amber-600',
   danger: 'bg-red-50 text-red-600',
@@ -32,8 +32,8 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
             {index !== items.length - 1 && <div className="mt-2 h-full w-px bg-slate-200" />}
           </div>
           <div className="flex-1 pb-4">
-            <p className="text-sm text-slate-700">{item.description}</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="text-sm text-foreground">{item.description}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               {item.userName ? `${item.userName} • ` : ''}
               {formatTimeAgo(item.timestamp)}
             </p>

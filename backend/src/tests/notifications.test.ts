@@ -143,3 +143,40 @@ describe('GET /api/v1/notifications', () => {
     expect(findQuery.userId).toEqual(new ObjectId(USER_A))
   })
 })
+
+// M2 regression: GET /unread-count must use countDocuments (not the list
+// endpoint with its default limit of 50), so users with >50 unread see the
+// true badge number instead of a badge stuck at 50.
+describe('GET /api/v1/notifications/unread-count (M2 regression)', () => {
+  beforeEach(() => {
+    setupMocks(USER_A)
+  })
+
+  it('returns the exact unread count via countDocuments', async () => {
+    notificationsCollection.countDocuments = vi.fn().mockResolvedValue(127)
+
+    const res = await request(createApp())
+      .get('/api/v1/notifications/unread-count')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.unreadCount).toBe(127)
+    expect(notificationsCollection.countDocuments).toHaveBeenCalledWith({
+      userId: new ObjectId(USER_A),
+      read: false,
+    })
+    // The capped list fetch must NOT be used for the count.
+    expect(notificationsCollection.find).not.toHaveBeenCalled()
+  })
+
+  it('returns 0 when the user has no unread notifications', async () => {
+    notificationsCollection.countDocuments = vi.fn().mockResolvedValue(0)
+
+    const res = await request(createApp())
+      .get('/api/v1/notifications/unread-count')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.unreadCount).toBe(0)
+  })
+})

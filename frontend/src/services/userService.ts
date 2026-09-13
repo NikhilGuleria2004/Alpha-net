@@ -38,11 +38,15 @@ export async function getSupervisors(): Promise<User[]> {
 }
 
 export async function getUsersBySupervisorId(supervisorId: string): Promise<User[]> {
+  // Live endpoint: GET /supervisors/:id/users (admin or the supervisor themself).
   const response = await apiClient.get<{ users: User[] }>(`/supervisors/${supervisorId}/users`)
   return response.users
 }
 
 export async function searchUsers(query: string): Promise<User[]> {
-  const response = await apiClient.get<{ users: User[] }>(`/users?q=${encodeURIComponent(query)}`)
-  return response.users
+  // No server-side free-text search exists on GET /users for non-admins (and
+  // admin search is role/status only). Filter the scoped directory client-side.
+  const all = await getUsers()
+  const lower = query.toLowerCase()
+  return all.filter((u) => u.name.toLowerCase().includes(lower))
 }

@@ -87,7 +87,7 @@ export function Supervisors() {
   }
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortKey !== column) return <span className="text-slate-400" />
+    if (sortKey !== column) return <span className="text-muted-foreground" />
     return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
   }
 
@@ -95,8 +95,8 @@ export function Supervisors() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Supervisors</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage supervisors and their assigned teams.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Supervisors</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage supervisors and their assigned teams.</p>
         </div>
         <Button onClick={() => navigate('/admin/users/new')} leftIcon={<UserCheck className="h-4 w-4" />}>
           Create Supervisor
@@ -104,7 +104,7 @@ export function Supervisors() {
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
@@ -134,7 +134,7 @@ export function Supervisors() {
             </div>
           ) : (
             <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+              <thead className="bg-muted">
                 <tr>
                   {[
                     { key: 'name', label: 'Supervisor' },
@@ -145,11 +145,11 @@ export function Supervisors() {
                     { key: 'pendingReviews', label: 'Pending Reviews' },
                     { key: 'status', label: 'Status' },
                   ].map((col) => (
-                    <th key={col.key} onClick={() => handleSort(col.key === 'assignedProjects' || col.key === 'teamMembers' || col.key === 'pendingReviews' ? '' : col.key)} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 ${col.key !== 'assignedProjects' && col.key !== 'teamMembers' && col.key !== 'pendingReviews' ? 'cursor-pointer select-none hover:text-slate-700' : ''}`}>
+                    <th key={col.key} onClick={() => handleSort(col.key === 'assignedProjects' || col.key === 'teamMembers' || col.key === 'pendingReviews' ? '' : col.key)} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground ${col.key !== 'assignedProjects' && col.key !== 'teamMembers' && col.key !== 'pendingReviews' ? 'cursor-pointer select-none hover:text-foreground' : ''}`}>
                       <span className="inline-flex items-center gap-1">{col.label}{col.key !== 'assignedProjects' && col.key !== 'teamMembers' && col.key !== 'pendingReviews' && <SortIcon column={col.key} />}</span>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -158,29 +158,29 @@ export function Supervisors() {
                   const teamMembers = getTeamMembers(supervisor.id)
                   const pendingReviews = getPendingReviews(supervisor.id)
                   return (
-                    <tr key={supervisor.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/admin/supervisors/${supervisor.id}`)}>
+                    <tr key={supervisor.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/supervisors/${supervisor.id}`)}>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <Avatar name={supervisor.name} size="sm" />
-                          <span className="font-medium text-slate-900">{supervisor.name}</span>
+                          <span className="font-medium text-foreground">{supervisor.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{supervisor.email}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{supervisor.department}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{assignedProjects}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{teamMembers}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        <span className={pendingReviews > 0 ? 'font-medium text-amber-600' : 'text-slate-700'}>{pendingReviews}</span>
+                      <td className="px-4 py-3 text-sm text-foreground">{supervisor.email}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{supervisor.department}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{assignedProjects}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{teamMembers}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        <span className={pendingReviews > 0 ? 'font-medium text-amber-600' : 'text-foreground'}>{pendingReviews}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${supervisor.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${supervisor.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
                           {supervisor.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <Dropdown
                           trigger={
-                            <button type="button" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                            <button type="button" className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           }
@@ -203,7 +203,7 @@ export function Supervisors() {
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>

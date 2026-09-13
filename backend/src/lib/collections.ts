@@ -9,6 +9,7 @@ export const COLLECTIONS = {
   ACTIVITIES: 'activities',
   DOCUMENTS: 'documents',
   SESSIONS: 'sessions',
+  SETTINGS: 'settings',
 } as const
 
 // Tracks whether indexes have been ensured to prevent redundant calls on cold start
@@ -65,6 +66,10 @@ export async function ensureIndexes(): Promise<void> {
   const sessions = db.collection(COLLECTIONS.SESSIONS)
   await sessions.createIndex({ userId: 1 })
   await sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+  const settings = db.collection(COLLECTIONS.SETTINGS)
+  await settings.createIndex({ orgKey: 1 }, { unique: true })
+  await settings.createIndex({ userId: 1 })
 
   indexesEnsured = true
   logger.info({ collections: Object.values(COLLECTIONS) }, 'ensured indexes')

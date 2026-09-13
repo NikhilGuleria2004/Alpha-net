@@ -50,7 +50,7 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-slate-100"
+        className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-muted"
         aria-label="User menu"
         aria-expanded={isOpen}
       >
@@ -60,18 +60,18 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
               {user?.name ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase() : 'U'}
             </div>
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+              <p className="text-sm font-medium text-foreground">{user?.name}</p>
+              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
             </div>
           </>
         )}
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-          <div className="border-b border-slate-200 px-4 py-3">
-            <p className="text-sm font-medium text-slate-900">{user?.name}</p>
-            <p className="text-xs text-slate-500">{user?.email}</p>
-            <p className="text-xs text-slate-500">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
+        <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-border bg-card py-1 shadow-lg">
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-sm font-medium text-foreground">{user?.name}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
           </div>
           <button
             type="button"
@@ -79,7 +79,7 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
               setIsOpen(false)
               navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
           >
             <User className="h-4 w-4" />
             Profile
@@ -90,12 +90,12 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
               setIsOpen(false)
               navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
           >
             <Settings className="h-4 w-4" />
             Settings
           </button>
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
           <button
             type="button"
             onClick={() => {

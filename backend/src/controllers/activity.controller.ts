@@ -18,6 +18,7 @@ import { logger } from '../lib/logger.js'
 
 export async function listActivities(req: AuthenticatedRequest, res: Response) {
   try {
+    const db = await getDb()
     const userId = req.user!.userId
     const role = req.user!.role
     const isSupervisor = req.user!.isSupervisor
@@ -47,7 +48,7 @@ export async function listActivities(req: AuthenticatedRequest, res: Response) {
         if (queryUserId === userId) {
           // reading own feed — pass through
         } else if (isSupervisor) {
-          const subordinate = await getDb().collection(COLLECTIONS.USERS).findOne({
+          const subordinate = await db.collection(COLLECTIONS.USERS).findOne({
             _id: new ObjectId(queryUserId),
             supervisorId: new ObjectId(userId),
           })

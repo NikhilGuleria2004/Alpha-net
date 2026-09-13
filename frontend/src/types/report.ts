@@ -1,5 +1,7 @@
 export type DateRangePreset = '7d' | '30d' | '90d' | 'custom'
 
+export type ReportStatusFilter = 'all' | 'approved' | 'pending' | 'declined' | 'withdrawn' | 'draft'
+
 export interface ReportFilters {
   dateRange: DateRangePreset
   startDate?: string
@@ -7,6 +9,10 @@ export interface ReportFilters {
   projectId?: string
   userId?: string
   department?: string
+  // QA M8: hours aggregations previously counted draft/declined/withdrawn
+  // timesheets as worked hours. Defaults to 'approved' so the numbers users
+  // act on are correct out of the box; pass 'all' to opt out.
+  status?: ReportStatusFilter
 }
 
 export interface HoursByProject {

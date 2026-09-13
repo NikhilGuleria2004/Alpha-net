@@ -21,9 +21,9 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
@@ -35,7 +35,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -104,13 +104,13 @@ export function SupervisorDetails() {
             <Avatar name={user.name} size="lg" />
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold text-slate-900">{user.name}</h1>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                <h1 className="text-2xl font-semibold text-foreground">{user.name}</h1>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500">{user.email}</p>
-              <p className="text-xs text-slate-500">{user.department}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground">{user.department}</p>
             </div>
           </div>
         </div>
@@ -136,42 +136,42 @@ function OverviewTab({ user, assignedProjects, teamMembers, pendingReviews }: { 
   return (
     <div className="space-y-6">
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-semibold text-slate-900">Supervisor Profile</h3>
+        <div className="border-b border-border px-5 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Supervisor Profile</h3>
         </div>
         <div className="p-5 grid gap-6 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-slate-500">Employee ID</p>
-            <p className="mt-1 text-sm text-slate-900">{user.employeeId}</p>
+            <p className="text-sm font-medium text-muted-foreground">Employee ID</p>
+            <p className="mt-1 text-sm text-foreground">{user.employeeId}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Department</p>
-            <p className="mt-1 text-sm text-slate-900">{user.department}</p>
+            <p className="text-sm font-medium text-muted-foreground">Department</p>
+            <p className="mt-1 text-sm text-foreground">{user.department}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Status</p>
-            <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+            <p className="text-sm font-medium text-muted-foreground">Status</p>
+            <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
               {user.status === 'active' ? 'Active' : 'Inactive'}
             </span>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Assigned Projects</p>
-            <p className="mt-1 text-sm text-slate-900">{assignedProjects.length}</p>
+            <p className="text-sm font-medium text-muted-foreground">Assigned Projects</p>
+            <p className="mt-1 text-sm text-foreground">{assignedProjects.length}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Team Members</p>
-            <p className="mt-1 text-sm text-slate-900">{teamMembers.length}</p>
+            <p className="text-sm font-medium text-muted-foreground">Team Members</p>
+            <p className="mt-1 text-sm text-foreground">{teamMembers.length}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Pending Reviews</p>
-            <p className="mt-1 text-sm text-slate-900">{pendingReviews.length}</p>
+            <p className="text-sm font-medium text-muted-foreground">Pending Reviews</p>
+            <p className="mt-1 text-sm text-foreground">{pendingReviews.length}</p>
           </div>
         </div>
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-semibold text-slate-900">Assigned Projects</h3>
+        <div className="border-b border-border px-5 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Assigned Projects</h3>
         </div>
         <div className="p-5">
           {assignedProjects.length === 0 ? (
@@ -179,10 +179,10 @@ function OverviewTab({ user, assignedProjects, teamMembers, pendingReviews }: { 
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {assignedProjects.map((project) => (
-                <div key={project.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50">
+                <div key={project.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-muted">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{project.name}</p>
-                    <p className="text-xs text-slate-500">{project.client} • Due {formatDate(project.deadline)}</p>
+                    <p className="text-sm font-medium text-foreground">{project.name}</p>
+                    <p className="text-xs text-muted-foreground">{project.client} • Due {formatDate(project.deadline)}</p>
                   </div>
                   <StatusBadge status={project.status} size="sm" />
                 </div>
@@ -203,11 +203,11 @@ function TeamTab({ teamMembers }: { teamMembers: User[] }) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teamMembers.map((member) => (
-            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
               <Avatar name={member.name} size="md" />
               <div>
-                <p className="text-sm font-medium text-slate-900">{member.name}</p>
-                <p className="text-xs text-slate-500">{member.department}</p>
+                <p className="text-sm font-medium text-foreground">{member.name}</p>
+                <p className="text-xs text-muted-foreground">{member.department}</p>
               </div>
             </div>
           ))}
@@ -225,13 +225,13 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Employee</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Project</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Week</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Project</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -242,11 +242,11 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
                 const end = new Date(start)
                 end.setDate(end.getDate() + 4)
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm text-slate-700">{user?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{project?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{formatDate(start)} – {formatDate(end)}</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-slate-900">{t.totalHours.toFixed(1)}h</td>
+                  <tr key={t.id} className="hover:bg-muted">
+                    <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                   </tr>
                 )
@@ -270,8 +270,8 @@ function ActivityTab({ userActivities, users }: { userActivities: Activity[]; us
             <div key={activity.id} className="flex gap-4">
               <Avatar name={users.find((u) => u.id === activity.userId)?.name || 'Unknown'} size="sm" />
               <div>
-                <p className="text-sm text-slate-700">{activity.description}</p>
-                <p className="text-xs text-slate-500">{formatDate(activity.createdAt)}</p>
+                <p className="text-sm text-foreground">{activity.description}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(activity.createdAt)}</p>
               </div>
             </div>
           ))}

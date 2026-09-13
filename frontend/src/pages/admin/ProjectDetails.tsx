@@ -28,9 +28,9 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
@@ -42,7 +42,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50 ${destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -99,10 +99,10 @@ export function ProjectDetails() {
           <Button variant="ghost" onClick={() => navigate('/admin/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-slate-900">{project.name}</h1>
+              <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
               <StatusBadge status={project.status} />
             </div>
-            <p className="mt-1 text-sm text-slate-500">SOW: {project.sowNumber}</p>
+            <p className="mt-1 text-sm text-muted-foreground">SOW: {project.sowNumber}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -134,55 +134,55 @@ function OverviewTab({ project, manager, supervisor }: { project: Project; manag
   return (
     <div className="space-y-6">
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-semibold text-slate-900">Overview</h3>
+        <div className="border-b border-border px-5 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Overview</h3>
         </div>
         <div className="p-5 grid gap-6 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-slate-500">Start Date</p>
-            <p className="mt-1 text-sm text-slate-900">{formatDate(project.startDate)}</p>
+            <p className="text-sm font-medium text-muted-foreground">Start Date</p>
+            <p className="mt-1 text-sm text-foreground">{formatDate(project.startDate)}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">End Date</p>
-            <p className="mt-1 text-sm text-slate-900">{formatDate(project.endDate)}</p>
+            <p className="text-sm font-medium text-muted-foreground">End Date</p>
+            <p className="mt-1 text-sm text-foreground">{formatDate(project.endDate)}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Deadline</p>
+            <p className="text-sm font-medium text-muted-foreground">Deadline</p>
             <p className="mt-1 flex items-center gap-2">
-              <span className="text-sm text-slate-900">{formatDate(project.deadline)}</span>
+              <span className="text-sm text-foreground">{formatDate(project.deadline)}</span>
               <DeadlineIndicator deadline={project.deadline} />
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Project Manager</p>
-            <p className="mt-1 text-sm text-slate-900">{manager?.name || '-'}</p>
+            <p className="text-sm font-medium text-muted-foreground">Project Manager</p>
+            <p className="mt-1 text-sm text-foreground">{manager?.name || '-'}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Supervisor</p>
-            <p className="mt-1 text-sm text-slate-900">{supervisor?.name || '-'}</p>
+            <p className="text-sm font-medium text-muted-foreground">Supervisor</p>
+            <p className="mt-1 text-sm text-foreground">{supervisor?.name || '-'}</p>
           </div>
         </div>
         {project.description && (
-          <div className="border-t border-slate-200 px-5 py-4">
-            <p className="text-sm font-medium text-slate-500">Description</p>
-            <p className="mt-1 text-sm text-slate-700">{project.description}</p>
+          <div className="border-t border-border px-5 py-4">
+            <p className="text-sm font-medium text-muted-foreground">Description</p>
+            <p className="mt-1 text-sm text-foreground">{project.description}</p>
           </div>
         )}
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-semibold text-slate-900">Progress</h3>
+        <div className="border-b border-border px-5 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Progress</h3>
         </div>
         <div className="p-5">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-600">Project Progress</span>
-            <span className="font-medium text-slate-900">{Math.round(progress)}%</span>
+            <span className="text-foreground">Project Progress</span>
+            <span className="font-medium text-foreground">{Math.round(progress)}%</span>
           </div>
           <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
             <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
           </div>
-          <p className="mt-2 text-xs text-slate-500">{elapsedDays} of {totalDays} days elapsed</p>
+          <p className="mt-2 text-xs text-muted-foreground">{elapsedDays} of {totalDays} days elapsed</p>
         </div>
       </Card>
     </div>
@@ -204,7 +204,7 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Team Members</h3>
+        <h3 className="text-base font-semibold text-foreground">Team Members</h3>
         <Button size="sm" variant="secondary" onClick={() => setIsAddOpen(true)} leftIcon={<UserPlus className="h-4 w-4" />}>Add Users</Button>
       </div>
       {teamMembers.length === 0 ? (
@@ -212,17 +212,17 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teamMembers.map((member) => (
-            <div key={member.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+            <div key={member.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-3">
                 <Avatar name={member.name} size="md" />
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{member.name}</p>
-                  <p className="text-xs text-slate-500">{member.department}</p>
+                  <p className="text-sm font-medium text-foreground">{member.name}</p>
+                  <p className="text-xs text-muted-foreground">{member.department}</p>
                   {supervisor?.id === member.id && <span className="text-xs text-indigo-600">Supervisor</span>}
                 </div>
               </div>
               {supervisor?.id !== member.id && (
-                <button type="button" onClick={() => onRemove(member.id)} className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                <button type="button" onClick={() => onRemove(member.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600">
                   <Trash2 className="h-4 w-4" />
                 </button>
               )}
@@ -236,18 +236,18 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
           <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           <div className="max-h-80 overflow-y-auto space-y-2">
             {filteredAvailable.map((u) => (
-              <div key={u.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
+              <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted">
                 <div className="flex items-center gap-3">
                   <Avatar name={u.name} size="sm" />
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{u.name}</p>
-                    <p className="text-xs text-slate-500">{u.email}</p>
+                    <p className="text-sm font-medium text-foreground">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
                 </div>
                 <Button size="sm" onClick={() => handleAdd(u.id)}>Add</Button>
               </div>
             ))}
-            {filteredAvailable.length === 0 && <p className="text-sm text-slate-500 text-center py-4">No available users found.</p>}
+            {filteredAvailable.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No available users found.</p>}
           </div>
         </div>
       </Modal>
@@ -269,14 +269,14 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Employee</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Week</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Regular</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Overtime</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Regular</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Overtime</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -286,12 +286,12 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
                 const end = new Date(start)
                 end.setDate(end.getDate() + 4)
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm text-slate-700">{user?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500">{formatDate(start)} – {formatDate(end)}</td>
-                    <td className="px-4 py-3 text-right text-sm text-slate-700">{t.regularHours.toFixed(1)}h</td>
-                    <td className="px-4 py-3 text-right text-sm text-slate-700">{t.overtimeHours.toFixed(1)}h</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-slate-900">{t.totalHours.toFixed(1)}h</td>
+                  <tr key={t.id} className="hover:bg-muted">
+                    <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{t.regularHours.toFixed(1)}h</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{t.overtimeHours.toFixed(1)}h</td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                   </tr>
                 )
@@ -329,14 +329,14 @@ function DocumentsTab({ documents: projectDocuments }: { documents: Document[] }
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {projectDocuments.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+            <div key={doc.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
               <div>
-                <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
+                <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
-                <button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="File type"><span className="text-xs font-medium uppercase">{doc.mimeType.split('/')[1] || doc.mimeType}</span></button>
+                <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
+                <button type="button" className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="File type"><span className="text-xs font-medium uppercase">{doc.mimeType.split('/')[1] || doc.mimeType}</span></button>
               </div>
             </div>
           ))}
@@ -359,8 +359,8 @@ function ActivityTab({ activities: projectActivities, users }: { activities: Act
               <div key={activity.id} className="flex gap-4">
                 <Avatar name={user?.name || 'Unknown'} size="sm" />
                 <div>
-                  <p className="text-sm text-slate-700">{activity.description}</p>
-                  <p className="text-xs text-slate-500">{user?.name} • {formatDate(activity.createdAt)}</p>
+                  <p className="text-sm text-foreground">{activity.description}</p>
+                  <p className="text-xs text-muted-foreground">{user?.name} • {formatDate(activity.createdAt)}</p>
                 </div>
               </div>
             )

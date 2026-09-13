@@ -7,6 +7,7 @@ import { Switch } from '../../components/ui/Switch'
 import { Checkbox } from '../../components/ui/Checkbox'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../contexts/ToastContext'
+import { getOrgSettings, putOrgSettings } from '../../services/settingsService'
 import type { DayKey } from '../../types/project'
 
 const timezones = [
@@ -51,48 +52,42 @@ export function Settings() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const stored = localStorage.getItem('eniac_settings')
-      if (!stored || cancelled) return
       try {
-        const data = JSON.parse(stored)
-        if (data.companyName) setCompanyName(data.companyName)
-        if (data.timezone) setTimezone(data.timezone)
-        if (data.weeklyStartDay) setWeeklyStartDay(data.weeklyStartDay)
-        if (data.workdays) setWorkdays(data.workdays)
-        if (data.standardWeeklyHours) setStandardWeeklyHours(data.standardWeeklyHours)
-        if (typeof data.weekendOvertimeEnabled === 'boolean') setWeekendOvertimeEnabled(data.weekendOvertimeEnabled)
-        if (typeof data.submissionNotifications === 'boolean') setSubmissionNotifications(data.submissionNotifications)
-        if (typeof data.deadlineReminders === 'boolean') setDeadlineReminders(data.deadlineReminders)
-        if (typeof data.approvalNotifications === 'boolean') setApprovalNotifications(data.approvalNotifications)
-        if (data.logoPreview) setLogoPreview(data.logoPreview)
+        const settings = await getOrgSettings()
+        if (cancelled) return
+        setCompanyName(settings.companyName)
+        setTimezone(settings.timezone)
+        setWeeklyStartDay(settings.weeklyStartDay)
+        setWorkdays(settings.workdays)
+        setStandardWeeklyHours(String(settings.standardWeeklyHours))
+        setWeekendOvertimeEnabled(settings.weekendOvertimeEnabled)
       } catch {
-        // ignore
+        if (!cancelled) addToast('error', 'Failed to load settings')
       }
     }
     load()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [addToast])
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    const data = {
-      companyName,
-      timezone,
-      weeklyStartDay,
-      workdays,
-      standardWeeklyHours,
-      weekendOvertimeEnabled,
-      submissionNotifications,
-      deadlineReminders,
-      approvalNotifications,
-      logoPreview,
+    try {
+      await putOrgSettings({
+        companyName,
+        timezone,
+        weeklyStartDay,
+        workdays,
+        standardWeeklyHours: Number(standardWeeklyHours),
+        weekendOvertimeEnabled,
+      })
+      addToast('success', 'Settings saved successfully')
+    } catch {
+      addToast('error', 'Failed to save settings')
+    } finally {
+      setIsSaving(false)
     }
-    localStorage.setItem('eniac_settings', JSON.stringify(data))
-    addToast('success', 'Settings saved successfully')
-    setIsSaving(false)
   }
 
   const handleWorkdayChange = (day: string, checked: boolean) => {
@@ -101,15 +96,14 @@ export function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <strong>Note:</strong> These settings are stored locally in your browser and do not affect backend validation.
-        Timesheet rules (Mon–Fri, 40h week) are enforced server-side and cannot be changed here.
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        <strong>Note:</strong> These settings are saved to the organization database and affect backend validation (e.g. the weekly hours target used in the timesheet editor).
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage organization and timesheet preferences.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage organization and timesheet preferences.</p>
         </div>
         <Button onClick={handleSave} loading={isSaving}>
           Save Changes
@@ -117,22 +111,22 @@ export function Settings() {
       </div>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Organization</h2>
+            <h2 className="text-lg font-semibold text-foreground">Organization</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
           <Input label="Company Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Enter company name" />
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Logo</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Logo</label>
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted">
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-xs text-slate-400">Logo</span>
+                  <span className="text-xs text-muted-foreground">Logo</span>
                 )}
               </div>
               <div>
@@ -144,6 +138,11 @@ export function Settings() {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
+                    const MAX_LOGO_BYTES = 2 * 1024 * 1024
+                    if (file.size > MAX_LOGO_BYTES) {
+                      addToast('error', 'Logo must be 2MB or smaller')
+                      return
+                    }
                     const reader = new FileReader()
                     reader.onload = (event) => {
                       const result = event.target?.result
@@ -164,23 +163,23 @@ export function Settings() {
                 )}
               </div>
             </div>
-            <p className="mt-1 text-xs text-slate-500">PNG, JPG up to 2MB. UI only.</p>
+            <p className="mt-1 text-xs text-muted-foreground">PNG, JPG up to 2MB. UI only.</p>
           </div>
           <Select label="Timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} options={timezones} />
         </div>
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
             <Clock3 className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Timesheet Settings</h2>
+            <h2 className="text-lg font-semibold text-foreground">Timesheet Settings</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
           <Select label="Weekly Start Day" value={weeklyStartDay} onChange={(e) => setWeeklyStartDay(e.target.value as DayKey)} options={[{ value: 'mon', label: 'Monday' }, { value: 'tue', label: 'Tuesday' }, { value: 'wed', label: 'Wednesday' }, { value: 'thu', label: 'Thursday' }, { value: 'fri', label: 'Friday' }, { value: 'sat', label: 'Saturday' }, { value: 'sun', label: 'Sunday' }]} />
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Default Workdays</p>
+            <p className="mb-2 text-sm font-medium text-foreground">Default Workdays</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {weekDays.map((day) => (
                 <Checkbox key={day.value} label={day.label} checked={workdays.includes(day.value)} onChange={(checked) => handleWorkdayChange(day.value, checked)} />
@@ -193,10 +192,10 @@ export function Settings() {
       </Card>
 
       <Card>
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+            <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">

@@ -78,14 +78,14 @@ export function Table<T>({
   return (
     <div className="w-full overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200">
-        <thead className={stickyHeader ? 'sticky top-0 bg-slate-50 z-10' : 'bg-slate-50'}>
+        <thead className={stickyHeader ? 'sticky top-0 bg-muted z-10' : 'bg-muted'}>
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 scope="col"
                 onClick={() => col.sortable && handleSort(col.key)}
-                className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 ${alignClasses[col.align || 'left']} ${col.sortable ? 'cursor-pointer select-none hover:text-slate-700' : ''}`}
+                className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground ${alignClasses[col.align || 'left']} ${col.sortable ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
                 style={col.width ? { width: col.width } : undefined}
               >
                 <span className="inline-flex items-center gap-1">
@@ -94,20 +94,20 @@ export function Table<T>({
                 </span>
               </th>
             ))}
-            {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>}
+            {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 bg-white">
+        <tbody className="divide-y divide-slate-200 bg-card">
           {paginatedData.map((row, idx) => (
             <tr
               key={idx}
               onClick={() => onRowClick?.(row)}
-              className={onRowClick ? 'cursor-pointer transition-colors hover:bg-slate-50' : 'transition-colors hover:bg-slate-50'}
+              className={onRowClick ? 'cursor-pointer transition-colors hover:bg-muted' : 'transition-colors hover:bg-muted'}
             >
               {columns.map((col) => (
                 <td
                   key={col.key}
-                  className={`px-4 py-3 text-sm text-slate-700 ${alignClasses[col.align || 'left']}`}
+                  className={`px-4 py-3 text-sm text-foreground ${alignClasses[col.align || 'left']}`}
                 >
                   {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '')}
                 </td>
@@ -122,23 +122,23 @@ export function Table<T>({
         </tbody>
       </table>
       {pageSize && totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+        <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-muted"
           >
             Previous
           </button>
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-muted-foreground">
             Page {page + 1} of {totalPages}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-muted"
           >
             Next
           </button>

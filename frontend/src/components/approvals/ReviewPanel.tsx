@@ -15,9 +15,9 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
@@ -122,21 +122,21 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-sm font-medium text-slate-500">Employee</p>
-              <p className="mt-1 text-sm text-slate-900">{employee?.name || '-'}</p>
+              <p className="text-sm font-medium text-muted-foreground">Employee</p>
+              <p className="mt-1 text-sm text-foreground">{employee?.name || '-'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Project</p>
-              <p className="mt-1 text-sm text-slate-900">{project?.name || '-'}</p>
+              <p className="text-sm font-medium text-muted-foreground">Project</p>
+              <p className="mt-1 text-sm text-foreground">{project?.name || '-'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Week</p>
-              <p className="mt-1 text-sm text-slate-900">
+              <p className="text-sm font-medium text-muted-foreground">Week</p>
+              <p className="mt-1 text-sm text-foreground">
                 {formatDate(start)} – {formatDate(end)}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Status</p>
+              <p className="text-sm font-medium text-muted-foreground">Status</p>
               <div className="mt-1">
                 <StatusBadge status={timesheet.status} size="sm" />
               </div>
@@ -144,40 +144,40 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-3">Timesheet Entries</p>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Timesheet Entries</p>
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Work Item</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Mon</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Tue</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Wed</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Thu</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Fri</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Sat</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Sun</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Work Item</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mon</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tue</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wed</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Thu</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fri</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sat</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sun</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
+                <tbody className="divide-y divide-slate-200 bg-card">
                   {timesheet.entries.map((entry) => {
                     const entryTotal = Object.values(entry.hours).reduce((sum, h) => sum + h, 0)
                     return (
                       <tr key={entry.id}>
-                        <td className="px-4 py-2 text-sm text-slate-900">{entry.description}</td>
+                        <td className="px-4 py-2 text-sm text-foreground">{entry.description}</td>
                         {(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const).map((day) => (
-                          <td key={day} className="px-4 py-2 text-center text-sm text-slate-700">{entry.hours[day].toFixed(1)}</td>
+                          <td key={day} className="px-4 py-2 text-center text-sm text-foreground">{entry.hours[day].toFixed(1)}</td>
                         ))}
-                        <td className="px-4 py-2 text-right text-sm font-medium text-slate-900">{entryTotal.toFixed(1)}</td>
+                        <td className="px-4 py-2 text-right text-sm font-medium text-foreground">{entryTotal.toFixed(1)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
-                <tfoot className="bg-slate-50">
+                <tfoot className="bg-muted">
                   <tr>
-                    <td colSpan={8} className="px-4 py-2 text-right text-sm font-semibold text-slate-900">Total</td>
-                    <td className="px-4 py-2 text-right text-sm font-semibold text-slate-900">{timesheet.totalHours.toFixed(1)}h</td>
+                    <td colSpan={8} className="px-4 py-2 text-right text-sm font-semibold text-foreground">Total</td>
+                    <td className="px-4 py-2 text-right text-sm font-semibold text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
                   </tr>
                 </tfoot>
               </table>
@@ -185,29 +185,29 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Regular Hours</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{timesheet.regularHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.regularHours.toFixed(1)}h</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Overtime</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{timesheet.overtimeHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Overtime</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.overtimeHours.toFixed(1)}h</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-500">Total Hours</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{timesheet.totalHours.toFixed(1)}h</p>
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Total Hours</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.totalHours.toFixed(1)}h</p>
             </div>
           </div>
 
           {timesheet.notes && (
             <div>
-              <p className="text-sm font-medium text-slate-500">Notes</p>
-              <p className="mt-1 text-sm text-slate-700">{timesheet.notes}</p>
+              <p className="text-sm font-medium text-muted-foreground">Notes</p>
+              <p className="mt-1 text-sm text-foreground">{timesheet.notes}</p>
             </div>
           )}
 
           {timesheet.status === 'pending' && canReview && (
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
               <Button variant="secondary" onClick={() => setIsDeclineOpen(true)} disabled={isProcessing}>Decline</Button>
               <Button onClick={() => setIsApproveOpen(true)} disabled={isProcessing}>Approve</Button>
             </div>

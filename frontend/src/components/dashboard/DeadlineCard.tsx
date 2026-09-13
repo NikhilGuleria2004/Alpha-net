@@ -31,15 +31,15 @@ export function DeadlineCard({ projectName, deadline, icon }: DeadlineCardProps)
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{projectName}</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-foreground">{projectName}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
             Deadline: {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(deadlineDate)}
           </p>
         </div>
-        {icon && <div className="text-slate-400">{icon}</div>}
+        {icon && <div className="text-muted-foreground">{icon}</div>}
       </div>
       <div className="mt-4">
         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusColor === 'success' ? 'bg-emerald-50 text-emerald-700' : statusColor === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>

@@ -49,46 +49,46 @@ export function SubmissionDetails() {
       <div className="flex items-start gap-4">
         <Button variant="ghost" onClick={() => navigate('/user/submissions')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Submission Details</h1>
-          <p className="mt-1 text-sm text-slate-500">{project?.name}</p>
+          <h1 className="text-2xl font-semibold text-foreground">Submission Details</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{project?.name}</p>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Overview</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Overview</h3>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Status</p>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <StatusBadge status={timesheet.status} />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Submitted</p>
-                <p className="mt-1 text-sm text-slate-900">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Submitted</p>
+                <p className="mt-1 text-sm text-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</p>
               </div>
               {reviewer && timesheet.review && (
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Reviewer</p>
+                  <p className="text-sm font-medium text-muted-foreground">Reviewer</p>
                   <div className="mt-1 flex items-center gap-2">
                     <Avatar name={reviewer.name} size="sm" />
-                    <span className="text-sm text-slate-900">{reviewer.name}</span>
+                    <span className="text-sm text-foreground">{reviewer.name}</span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">{timesheet.review?.reviewedAt ? formatDate(timesheet.review.reviewedAt) : ''}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{timesheet.review?.reviewedAt ? formatDate(timesheet.review.reviewedAt) : ''}</p>
                 </div>
               )}
               {timesheet.status === 'declined' && timesheet.review?.reason && (
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Decline Reason</p>
-                  <p className="mt-1 text-sm text-slate-700">{timesheet.review.reason}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Decline Reason</p>
+                  <p className="mt-1 text-sm text-foreground">{timesheet.review.reason}</p>
                 </div>
               )}
               {timesheet.status === 'withdrawn' && timesheet.review?.reason && (
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Withdrawal Reason</p>
-                  <p className="mt-1 text-sm text-slate-700">{timesheet.review.reason}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Withdrawal Reason</p>
+                  <p className="mt-1 text-sm text-foreground">{timesheet.review.reason}</p>
                 </div>
               )}
             </div>
@@ -97,8 +97,8 @@ export function SubmissionDetails() {
 
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Timeline</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Timeline</h3>
             </div>
             <div className="p-5">
               <div className="space-y-4">
@@ -109,9 +109,9 @@ export function SubmissionDetails() {
                       {index < timeline.length - 1 && <div className="h-full w-px bg-slate-200" />}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{event.label}</p>
-                      <p className="text-xs text-slate-500">{event.description}</p>
-                      <p className="mt-1 text-xs text-slate-400">{formatDate(event.date)}</p>
+                      <p className="text-sm font-medium text-foreground">{event.label}</p>
+                      <p className="text-xs text-muted-foreground">{event.description}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.date)}</p>
                     </div>
                   </div>
                 ))}

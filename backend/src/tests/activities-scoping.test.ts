@@ -175,7 +175,7 @@ describe("GET /activities collection scoping (QA C4 regression)", () => {
     expect(typeof (users as any).findOne).toBe("function")
     // now call the controller's path directly via the test's own imports to prove
     // the mock is wired for BOTH the test and the controller (same module mock).
-    const usersDirect = await getDb().collection(COLLECTIONS.USERS)
+    const usersDirect = g.collection(COLLECTIONS.USERS)
     expect(usersDirect).toBe(users)
     const res = await request(createApp()).get(`/api/v1/activities?userId=${subordinateId}`).set("Authorization", "Bearer s")
     expect(res.status).toBe(200)

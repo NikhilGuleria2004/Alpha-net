@@ -59,69 +59,69 @@ export function ProjectDetails() {
         <Button variant="ghost" onClick={() => navigate('/user/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">{project.name}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
             <StatusBadge status={project.status} />
           </div>
-          <p className="mt-1 text-sm text-slate-500">{project.client}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{project.client}</p>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Details</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">Details</h3>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Description</p>
-                <p className="mt-1 text-sm text-slate-900">{project.description || '-'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Description</p>
+                <p className="mt-1 text-sm text-foreground">{project.description || '-'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Start Date</p>
-                <p className="mt-1 text-sm text-slate-900">{formatDate(project.startDate)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Start Date</p>
+                <p className="mt-1 text-sm text-foreground">{formatDate(project.startDate)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">End Date</p>
-                <p className="mt-1 text-sm text-slate-900">{formatDate(project.endDate)}</p>
+                <p className="text-sm font-medium text-muted-foreground">End Date</p>
+                <p className="mt-1 text-sm text-foreground">{formatDate(project.endDate)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Deadline</p>
-                <p className="mt-1 text-sm text-slate-900">{formatDate(project.deadline)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Deadline</p>
+                <p className="mt-1 text-sm text-foreground">{formatDate(project.deadline)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Project Manager</p>
-                <p className="mt-1 text-sm text-slate-900">{manager?.name || '-'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Project Manager</p>
+                <p className="mt-1 text-sm text-foreground">{manager?.name || '-'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Supervisor</p>
-                <p className="mt-1 text-sm text-slate-900">{supervisor?.name || '-'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Supervisor</p>
+                <p className="mt-1 text-sm text-foreground">{supervisor?.name || '-'}</p>
               </div>
             </div>
           </Card>
 
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">This Week's Timesheet</h3>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-lg font-semibold text-foreground">This Week's Timesheet</h3>
             </div>
             <div className="p-5">
               {myTimesheet ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Status</span>
+                    <span className="text-sm text-foreground">Status</span>
                     <StatusBadge status={myTimesheet.status} size="sm" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Regular</span>
-                    <span className="text-sm font-medium text-slate-900">{myTimesheet.regularHours.toFixed(1)}h</span>
+                    <span className="text-sm text-foreground">Regular</span>
+                    <span className="text-sm font-medium text-foreground">{myTimesheet.regularHours.toFixed(1)}h</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Overtime</span>
-                    <span className="text-sm font-medium text-slate-900">{myTimesheet.overtimeHours.toFixed(1)}h</span>
+                    <span className="text-sm text-foreground">Overtime</span>
+                    <span className="text-sm font-medium text-foreground">{myTimesheet.overtimeHours.toFixed(1)}h</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Total</span>
-                    <span className="text-sm font-semibold text-slate-900">{myTimesheet.totalHours.toFixed(1)}h</span>
+                    <span className="text-sm text-foreground">Total</span>
+                    <span className="text-sm font-semibold text-foreground">{myTimesheet.totalHours.toFixed(1)}h</span>
                   </div>
                   <Button className="w-full" onClick={() => navigate(`/user/timesheets/${myTimesheet.id}`)}>Open This Week's Timesheet</Button>
                 </div>
@@ -134,8 +134,8 @@ export function ProjectDetails() {
 
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Documents</h3>
+            <div className="border-b border-border px-5 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">Documents</h3>
             </div>
             <div className="p-5">
               {projectDocuments.length === 0 ? (
@@ -143,12 +143,12 @@ export function ProjectDetails() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {projectDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                    <div key={doc.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                        <p className="text-xs text-slate-500">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
+                        <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatFileSize(doc.size)} • Uploaded {formatDate(doc.createdAt)}</p>
                       </div>
-                      <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-wait disabled:opacity-50" aria-label="Download document"><Download className="h-4 w-4" /></button>
                     </div>
                   ))}
                 </div>

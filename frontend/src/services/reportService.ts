@@ -8,6 +8,7 @@ function toQueryString(filters: ReportFilters): string {
   if (filters.projectId) params.set('projectId', filters.projectId)
   if (filters.userId) params.set('userId', filters.userId)
   if (filters.department) params.set('department', filters.department)
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status)
   return params.toString()
 }
 

@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express'
-import { getNotificationsByUserId, markNotificationAsRead, markAllNotificationsAsRead, sendDeadlineNotifications } from '../services/notification.service.js'
+import { getNotificationsByUserId, countUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead, sendDeadlineNotifications } from '../services/notification.service.js'
 import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 import { listNotificationsQuery } from '../schemas/notification.schema.js'
 import { logger } from '../lib/logger.js'
@@ -19,8 +19,10 @@ export async function listNotifications(req: AuthenticatedRequest, res: Response
 }
 
 export async function getUnreadCount(req: AuthenticatedRequest, res: Response) {
-  const notifications = await getNotificationsByUserId(req.user!.userId, { read: false })
-  res.json({ unreadCount: notifications.length })
+  // M2: countDocuments instead of fetching (the list default limit is 50, so
+  // notifications.length capped the badge at 50 forever for heavy users).
+  const unreadCount = await countUnreadNotifications(req.user!.userId)
+  res.json({ unreadCount })
 }
 
 export async function markAsRead(req: AuthenticatedRequest, res: Response) {

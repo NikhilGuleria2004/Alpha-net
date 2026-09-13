@@ -60,7 +60,7 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="rounded-lg bg-white p-6 shadow-lg w-full max-w-md"
+        className="rounded-lg bg-card p-6 shadow-lg w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-2">{title}</h3>

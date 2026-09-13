@@ -53,7 +53,7 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
       {isOpen && coords && ReactDOM.createPortal(
         <div
           ref={menuRef}
-          className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="fixed z-50 w-56 rounded-lg border border-border bg-card py-1 shadow-lg"
           style={{ top: coords.top, left: coords.left }}
           role="menu"
         >
@@ -75,7 +75,7 @@ interface DropdownItemProps {
 
 export function DropdownItem({ children, onClick, icon, destructive, divider }: DropdownItemProps) {
   if (divider) {
-    return <div className="my-1 border-t border-slate-200" role="separator" />
+    return <div className="my-1 border-t border-border" role="separator" />
   }
   return (
     <button
@@ -83,11 +83,11 @@ export function DropdownItem({ children, onClick, icon, destructive, divider }: 
       onClick={() => {
         onClick?.()
       }}
-      className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-slate-50 ${
-        destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'
+      className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-muted ${
+        destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'
       }`}
     >
-      {icon && <span className="shrink-0 text-slate-400">{icon}</span>}
+      {icon && <span className="shrink-0 text-muted-foreground">{icon}</span>}
       {children}
     </button>
   )

@@ -16,18 +16,18 @@ export function MobileNav({ isOpen, onClose, children }: MobileNavProps) {
       aria-modal="true"
     >
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+      <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
               <span className="text-sm font-bold">A</span>
             </div>
-            <span className="text-lg font-semibold text-slate-900">Eniac</span>
+            <span className="text-lg font-semibold text-foreground">Eniac</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -58,10 +58,10 @@ export function MobileNavItem({ to, children, icon }: MobileNavItemProps) {
         type="button"
         onClick={() => navigate(to)}
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-          isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+          isActive ? 'bg-indigo-50 text-indigo-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         }`}
       >
-        {icon && <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>{icon}</span>}
+        {icon && <span className={isActive ? 'text-indigo-600' : 'text-muted-foreground'}>{icon}</span>}
         {children}
       </button>
     </li>
