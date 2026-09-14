@@ -180,7 +180,6 @@ async function seedProjectAndTimesheet(
         managerId: adminId,
         supervisorId: supervisorId,
         teamMemberIds: [userId],
-        documentIds: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       },

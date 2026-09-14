@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
 import { validateEmail, validatePassword } from '../../utils/validation'
+import { canDemoteAdmin } from '../../utils/permissions'
 import type { CreateUserInput } from '../../types/user'
 
 export function EditUser() {
@@ -32,6 +33,12 @@ export function EditUser() {
     supervisorId: undefined,
     password: '',
   })
+
+  // QA M10: pre-check the same guardrails the backend enforces so the admin
+  // discovers the rule before submitting, not via a 400 toast after the fact.
+  // These depend on the current form state, so they're computed after `form`
+  // is declared and re-derived on every render.
+  const demoteGuard = user ? canDemoteAdmin(user, users) : { ok: false, reason: 'Loading…' }
 
   useEffect(() => {
     if (user) {
@@ -125,9 +132,17 @@ export function EditUser() {
             <Input label="Email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} error={errors.email} required />
             <Input label="Employee ID" value={form.employeeId} onChange={(e) => updateField('employeeId', e.target.value)} error={errors.employeeId} required />
             <Select label="Department" value={form.department} onChange={(e) => updateField('department', e.target.value)} options={[{ value: '', label: 'Select department' }, ...departments.map((d) => ({ value: d, label: d }))]} error={errors.department} required />
-             <Select label="Role" value={form.role} onChange={(e) => updateField('role', e.target.value as 'admin' | 'user')} options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]} />
-             <Select label="Status" value={form.status} onChange={(e) => updateField('status', e.target.value as 'active' | 'inactive')} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
-             <Select label="Supervisor" value={form.supervisorId || ''} onChange={(e) => updateField('supervisorId', e.target.value || undefined)} options={[{ value: '', label: 'None' }, ...supervisorOptions.map((u) => ({ value: u.id, label: u.name }))]} />
+<Select label="Role" value={form.role} onChange={(e) => updateField('role', e.target.value as 'admin' | 'user')} options={[
+                { value: 'user', label: 'User' },
+                // QA M10: disable the Admin option when demoting would leave
+                // no admins — the admin discovers the rule before submitting.
+                { value: 'admin', label: 'Admin', disabled: !demoteGuard.ok },
+              ]} />
+              {!demoteGuard.ok && form.role === 'admin' && (
+                <p className="mt-1 text-xs text-amber-600" role="alert">{demoteGuard.reason}</p>
+              )}
+              <Select label="Status" value={form.status} onChange={(e) => updateField('status', e.target.value as 'active' | 'inactive')} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+              <Select label="Supervisor" value={form.supervisorId || ''} onChange={(e) => updateField('supervisorId', e.target.value || undefined)} options={[{ value: '', label: 'None' }, ...supervisorOptions.map((u) => ({ value: u.id, label: u.name }))]} />
           </div>
         </Card>
 

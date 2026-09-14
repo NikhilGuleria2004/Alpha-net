@@ -7,6 +7,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Avatar } from '../ui/Avatar'
 import { EmptyState } from '../ui/EmptyState'
+import { resolveNotificationRoute } from '../../utils/notificationRoutes'
 
 interface TopbarProps {
   onToggleMobile?: () => void
@@ -279,17 +280,10 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                         type="button"
                         onClick={async () => {
                           await markAsRead(notification.id)
-                          if (notification.relatedId) {
-                            const type = notification.type
-                            const prefix = user?.role === 'admin' ? '/admin' : user?.isSupervisor ? '/supervisor' : '/user'
-                            if (type === 'submission' || type === 'approval' || type === 'decline' || type === 'withdrawal') {
-                              navigate(`${prefix}/submissions`)
-                            } else if (type === 'deadline' || type === 'assignment') {
-                              navigate(`${prefix}/projects`)
-                            } else {
-                              navigate(`${prefix}/submissions`)
-                            }
-                          }
+                          // QA M11: deep-link to the specific entity the
+                          // notification refers to, not a generic list.
+                          const route = resolveNotificationRoute(notification, user)
+                          if (route) navigate(route)
                           setIsNotificationsOpen(false)
                         }}
                         className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted ${notification.read ? 'opacity-60' : 'bg-indigo-50/50'}`}

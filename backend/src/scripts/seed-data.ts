@@ -185,7 +185,6 @@ async function seedProjects(userIds: Map<string, string>) {
       managerId: new ObjectId(managerId),
       supervisorId: new ObjectId(supervisorId),
       teamMemberIds: teamMembers.map((id) => new ObjectId(id)),
-      documentIds: [],
       createdAt: startDate,
       updatedAt: startDate,
     }

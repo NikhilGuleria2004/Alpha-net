@@ -15,7 +15,6 @@ export interface Project {
   managerId: string
   supervisorId: string
   teamMemberIds: string[]
-  documentIds: string[]
   createdAt: string
   updatedAt: string
 }

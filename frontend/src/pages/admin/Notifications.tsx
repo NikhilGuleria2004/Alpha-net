@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { formatDate } from '../../utils/date'
+import { resolveNotificationRoute } from '../../utils/notificationRoutes'
 import type { Notification } from '../../types/notification'
 
 export function Notifications() {
@@ -50,13 +51,11 @@ export function Notifications() {
     if (!notification.read) {
       await markNotificationAsRead(notification.id)
     }
-    if (notification.relatedId) {
-      if (notification.type === 'submission' || notification.type === 'approval' || notification.type === 'decline' || notification.type === 'withdrawal') {
-        navigate(`/admin/timesheets`)
-      } else if (notification.type === 'deadline' || notification.type === 'assignment' || notification.type === 'document') {
-        navigate(`/admin/projects`)
-      }
-    }
+    // QA M11: deep-link to the specific entity the notification refers to,
+    // not a generic list. Admins/supervisors land on their approvals panel
+    // for timesheet notifications (that's their timesheet view).
+    const route = resolveNotificationRoute(notification, user)
+    if (route) navigate(route)
   }
 
   const NotificationItem = ({ notification }: { notification: Notification }) => (

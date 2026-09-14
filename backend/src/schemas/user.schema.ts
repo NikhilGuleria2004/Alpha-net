@@ -24,6 +24,18 @@ export const updateUserSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 })
 
+// QA M4: self-service profile update. A user can change their own name,
+// email, employee ID and department — but NOT role/status/isSupervisor/
+// supervisorId/password (those are admin-only via PATCH /users/:id). This
+// schema deliberately omits the privileged fields so a client can't smuggle
+// them in.
+export const updateMyProfileSchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  email: z.string().email('Invalid email address').optional(),
+  employeeId: z.string().min(1, 'Employee ID is required').optional(),
+  department: z.string().min(1, 'Department is required').optional(),
+})
+
 export const assignSupervisorSchema = z.object({
   supervisorId: z.string().nullish(),
 })

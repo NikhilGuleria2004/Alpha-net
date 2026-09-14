@@ -8,7 +8,7 @@ import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 
 export function Timesheets() {
   const { timesheets, users, projects } = useAppData()
@@ -99,14 +99,11 @@ export function Timesheets() {
                 {filteredTimesheets.map((timesheet) => {
                   const employee = users.find((u) => u.id === timesheet.userId)
                   const project = projects.find((p) => p.id === timesheet.projectId)
-                  const start = new Date(timesheet.weekStart)
-                  const end = new Date(start)
-                  end.setDate(end.getDate() + 4)
                   return (
                     <tr key={timesheet.id} className="hover:bg-muted">
                       <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>

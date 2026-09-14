@@ -3,7 +3,7 @@ import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { getUsers, getUserById, createUser, updateUser, activateUser, deactivateUser, getUserByEmail, getUserByEmployeeId, getSupervisors, getSupervisorUsers } from '../services/user.service.js'
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
-import { createUserSchema, updateUserSchema, assignSupervisorSchema } from '../schemas/user.schema.js'
+import { createUserSchema, updateUserSchema, updateMyProfileSchema, assignSupervisorSchema } from '../schemas/user.schema.js'
 import { ObjectId } from 'mongodb'
 
 /**
@@ -227,4 +227,41 @@ export async function listSupervisors(_req: AuthenticatedRequest, res: Response)
 export async function supervisorUsers(req: AuthenticatedRequest, res: Response) {
   const users = await getSupervisorUsers(req.params.id as string)
   res.json({ users })
+}
+
+/**
+ * QA M4: self-service profile update. A user can change their own name,
+ * email, employee ID and department — but NOT role/status/isSupervisor/
+ * supervisorId/password (those are admin-only via PATCH /users/:id). This
+ * handler uses the restricted `updateMyProfileSchema`, which deliberately
+ * omits the privileged fields so a client can't smuggle them in.
+ */
+export async function updateMyProfile(req: AuthenticatedRequest, res: Response) {
+  try {
+    const input = updateMyProfileSchema.parse(req.body)
+    const existing = await getUserById(req.user!.userId)
+    if (!existing) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } })
+    }
+    if (input.email && input.email !== existing.email) {
+      const emailTaken = await getUserByEmail(input.email)
+      if (emailTaken) {
+        return res.status(409).json({ error: { code: 'CONFLICT', message: 'Email already exists' } })
+      }
+    }
+    if (input.employeeId && input.employeeId !== existing.employeeId) {
+      const employeeIdTaken = await getUserByEmployeeId(input.employeeId)
+      if (employeeIdTaken) {
+        return res.status(409).json({ error: { code: 'CONFLICT', message: 'Employee ID already exists' } })
+      }
+    }
+    const user = await updateUser(req.user!.userId, input)
+    if (!user) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } })
+    }
+    res.json({ user })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update profile'
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
 }

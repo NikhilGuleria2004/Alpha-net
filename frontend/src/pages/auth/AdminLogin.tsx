@@ -5,12 +5,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { forgotPassword } from '../../services/authService'
 
 export function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
@@ -23,6 +23,29 @@ export function AdminLogin() {
     if (!password.trim()) newErrors.password = 'Password is required'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  // QA M6: "Forgot password?" used to be a <button type="button"> with no
+  // onClick, while the backend endpoint it would call was a 501 stub — the
+  // control was silently dead. Wire it to the endpoint and surface the honest
+  // "not implemented yet" message instead of doing nothing.
+  const handleForgotPassword = async () => {
+    const trimmed = email.trim()
+    if (!trimmed) {
+      addToast('info', 'Enter your email first, then click "Forgot password?"')
+      return
+    }
+    try {
+      await forgotPassword(trimmed)
+      addToast('success', 'If that account exists, a reset link is on its way.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.toLowerCase().includes('not implemented') || message.toLowerCase().includes('501')) {
+        addToast('info', "Password reset isn't available yet — contact your administrator.")
+      } else {
+        addToast('error', message || 'Failed to request a password reset')
+      }
+    }
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -110,16 +133,10 @@ export function AdminLogin() {
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
-                />
-                Remember me
-              </label>
-              <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700">
+              <span className="text-sm text-muted-foreground" title="Your session stays signed in via a secure refresh cookie.">
+                Stay signed in
+              </span>
+              <button type="button" onClick={handleForgotPassword} className="text-sm text-indigo-600 hover:text-indigo-700">
                 Forgot password?
               </button>
             </div>

@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
 import { Card } from '../../components/ui/Card'
@@ -7,7 +7,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { ReviewPanel } from '../../components/approvals/ReviewPanel'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
 
 type TabId = 'pending' | 'approved' | 'declined' | 'withdrawn'
@@ -17,10 +17,35 @@ export function Approvals() {
   const { timesheets, users, projects } = useAppData()
   const [activeTab, setActiveTab] = useState<TabId>('pending')
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // QA hygiene: Team-Timesheets "Review" used to navigate to the top of
+  // Approvals with no indication of which timesheet. Read ?timesheetId= on
+  // mount and auto-open the panel for that timesheet, then clear the param so
+  // closing the panel returns to the list rather than reopening it.
+  useEffect(() => {
+    const timesheetId = searchParams.get('timesheetId')
+    if (!timesheetId) return
+    const timesheet = timesheets.find((t) => t.id === timesheetId)
+    if (timesheet) {
+      setSelectedTimesheet(timesheet)
+    }
+    // Clear the param regardless so the back button behaves.
+    const next = new URLSearchParams(searchParams)
+    next.delete('timesheetId')
+    setSearchParams(next, { replace: true })
+  }, [timesheets, searchParams, setSearchParams])
 
   const supervisedProjectIds = useMemo(() => new Set(projects.filter((p) => p.supervisorId === user?.id).map((p) => p.id)), [projects, user])
+  // QA M9: the backend's getApprovals(reviewerId) returns timesheets for
+  // projects the supervisor *supervises* OR *is a member of*, plus users they
+  // supervise. The UI previously only matched projects.supervisorId ===
+  // user.id, so items the API returned could be missing from the UI (and
+  // vice-versa). Include team membership to match the API exactly.
+  const memberProjectIds = useMemo(() => new Set(projects.filter((p) => p.teamMemberIds.includes(user?.id ?? '')).map((p) => p.id)), [projects, user])
   const supervisedUserIds = useMemo(() => new Set(users.filter((u) => u.supervisorId === user?.id).map((u) => u.id)), [users, user])
-  const accessibleTimesheets = useMemo(() => timesheets.filter((t) => supervisedProjectIds.has(t.projectId) || supervisedUserIds.has(t.userId)), [timesheets, supervisedProjectIds, supervisedUserIds])
+  const accessibleProjectIds = useMemo(() => new Set([...supervisedProjectIds, ...memberProjectIds]), [supervisedProjectIds, memberProjectIds])
+  const accessibleTimesheets = useMemo(() => timesheets.filter((t) => accessibleProjectIds.has(t.projectId) || supervisedUserIds.has(t.userId)), [timesheets, accessibleProjectIds, supervisedUserIds])
 
   const pendingCount = accessibleTimesheets.filter((t) => t.status === 'pending').length
 
@@ -89,14 +114,11 @@ export function Approvals() {
                   {filteredTimesheets.map((timesheet) => {
                     const employee = users.find((u) => u.id === timesheet.userId)
                     const project = projects.find((p) => p.id === timesheet.projectId)
-                    const start = new Date(timesheet.weekStart)
-                    const end = new Date(start)
-                    end.setDate(end.getDate() + 4)
                     return (
                       <tr key={timesheet.id} className="hover:bg-muted">
                         <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                         <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
                         <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>

@@ -8,7 +8,8 @@ import { ActivityTimeline } from '../../components/dashboard/ActivityTimeline'
 import { DeadlineCard } from '../../components/dashboard/DeadlineCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { differenceInDays, getCurrentWeekStart } from '../../utils/date'
+import { differenceInDays, getCurrentWeekStart, formatWeekRange } from '../../utils/date'
+import type { ProjectStatus } from '../../types/project'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -40,7 +41,11 @@ export function AdminDashboard() {
   }, [appProjects])
 
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { active: 0, completed: 0, overdue: 0, draft: 0 }
+    // M18 (QA.md): the breakdown initialized only active/completed/overdue/draft,
+    // so `archived` projects were silently dropped from the count even though
+    // the type includes them. Include archived so the breakdown matches the
+    // full project set.
+    const counts: Record<string, number> = { active: 0, completed: 0, overdue: 0, draft: 0, archived: 0 }
     for (const p of appProjects) {
       if (counts[p.status] !== undefined) {
         counts[p.status]++
@@ -145,16 +150,13 @@ export function AdminDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {pendingApprovals.map((timesheet) => {
-                        const start = new Date(timesheet.weekStart)
-                        const end = new Date(start)
-                        end.setDate(end.getDate() + 4)
                         const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
                         return (
                           <tr key={timesheet.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/approvals`)}>
                             <td className="px-4 py-3 text-sm text-foreground">{getUserName(timesheet.userId)}</td>
                             <td className="px-4 py-3 text-sm text-foreground">{getProjectName(timesheet.projectId)}</td>
                             <td className="px-4 py-3 text-sm text-foreground">
-                              {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}
+                              {formatWeekRange(timesheet.weekStart)}
                             </td>
                             <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -182,9 +184,6 @@ export function AdminDashboard() {
                   </table>
                   <div className="sm:hidden divide-y divide-slate-200">
                     {pendingApprovals.map((timesheet) => {
-                      const start = new Date(timesheet.weekStart)
-                      const end = new Date(start)
-                      end.setDate(end.getDate() + 4)
                       const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
                       return (
                         <div key={timesheet.id} className="p-4" onClick={() => navigate(`/admin/approvals`)}>
@@ -198,7 +197,7 @@ export function AdminDashboard() {
                           <div className="mt-3 space-y-1.5 text-xs text-foreground">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Week</span>
-                              <span className="text-foreground">{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}</span>
+                              <span className="text-foreground">{formatWeekRange(timesheet.weekStart)}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Hours</span>
@@ -235,7 +234,7 @@ export function AdminDashboard() {
                 {Object.entries(statusCounts).map(([status, count]) => (
                   <div key={status} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={status as 'active' | 'completed' | 'overdue' | 'draft'} size="sm" />
+                      <StatusBadge status={status as ProjectStatus} size="sm" />
                     </div>
                     <span className="text-sm font-medium text-foreground">{count}</span>
                   </div>

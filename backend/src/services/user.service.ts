@@ -5,6 +5,7 @@ import { ObjectId } from 'mongodb'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 import { invalidateUserCache } from '../middleware/auth.js'
+import { escapeRegex } from '../lib/regex.js'
 
 export interface User {
   id: string
@@ -52,9 +53,12 @@ export async function getUsers(filters?: { role?: string; status?: string; isSup
   if (filters?.isSupervisor !== undefined) query.isSupervisor = filters.isSupervisor
   if (filters?.supervisorId) query.supervisorId = new ObjectId(filters.supervisorId)
   if (filters?.search) {
+    // QA M15: escape metacharacters so the search is a literal substring
+    // match instead of a regex the user can control.
+    const escaped = escapeRegex(filters.search)
     query.$or = [
-      { name: { $regex: filters.search, $options: 'i' } },
-      { email: { $regex: filters.search, $options: 'i' } },
+      { name: { $regex: escaped, $options: 'i' } },
+      { email: { $regex: escaped, $options: 'i' } },
     ]
   }
 

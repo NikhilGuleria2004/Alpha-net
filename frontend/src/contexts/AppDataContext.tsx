@@ -30,6 +30,13 @@ interface AppDataContextValue {
   refreshNotifications: () => Promise<void>
   refreshActivities: () => Promise<void>
   refreshDocuments: () => Promise<Document[]>
+  // QA M11b: live notification updates. The bell previously only refreshed
+  // when some user action triggered a refresh; a background tab never learned
+  // of approvals. startNotificationPoll/stopNotificationPoll let the
+  // NotificationContext mount a visibility-aware 15s poller that refreshes
+  // notifications and the unread count without a user action.
+  startNotificationPoll: () => void
+  stopNotificationPoll: () => void
   createProject: (data: CreateProjectInput) => Promise<Project>
   updateProject: (id: string, data: Partial<CreateProjectInput>) => Promise<Project | undefined>
   deleteProject: (id: string) => Promise<boolean>
@@ -140,6 +147,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const refreshNotifications = useCallback(async () => {
     const data = await fetchNotifications()
     setNotifications(data)
+  }, [])
+
+  // QA M11b: live notification updates. The bell previously only refreshed
+  // when some user action triggered a refresh; a background tab never learned
+  // of approvals. This polls every 15s while the tab is visible and the user
+  // is authenticated, pausing when the tab is hidden so idle tabs don't waste
+  // requests. It's started/stopped by the NotificationContext, which is the
+  // only consumer that cares about unread counts.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // QA A11: the interval closure captures isAuthenticated at creation time, so
+  // a logout after the poller started would be invisible to scheduled ticks
+  // and keep firing /notifications with no credentials. The ref is checked on
+  // every tick instead; NotificationContext also stops the poll on logout.
+  const isAuthRef = useRef(false)
+  useEffect(() => {
+    isAuthRef.current = isAuthenticated
+  }, [isAuthenticated])
+  const startNotificationPoll = useCallback(() => {
+    if (!isAuthenticated || pollRef.current) return
+    pollRef.current = setInterval(() => {
+      if (!isAuthRef.current || document.visibilityState === 'hidden') return
+      void refreshNotifications()
+    }, 15_000)
+  }, [isAuthenticated, refreshNotifications])
+  const stopNotificationPoll = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
   }, [])
 
   const refreshActivities = async () => {
@@ -334,11 +370,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         approveTimesheet: handleApproveTimesheet,
         declineTimesheet: handleDeclineTimesheet,
         createTimesheet: handleCreateTimesheet,
-        markNotificationAsRead: handleMarkNotificationAsRead,
+markNotificationAsRead: handleMarkNotificationAsRead,
         markAllNotificationsAsRead: handleMarkAllNotificationsAsRead,
         uploadDocument: handleUploadDocument,
         deleteDocument: handleDeleteDocument,
         refreshDocuments,
+        startNotificationPoll,
+        stopNotificationPoll,
       }}
     >
       {children}

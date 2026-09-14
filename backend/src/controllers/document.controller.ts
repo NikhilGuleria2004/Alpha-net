@@ -101,6 +101,15 @@ export async function downloadDocument(req: AuthenticatedRequest, res: Response)
     if (!document) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
     }
+    // QA: this route is mounted under /:projectId/documents and gated by
+    // requireProjectAccess, which only checks whether the user can access the
+    // *project in the URL* — not whether the document actually belongs to it.
+    // Without this check a user who can see project A can download any
+    // document by guessing its ID, even if it lives on project B. Verify the
+    // document's projectId matches the route's projectId.
+    if (document.projectId !== (req.params.projectId as string)) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
 
     const blob = await get(document.storageKey, { access: 'private' })
     if (!blob || blob.statusCode === 304) {
@@ -163,6 +172,15 @@ export async function removeDocument(req: AuthenticatedRequest, res: Response) {
   try {
     const document = await getDocumentById(req.params.documentId as string)
     if (!document) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
+    }
+    // QA: same IDOR as downloadDocument — this route is mounted under
+    // /:projectId/documents and gated by requireProjectAccess, which only
+    // checks access to the *project in the URL*. Verify the document actually
+    // belongs to that project before letting the uploader or an admin delete
+    // it; otherwise a user who can see project A can delete documents on
+    // project B by guessing their IDs.
+    if (document.projectId !== (req.params.projectId as string)) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document not found' } })
     }
 

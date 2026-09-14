@@ -172,7 +172,6 @@ describe('project.service', () => {
         managerId,
         supervisorId: null,
         teamMemberIds: [],
-        documentIds: [],
         status: 'draft',
       }
       mockDb.collection.mockReturnValue(createMockCollection([project]))
@@ -188,12 +187,11 @@ describe('project.service', () => {
       const userId = new ObjectId()
       const managerId = new ObjectId()
       const project = {
-        _id: projectId,
+_id: projectId,
         name: 'Test Project',
         managerId,
         supervisorId: null,
-        teamMemberIds: [userId],
-        documentIds: [],
+        teamMemberIds: [],
         status: 'draft',
       }
       mockDb.collection.mockReturnValue(createMockCollection([project]))
@@ -214,7 +212,6 @@ describe('project.service', () => {
         managerId,
         supervisorId: null,
         teamMemberIds: [],
-        documentIds: [],
         status: 'draft',
       }
       mockDb.collection.mockReturnValue(createMockCollection([project]))

@@ -8,6 +8,7 @@ import pinoHttp from 'pino-http'
 import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
 import { getAllowedOrigins } from './lib/origins.js'
+import { getAuthRateLimitConfig } from './lib/env.js'
 import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes } from './routes/index.js'
 
 export function createApp() {
@@ -56,14 +57,35 @@ export function createApp() {
   })
   app.use(limiter)
 
+  // QA M14: the auth rate limit was a flat 10 req/min per IP in production,
+  // which locked out whole offices behind NAT. It now has two axes:
+  //   - per-user: keyed by the email in the request body, so a single user's
+  //     brute-force attempts are bounded without affecting anyone else.
+  //   - per-IP: a separate, higher cap so a shared network can't be locked out
+  //     by one busy user, but a distributed attack is still throttled.
+  // Both knobs are configurable via env (see lib/env.ts).
+  const authConfig = getAuthRateLimitConfig()
   const authLimiter = rateLimit({
-    windowMs: 60_000,
-    max: isDev ? 200 : 10,
+    windowMs: authConfig.windowMs,
+    max: authConfig.maxPerUser,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Key by email when present so the cap is per-user, not per-NAT. The
+    // email is read from the parsed body — login/register both send it.
+    keyGenerator: (req) => {
+      const body = (req.body && typeof req.body === 'object') ? req.body : {}
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+      return email || req.ip || 'unknown'
+    },
+  })
+  const authIpLimiter = rateLimit({
+    windowMs: authConfig.windowMs,
+    max: authConfig.maxPerIp,
     standardHeaders: true,
     legacyHeaders: false,
   })
 
-  app.use('/api/v1/auth', authLimiter, authRoutes())
+  app.use('/api/v1/auth', authLimiter, authIpLimiter, authRoutes())
   app.use('/api/v1/users', usersRoutes())
   app.use('/api/v1/supervisors', supervisorsRoutes())
   app.use('/api/v1/projects', projectsRoutes())

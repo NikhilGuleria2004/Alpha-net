@@ -95,6 +95,14 @@ describe('Settings (QA M4)', () => {
     expect(res.body.settings.workdays).toEqual(['mon', 'tue', 'wed', 'thu', 'fri'])
   })
 
+  it('rejects unauthenticated access to org settings with 401', async () => {
+    // QA A1 regression: the routes previously skipped `authenticate`, so this
+    // request (and every request) got a misleading 403 instead of 401.
+    const res = await request(createApp()).get('/api/v1/settings')
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+
   it('rejects non-admin access to org settings with 403', async () => {
     mockUser(new ObjectId().toString(), 'user')
     const res = await request(createApp()).get('/api/v1/settings').set('Authorization', 'Bearer user-token')

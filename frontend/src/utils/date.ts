@@ -26,6 +26,17 @@ export function formatDate(date: string | Date): string {
   return format(d, 'MMM d, yyyy')
 }
 
+// Renders a week's start–end range for display. Parses the weekStart string as
+// *local* midnight (parseLocalDate) and adds days with local math, so a Mon–Fri
+// week stays Mon–Fri for UTC-negative timezones. Bypassing this — e.g. `new
+// Date(weekStart)` (UTC) then `formatDate` (local) — renders as "Sun – Thu"
+// (QA M12).
+export function formatWeekRange(weekStart: string | Date, endOffset: number = 4): string {
+  const start = typeof weekStart === 'string' ? parseLocalDate(weekStart) : weekStart
+  const end = addDays(start, endOffset)
+  return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`
+}
+
 export function formatDateRange(start: string | Date, end: string | Date): string {
   const s = typeof start === 'string' ? parseISO(start) : start
   const e = typeof end === 'string' ? parseISO(end) : end

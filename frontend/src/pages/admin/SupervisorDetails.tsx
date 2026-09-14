@@ -10,7 +10,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 import type { User } from '../../types/auth'
 import type { Timesheet } from '../../types/timesheet'
 import type { Activity } from '../../types/activity'
@@ -238,14 +238,11 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
               {pendingReviews.map((t) => {
                 const user = users.find((u) => u.id === t.userId)
                 const project = projects.find((p) => p.id === t.projectId)
-                const start = new Date(t.weekStart)
-                const end = new Date(start)
-                end.setDate(end.getDate() + 4)
                 return (
                   <tr key={t.id} className="hover:bg-muted">
                     <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(t.weekStart)}</td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                   </tr>

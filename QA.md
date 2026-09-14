@@ -1,303 +1,157 @@
 # Alpha-net (Eniac) — QA Report
 
-**Scope:** Full sweep of `frontend/` (React 19 + Vite + TS) and `backend/` (Express + MongoDB): auth, RBAC, timesheets, approvals, documents, notifications, activities, reports, settings, and tests.
-**Method:** Code review of every route/controller/service/middleware on the backend and every page/context/service/util on the frontend, cross-checked against route wiring and data flow. Backend suite executed locally: **12 files, 125 tests, all passing** — note all tests are unit tests with mocked Mongo/JWT/bcrypt; none of the findings below are covered by tests.
-**Date:** 2026-09-11
+**Scope:** Findings from a codebase analysis performed 2026-09-14: structural review of `frontend/` (React 19 + Vite + TS) and `backend/` (Express + MongoDB) — app wiring (`app.ts`, routes, middleware, services, contexts, `apiClient.ts`), data model (`lib/collections.ts`, `schemas/`), and dependency manifests — plus execution of the backend test suite.
 
-Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 High (breaks a feature or misleads users) · 🟡 Medium (incorrect behavior, workaround exists) · ⚪ Low / hygiene.
+**Method:** Static review with file:line citations, cross-checked against route wiring and data flow, plus execution of the backend test suite. The first pass (`cd backend && npm test`) found **21 files, 175 tests — 173 passed, 2 failed** (`src/tests/settings.test.ts`). A follow-up debugging session the same day traced a live "logged out on every reload" incident to a stale refresh cookie and fixed it (A11); the suite now runs **21 files, 179 tests, all passing**.
+
+Issue IDs use the fresh `A` series for this audit (A1–A12; A11–A12 were added by the follow-up session).
+
+Severity legend: 🔴 Critical (breaks core functionality or security) · 🟠 High (breaks a feature or hides defects) · 🟡 Medium (incorrect behavior or hygiene risk) · ⚪ Low / polish.
 
 ---
 
 ## 🔴 Critical
 
-### C1. Entire initial data load fails for every non-admin user **[FIXED — see checklist]**
-- **Where:** `frontend/src/contexts/AppDataContext.tsx:78-86` (initial `Promise.all`), `backend/src/routes/users.ts:9`.
-- `loadInitialData()` runs `Promise.all([fetchProjects(), fetchUsers(), fetchTimesheets(), ...])`. `fetchUsers()` hits `GET /users`, guarded by `requireAdmin`. For any `role: 'user'` account (employees **and** supervisors) this returns **403**, so the whole `Promise.all` rejects.
-- There is **no `catch`** (only `finally`), so the rejection is unhandled and **all** state (projects, timesheets, activities, documents, notifications) stays `[]` with **no error surfaced**. Every employee/supervisor sees empty dashboards, empty "My Projects", empty team timesheets, `-` names, zero notifications — the app is unusable for the primary persona.
-- Only the notifications fetch is isolated (`.catch(() => [])`); users/projects/timesheets/activities are not. The failure is also an **unhandled promise rejection**.
-
-### C2. Documents are never fetched — the documents list is always empty **[FIXED — 2026-09-11]**
-- **Where:** `frontend/src/contexts/AppDataContext.tsx:83` calls `fetchDocuments()` with no argument; `frontend/src/services/documentService.ts:4-7` — `getDocuments(projectId?)` **returns `[]` when `projectId` is undefined**.
-- The backend endpoint is nested (`GET /projects/:projectId/documents`); no store-compatible "list documents" call exists. Consequence: the `documents` array in `AppDataContext` is always empty on load. Documents uploaded during "Create Project" **disappear from the UI after any reload**, and ProjectDetails (admin + user) permanently shows "No documents have been uploaded for this project."
-- Upload works (it appends to local state), so users can upload a file and never see it again — silent data loss from the user's perspective.
-- **Fix:** added store-level `listDocuments()` in `documentService.ts` (fetches all accessible-project documents in one authenticated call) and `projectIdsForUser()` (role-based project scope, mirrors supervisor/user directory scoping). `AppDataContext` now calls `listDocuments()` (no arg) and stores the flat `documents[]` — persistence across reloads restored. `addDocument`/`deleteDocument` refresh the store from the server instead of mutating local state. `ProjectDetails` list/table buttons now use the in-store documents. Covered by `documents-store.test.ts` (3 tests: non-admin listing scope, empty case, upload/delete persistence across reload).
-
-### C3. Deadline-reminder cron endpoint can never authenticate **[FIXED — 2026-09-11]** **[FIXED — 2026-09-11]**
-- **Where:** `backend/src/routes/notifications.ts:7-13`, `backend/src/controllers/notification.controller.ts:41-49`.
-- `notificationsRoutes()` applies `router.use(authenticate)` to **all** routes, including `POST /cron/deadline`. The controller then expects `Authorization: Bearer <CRON_SECRET>`.
-- `authenticate` will verify the cron secret as a **JWT access token** and reject it → **401**. A scheduler holding only the `CRON_SECRET` (the designed credential) can never reach the handler; deadline notifications are dead code in production. Fix: mount the cron route before the `authenticate` middleware (it already self-protects with the secret check).
-
-### C4. `GET /activities` leaks the entire org's activity feed and ignores project access control **[FIXED — 2026-09-12]**
-- **Where:** `backend/src/controllers/activity.controller.ts:19-99`, `backend/src/routes/activities.ts:15`.
-- `listActivities` previously required only `authenticate` and returned **all activities for all users**, honoring `?projectId=` without calling `canAccessProject` (unlike `getProjectActivities`, which does check). Any authenticated employee could enumerate every user's actions across every project — an IDOR-style exposure.
-- **Fix:** the collection endpoint is now role-scoped. Admins see the full org (filters honored). Non-admins are gated before any data leaves the DB:
-  - `?projectId=` is verified with `canAccessProject` → 403 if denied.
-  - `?userId=` is restricted to the caller's own feed, or (supervisors) a direct subordinate's feed — anything else returns `400 VALIDATION_ERROR` rather than silently returning nothing.
-  - `?timesheetId=` is rejected for non-admins on the collection endpoint (that path is covered by `/activities/timesheets/:id`, which does its own check).
-  - The returned set is additionally filtered to the caller's accessible project IDs (`getAccessibleProjectIds`), so activities outside that set are never returned even if a filter would otherwise widen scope.
-- `POST /activities` (`createActivityForRequest`) now bounds `description` to 500 chars and requires project/timesheet access checks on any referenced IDs — closing the log-forging vector.
-- Covered by `activities-scoping.test.ts` (6 tests: admin sees all; non-admin 403s on a foreign `?projectId=`; non-admin sees only accessible-project activity; supervisor reads a subordinate's `?userId=`; supervisor 400s on a non-subordinate `?userId=`; non-admin 400s on `?timesheetId=`).
+### A1. Org-settings routes run without `authenticate` — the Admin Settings page is dead for everyone, admins included [FIXED — 2026-09-14]
+- **Where:** `backend/src/routes/settings.ts:10-21` — `router.get('/', requireAdmin, getOrgSettingsHandler)` and `router.put('/', requireAdmin, putOrgSettings)` mount with **no `authenticate` before `requireAdmin`**. Every other route file mounts `router.use(authenticate)` first (`routes/users.ts:8`, `routes/reports.ts:7`).
+- **Root cause:** `req.user` is populated exclusively by `authenticate` (`middleware/auth.ts:46-72`); `requireAdmin` only checks `req.user?.role`. With `authenticate` missing, `req.user` is always `undefined`, so **every** request to `GET/PUT /api/v1/settings` — including valid admin tokens — short-circuits to `403 FORBIDDEN "Admin access required"`.
+- **Symptom:** the admin Settings page can never load or save org settings (timezone, weekly start day, workdays, standard weekly hours, weekend-overtime rule, notification toggles, company name/logo).
+- **Also wrong:** unauthenticated calls receive a misleading `403` instead of `401`.
+- **Evidence:** `npm test` on 2026-09-14 — 2 failures in `src/tests/settings.test.ts`: "returns default org settings when none exist" (line 93) and "persists org settings updates (admin)" (line 110), both `expected 403 to be 200`. Note the third test, "rejects non-admin access to org settings with 403" (line 98), **passes for the wrong reason** — it expects 403 and gets 403, but because of the missing auth chain, not role rejection — which is why this bug stayed invisible.
+- **Fix plan:**
+  - [x] Add `router.use(authenticate)` as the first line of `settingsRoutes()` in `backend/src/routes/settings.ts` (mirroring `users.ts`/`reports.ts`) — done, with a comment explaining the original bug.
+  - [x] Re-run `npm test` in `backend/` — both previously failing settings tests now pass; the non-admin 403 test passes for the right reason. Suite: 21 files, 179 tests, all passing.
+  - [x] Add regression tests for the chain itself: unauthenticated `GET /api/v1/settings` → **401** (new test in `settings.test.ts`); valid-admin token → **200** and valid-user token → **403** (already covered).
+  - [ ] Manually verify the admin Settings page loads defaults and persists an update.
+  - [x] Audit sweep: checked every `routes/*.ts` — all mount `router.use(authenticate)` before any `requireAdmin` / `requireSupervisor` / `requireUserManage` / `requireProjectAccess` / `requireTimesheetAccess` guard (`auth.ts` uses explicit per-route middleware). No other route had the missing-authenticate defect.
 
 ---
 
 ## 🟠 High
 
-### H1. False success toasts and swallowed backend errors in the timesheet editor
-- **Where:** `frontend/src/contexts/AppDataContext.tsx:212-270` — `handleSaveDraft`, `handleSubmitTimesheet`, `handleWithdrawTimesheet`, `handleApproveTimesheet`, `handleDeclineTimesheet` all do `catch { return undefined }` (error message destroyed).
-- `frontend/src/pages/user/TimesheetEditor.tsx:188-189` — `handleSaveDraft` calls `await saveDraft(...)` then unconditionally shows **"Draft saved"** without checking the `undefined` return → success toast even when the backend rejected the save (day-rule violations, E11000 week collisions).
-- `TimesheetEditor.tsx:223-233` — `handleSubmit` ignores the result of `submitTimesheet(...)` → shows **"Timesheet submitted successfully"** and navigates away even on failure. Same for `handleWithdraw` (246-251). Users believe work was saved/submitted; on reload it's gone. This is the most user-hostile failure path in the product.
+### A2. Backend suite is red: 2 of 175 tests failing (direct evidence of A1) [FIXED — 2026-09-14]
+- **Where:** `backend/src/tests/settings.test.ts` — run 2026-09-14: `Test Files 1 failed | 20 passed (21)`; `Tests 2 failed | 173 passed (175)`. Failures: "returns default org settings when none exist" and "persists org settings updates (admin)".
+- **Impact:** with no CI gate, the suite can drift red silently and mask new regressions.
+- **Fix plan:**
+  - [x] Resolve via A1 (the failures shared that root cause — assertions were not loosened) — done, suite fully green.
+  - [ ] Wire `npm test` into CI (e.g. GitHub Actions) with a red = block policy for both halves.
+  - [x] Add auth-chain tests so a missing `authenticate` can never again present as a role rejection — done: unauthenticated → **401** on `GET /settings` (`settings.test.ts`) and on `POST /refresh` (`auth.test.ts`), plus stale-cookie clearing tests (A11).
 
-### H2. Client-side validation misses backend day-of-week rules; hidden hours are submitted
-- **Where:** `frontend/src/pages/user/TimesheetEditor.tsx:69-84, 138-140, 330-342`; backend rule `backend/src/services/timesheet.service.ts:84-116`.
-- The UI disables day inputs that don't match the entry type (regular → Mon–Fri only; overtime → Sat–Sun only), but `handleEntryTypeChange` **keeps previously typed hours** in state. Type 8h on Saturday, switch the entry to "Regular" → the value is silently retained; local validation passes (it never checks day rules); the save rides the swallowed-error path from H1 and "succeeds" in the UI while the backend rejected it.
-- The submit path saves the draft first, so invalid day data can also block submission with a concatenated backend error — after a success toast for the draft.
+### A3. All 175 backend tests are unit tests with mocked Mongo/JWT — integration seams are untested [OPEN]
+- **Where:** `backend/vitest.config.ts` + `vi.mock('../lib/mongodb.js')` / `vi.mock('../lib/jwt.js')` across the suite; no test exercises the real middleware chain end-to-end.
+- **Why it matters:** A1 slipped past 175 (mostly green) tests because route wiring — not logic — was broken. Mocked suites structurally cannot catch missing-middleware bugs.
+- **Fix plan:**
+  - [ ] Add one smoke test per route file (`auth`, `users`, `settings`, `reports`, …) that builds `createApp()` and asserts the chain: unauthenticated → 401, wrong role → 403, authorized → 200.
+  - [ ] Consider `mongodb-memory-server` for service-level tests so collection/index behavior is real.
+  - [ ] Strengthen weak assertions: where a status distinction matters (401 vs 403), assert the error body's `code`/`message`, not just the status.
 
-### H3. Week navigation silently *moves* an existing timesheet to another week
-- **Where:** `frontend/src/pages/user/TimesheetEditor.tsx:94-124, 171-197`; `backend/src/services/timesheet.service.ts:226-231`.
-- The ‹ › controls change the `weekStart` **of the currently open timesheet** (they do not navigate which week's data is shown). Save Draft then `PATCH /timesheets/:id` with the new `weekStart`, relocating the whole timesheet (entries included) to the other week. Outcomes: (a) reported hours shift weeks with no warning, (b) collision with the unique index `(userId, projectId, weekStart)` if the target week already has a timesheet (error swallowed per H1), (c) entries displayed under a week they were never worked.
-- Inconsistency: the "New Timesheet" modal (`pages/user/Timesheets.tsx`) only creates timesheets for the **current** week, while the editor allows moving a timesheet to any past week — two conflicting models for creating past-week entries.
-
-### H4. Review-panel permission model contradicts the backend — Approve/Decline buttons that always 403
-- **Where:** `frontend/src/components/approvals/ReviewPanel.tsx:37-49` vs `backend/src/middleware/access.ts:48-57`.
-- The panel's local `canReviewTimesheet` allows a supervisor who is the **employee's assigned supervisor** or merely a **team member** of the project. The backend route middleware `requireTimesheetReview` only allows **admin** or the **project's `supervisorId`**. Supervisors in allowed-by-UI-but-denied-by-API cases see working buttons, confirm, then get `[FORBIDDEN] Review access denied to this timesheet`.
-- Compounding it, `backend/src/services/approval.service.ts:15-28` defines a **third**, permissive `canReviewTimesheet` (matching the UI) that is never reached because route middleware runs first — triplicated, drifting permission logic.
-
-### H5. Users can (and are invited to) approve their own timesheets **[FIXED — 2026-09-12]**
-- **Where:** `backend/src/middleware/access.ts:48-57` — `canReviewTimesheet` does not exclude `timesheet.userId === reviewerId`.
-- A supervisor who supervises a project they work on sees their own submitted timesheet in `/supervisor/approvals` and can approve/decline it; admins likewise. Separation of duties is not enforced anywhere.
-- **Fix:** added `if (timesheet.userId.toString() === userId) return false` in `access.ts canReviewTimesheet` (admin branch kept first, so admins remain exempt and can review their own). Frontend `ReviewPanel.canReviewTimesheet` now applies the same self-review exclusion and no longer renders Approve/Decline for the owner. Defense-in-depth: `approval.service.ts` approve/decline route through the same middleware check. Covered by `access.test.ts` (self-review denied; admin self-review allowed) and `approvals-service.test.ts` (approve/decline throw for owner; admin self-approve succeeds).
-
-### H6. Supervisors cannot get the user directory their pages depend on
-- **Where:** `backend/src/routes/users.ts:9` (admin-only `GET /users`) and every supervisor page (`pages/supervisor/*.tsx`, `ReviewPanel`, admin ProjectDetails team tab) which resolves names/subordinates from the `users` array in `AppDataContext`.
-- Even after C1 is fixed, a supervisor has **no wired endpoint** to fetch names: `GET /supervisors/:id/users` exists but is never called by `AppDataContext`. Until then, employee columns render `-` and the "supervised users" filter set is empty for non-admins.
-
-### H7. User deactivation has no confirmation and always reports success **[FIXED — 2026-09-12]**
-- **Where:** `frontend/src/pages/admin/UserDetails.tsx:46-49, 87`.
-- "Deactivate User" calls `deactivateUser` **immediately** from the dropdown (no `ConfirmDialog`, unlike project deletion which confirms) and then unconditionally toasts **"User deactivated successfully"** — including when the backend refused (self-deactivation, last active admin). The result value is never checked.
-
-### H8. Document download is wired to private blob URLs, not the authenticated download endpoint **[FIXED — 2026-09-12]**
-- **Where:** `frontend/src/pages/admin/ProjectDetails.tsx:319-324` links directly to `doc.url`; uploads use `access: 'private'` (`document.controller.ts:37-40`).
-- Vercel Blob **private** URLs are not publicly readable — the anchor 403s or breaks. The correct `GET /:documentId/download` endpoint (streams via `download(storageKey, userId)`) is never used by the frontend. `pages/user/ProjectDetails.tsx:120-136` has **no download action at all**, and its "Export" button has no `onClick` (decorative).
+### A4. In-memory auth user cache is per-process — stale roles/sessions on serverless [OPEN]
+- **Where:** `backend/src/middleware/auth.ts:16-44` — module-level `Map` keyed by userId with a 60s TTL; `invalidateUserCache()` only clears the local instance.
+- **Why it matters:** deployed on Vercel (serverless), warm instances can serve a deactivated/demoted user for up to 60s after the change, while cold starts bypass the cache entirely; the map also grows unbounded (one entry per active userId per instance).
+- **Fix plan:**
+  - [ ] Decide per environment: single-instance dev is fine; in serverless production either shorten the TTL (5–10s) or drop the cache — the DB path is a cheap indexed `_id` lookup.
+  - [ ] If kept, cap it (LRU/size limit) and document the staleness window at the top of the file.
+  - [ ] Keep the DB lookup (with `status: 'active'` filter) mandatory for security-critical paths so revocation remains authoritative.
 
 ---
 
 ## 🟡 Medium
 
-### M1. Notification helpers query the wrong parameter
-`frontend/src/services/notificationService.ts:8-12` sends `GET /notifications?unread=true`; the backend schema (`schemas/notification.schema.ts`) only understands `read=true|false` and silently strips unknown keys → returns **all** notifications, not unread ones. (Function appears unused, but it's a landmine.)
+### A5. `PUT /settings` performs no schema validation [OPEN]
+- **Where:** `backend/src/controllers/settings.controller.ts:21-37` — fields are hand-picked with `typeof` checks instead of a Zod schema, unlike every other mutating route (`schemas/*.schema.ts`). The route also imports no schema.
+- **Risks:** `workdays` accepts any array (duplicates, unknown day strings); `standardWeeklyHours` accepts zero/negative/absurd values; unknown fields are silently dropped with no error to the admin UI; `companyName` has no length cap.
+- **Fix plan:**
+  - [ ] Add `updateOrgSettingsSchema` (and a notification-prefs schema) in a new `schemas/settings.schema.ts`: `workdays` constrained to the day enum (unique), `weeklyStartDay` to the day enum, `standardWeeklyHours` to a sane numeric range, string length caps.
+  - [ ] Validate in the route chain and return the standard `VALIDATION_ERROR` shape used elsewhere.
+  - [ ] Mirror the constraints client-side in `pages/admin/Settings.tsx` / `services/settingsService.ts`.
 
-### M2. Unread count is capped at 50 **[FIXED — 2026-09-12]**
-`backend/src/controllers/notification.controller.ts:21-24` computes `unreadCount` from `getNotificationsByUserId(..., { read: false })`, whose default `limit` is 50 (`notification.service.ts:58`). A user with >50 unread shows a badge stuck at 50 forever. Should be a `countDocuments`.
+### A6. Repo hygiene: scratch scripts and unzipped Office artifacts tracked in git [OPEN]
+- **Where:** `backend/test-mongo.mjs`, `backend/test-mongo-connect.mjs`, `backend/tmp-check-all.mjs` (the last untracked per `git status`); `AlphaNet_Technical_Architecture_and_Platform_Documentation.docx_FILES/` — 24 files of unzipped Word XML (`word/document.xml`, styles, rels, thumbnails) committed to the repo.
+- **Fix plan:**
+  - [ ] Delete the three scratch `.mjs` files; move any genuinely useful check into `src/scripts/` with a `package.json` entry.
+  - [ ] Remove `docx_FILES/` from the repo; keep the original `.docx` in `docs/` or external storage instead of an exploded archive.
+  - [ ] Add ignore patterns (`tmp-*.mjs`, `*.docx_FILES/`) to `.gitignore`.
 
-### M3. `GET /timesheets` ignores the `userId` query param; several service functions are dead or wrong **[FIXED — 2026-09-12]**
-`backend/src/controllers/timesheet.controller.ts:30-35` reads only `projectId/status/weekStart`. So `getTimesheetsByUserId` / `getTimesheetsBySupervisorId` (`frontend/src/services/timesheetService.ts`) return role-scoped data, not the requested filter. Also dead/nonsensical: `searchTimesheets` (matches on project **IDs**), `getProjectsByUserId`, `getProjectsBySupervisorId`, `searchUsers`, `searchProjects`, `getCurrentWeekTimesheet` — none of those query params are supported server-side.
-
-### M4. Settings pages are theater — nothing persists to the backend **[FIXED — 2026-09-12]**
-- `frontend/src/pages/user/Settings.tsx:55-67`: Name/Email are editable inputs, but "Save" writes **only** notification prefs + theme to `localStorage` — profile edits are silently discarded (no self-service profile PATCH; `PATCH /users/:id` is admin-only). There is **no password change** anywhere (backend forgot/reset are 501 stubs, `auth.controller.ts:70-76`).
-- `frontend/src/pages/admin/Settings.tsx:40-193`: Timezone, weekly start day, workdays, standard weekly hours, weekend-overtime toggle, and all notification toggles are `localStorage`-only. The backend **hardcodes** Monday normalization and Mon–Fri/Sat–Sun rules (`timesheet.service.ts:45, 72-116`), so none of these admin controls affect real behavior. Logo upload reads any file with no type/size validation and stores base64 in `localStorage`.
-- The editor's "Weekly Target" is hardcoded to 40 (`TimesheetEditor.tsx:167`) regardless of the admin's "Standard Weekly Hours".
-
-### M5. Dark-mode toggle does nothing visible
-`user/Settings.tsx:49-53` toggles the `dark` class on `<html>`, but no component uses `dark:` variants (grep: zero usages) — the app has no dark theme.
-
-### M6. Login page dead controls
-`pages/auth/AdminLogin.tsx:126-138`: "Remember me" is a stateful checkbox wired to nothing (access token is intentionally memory-only), and "Forgot password?" is a `<button type="button">` with **no onClick** — while the backend endpoint it would call is a 501 stub.
-
-### M7. "This Week" stat on the user dashboard is wrong for multi-project weeks
-`pages/user/Dashboard.tsx:34-41` — `myTimesheets.find((t) => t.weekStart === currentWeekStart)` returns the **first** match only. Timesheets are unique per *project+week* by design, so a user logging time against 3 projects sees one project's hours as "This Week" and the card deep-links to one arbitrary timesheet. Summation is required.
-
-### M8. Reports count draft/declined/withdrawn hours as worked hours **[FIXED — 2026-09-12]**
-- `backend/src/services/report.service.ts:50-84` — `buildMatchStage` previously had **no status filter**, so `hours-by-project`, `hours-by-employee`, and `overtime` aggregated **all** timesheets including drafts, declined and withdrawn submissions — payroll/BI totals over-counted. Also `buildMatchStage:68-70`: when both `userId` and `department` were supplied, the department branch **overwrote** `match.userId` silently.
-- **Fix:** `ReportFilters` gained a `status` field (`TimesheetStatus | 'all'`); `buildMatchStage` applies it when present and not `'all'`. `userId` and `department` now **intersect** via `$and` instead of being mutually exclusive branches — supplying both keeps both constraints, and an empty department resolves to an always-false condition rather than silently returning all data. The Reports UI (`pages/admin/Reports.tsx`) defaults to **Approved only** and exposes a "Timesheet status" dropdown; the filter is threaded through `ReportFilters` → `toQueryString` → all four report endpoints. Covered by `reports.test.ts` (8 tests: existing date-range tests + status applied / status=all omitted / userId+department intersect / empty department returns nothing).
-
-### M9. Approval list scoping mismatch (UI vs API)
-`GET /approvals` with `reviewerId` (`approval.service.ts:30-65`) returns pending timesheets for projects the supervisor **supervises or is a member of**, plus users they supervise. The supervisor UI (`pages/supervisor/Approvals.tsx:21-23`) computes access only from `projects.supervisorId === user.id` and `users.supervisorId === user.id` — items returned by the API can be missing from the UI (and vice-versa); with C1/H6 the user-side set is empty anyway.
-
-### M10. Admin guardrails surface as generic failures
-Backend protections exist (`user.controller.ts:83-97`: self role change, last-admin demotion/deactivation), but the admin UI (EditUser/UserDetails) neither pre-checks nor checks results (H7 pattern) — the admin discovers the rule only via a 400 toast after the fact.
-
-### M11. Notifications UX: click-through goes to lists, not the related item; no live updates
-`pages/user/Notifications.tsx:49-60` — all submission/approval notifications navigate to `/user/submissions`; deadline/assignment/document ones to `/user/projects`, ignoring `relatedId`. There is **no polling/websocket** — the bell only updates when some user action triggers a refresh; a background tab never learns of approvals.
-
-### M12. Timezone rendering inconsistencies for non-UTC users
-Week ranges in tables are computed with `new Date(timesheet.weekStart)` (UTC midnight) then rendered with `formatDate` (uses `parseISO`, local midnight) — see `user/Timesheets.tsx:158-163`, `Submissions.tsx:50-52`, `supervisor/Timesheets.tsx:121-128`, `supervisor/Approvals.tsx:92-99`, `ReviewPanel.tsx:66-68`, `admin/ProjectDetails.tsx:284-290`. For UTC-negative timezones a "Mon – Fri" range renders as "Sun – Thu". The date-fns helpers in `utils/date.ts` do it correctly; the pages bypass them.
-
-### M13. Session/auth edge cases
-- `logout` requires `authenticate` (`routes/auth.ts:11`): with an expired access token and no refresh cookie, server-side session deletion fails (401) and the **refresh cookie is not cleared server-side**.
-- The same HS256 secret signs access **and** refresh tokens and both are verified identically (`lib/jwt.ts`); a refresh token presented as a Bearer token passes `verifyAccessToken` (payload fields end up `undefined`, guarded only by downstream `!== 'admin'` checks) — no explicit token-type separation.
-- Refresh sessions stored **plaintext** (`auth.service.ts:54-59`); the `sessionId` claim is actually the user id (`auth.service.ts:100`); no token rotation on refresh; no reuse detection.
-- Role changes take up to 60s to propagate (in-memory cache TTL, `middleware/auth.ts:26`); `invalidateUserCache` is called on deactivation only, not on role change.
-
-### M14. Rate limiting vs real usage
-`backend/src/app.ts:49-62`: prod auth limiter is **10 req/min per IP across all of `/api/v1/auth`** (login *and* refresh). An office behind one NAT — or one user with several tabs refreshing tokens — trips 429s; the frontend retries once after ~1s which usually still fails. The global 120/min limiter is also easy to hit because the SPA refetches everything on login and most mutations trigger full `refreshTimesheets()` reloads.
-
-### M15. Regex injection in search
-`user.service.ts:54-59`, `project.service.ts:83-89` pass user input straight into `$regex` (no escaping/anchoring). Metacharacters (`.*`, `(`) cause Mongo errors or pathological scans.
-
-### M16. `documentIds` on projects is dead data
-Defined/returned (`project.service.ts:24,71`) but never written or read; documents relate only via `documents.projectId`. Misleading API contract.
-
-### M17. Editor entry IDs can collide
-`TimesheetEditor.tsx:51,143` uses `entry-${Date.now()}` — two entries added in the same millisecond produce duplicate React keys and wrong row updates.
-
-### M18. Admin dashboard drops archived projects from the status breakdown
-`admin/Dashboard.tsx:42-50` counts only `active/completed/overdue/draft`; `archived` projects are invisible in the breakdown though the type includes them.
+### A7. Git history is unusable: every commit message is "/" [OPEN]
+- **Where:** recent history is a run of `/` commits; HEAD `8e335af` is a 177-file, ±6.6k-line squash; no stashes exist as recovery points.
+- **Impact:** `git bisect`, `git blame`, and review all degrade to noise; a bad deploy can't be tied to a change.
+- **Fix plan:**
+  - [ ] Going forward, use conventional commits (`fix(settings): ...`, `feat(timesheets): ...`) scoped per area.
+  - [ ] Keep squash-merges but write a real message (the PR title/body is the bar, not one character).
+  - [ ] Optional: split backend/frontend changes into separate commits when practical.
 
 ---
 
-## ⚪ Low / hygiene
+## ⚪ Low
 
-- **Dead code:** `frontend/src/utils/permissions.ts` is imported by nothing and reads `localStorage['eniac_projects'] / ['eniac_users']` — keys **nothing ever writes** (grep-verified). If it were ever wired back in, every supervisor check would silently return `[]`. The whole `src/mock/` directory is likewise unused, as are most "by X" service helpers (M3).
-- **Duplicated approval logic:** `approval.service.ts` and `timesheet.service.ts` both implement `approveTimesheet`/`declineTimesheet` (the approval one adds notifications/activity; the timesheet one is bare) — drift risk, already realized as H4.
-- **Zustand is a declared dependency but unused** — state is all React Context; adopt it or drop it.
-- **No pagination anywhere** on list endpoints (users/projects/timesheets/activities; notifications default 50) — `find().toArray()` unbounded for users/projects/activities.
-- **Supervisor "Team Timesheets" Review button** (`supervisor/Timesheets.tsx:135`) navigates to `/supervisor/approvals` regardless of which row was clicked, losing context.
-- **User dashboard greeting is hardcoded** "Good morning" (`user/Dashboard.tsx:74`) while the admin dashboard has a time-based `getGreeting()` — users get "Good morning" at 11pm.
-- **Demo credentials are hardcoded in the client bundle** (`services/authService.ts:14-21`, `Password123!`) and demo-login buttons sit on the production login screens — fine for a demo build, a real problem for any real deployment.
-- **Repository hygiene:** `backend/dist/**` build output committed to git; a stray accidental file at `home/nikhil/Alpha-net/backend/src/tests/projects.test.ts` nested under the repo root; deleted-but-uncommitted `QA_REPORT.md` and resume PDF in the working tree; commit messages are all `\/`; root `package.json` carries two stray devDependencies (`@types/bcryptjs`, `@types/express`) that belong to the backend.
-- **Test suite gap:** all 125 backend tests mock Mongo/JWT/bcrypt. No test covers the real auth cookie flow, the cron route (would have caught C3), or documents listing (would have caught C2). The green suite creates false confidence.
-- **Minor UI/accessibility:** modals/confirm dialogs have no focus trap or Escape handling; the "file type" button in admin ProjectDetails has a meaningless `aria-label="File type"`; small (w-16) numeric day inputs are error-prone on mobile.
+### A8. Dependency-version drift between halves; frontend pins need verification [OPEN]
+- **Where:** `frontend/package.json` — `typescript ~6.0.2`, `react ^19.2.8`, `vite ^8.2.2`, `tailwindcss ^4.3.3`; `backend/package.json` — `typescript ^5.3.3`, `express ^4.18.2` (while `@types/express` is already on v5).
+- **Impact:** mixed TS majors across the monorepo (different type-checking behavior per half); several frontend pins are ahead of widely published releases and may fail to resolve on a fresh install.
+- **Fix plan:**
+  - [ ] From a clean clone run `npm ci && npm run build` in `frontend/` to confirm every pin resolves and compiles.
+  - [ ] Align both halves on one TypeScript major.
+  - [ ] Backlog an Express 4 → 5 migration (types are already prepared).
+
+### A9. Demo credentials offered on production login screens [OPEN]
+- **Where:** `frontend/src/pages/auth/AdminLogin.tsx` and `UserLogin.tsx` — "Demo Admin / Demo User / Demo Supervisor" buttons with hardcoded demo passwords in the shipped bundle.
+- **Fix plan:**
+  - [ ] Gate the demo buttons behind `import.meta.env.DEV` (or a `VITE_ENABLE_DEMO` flag) so production builds never ship them; strip the hardcoded passwords from the bundle.
+
+### A10. `backend/.env` present in the working tree [OPEN]
+- **Where:** `backend/.env` (verified currently ignored by `.gitignore`; real Mongo URI and secrets inside).
+- **Fix plan:**
+  - [ ] Keep it ignored; add a pre-commit secret scan (e.g. gitleaks) so a future `.gitignore` regression cannot leak the Mongo URI / JWT secret.
+
+### A11. Stale refresh cookie survives failed refreshes — "logged out on every reload" loop [FIXED — 2026-09-14]
+- **Symptom (live incident, 2026-09-14):** the user was logged out on every page reload; the console showed 401s on `/auth/me` and `/notifications/unread-count`, then `POST /auth/refresh` → 401; the backend logged `refresh failed` with **"Session not found or expired"** (`auth.service.ts:151`) while the browser kept presenting the same dead cookie.
+- **Root cause:** the browser held a `refreshToken` cookie from a session whose row no longer exists (deleted via logout elsewhere / password change / a dev DB reset). `refreshUserSession` correctly rejected it — but the 401 response **never cleared the cookie**, so the browser re-sent the dead token on every request indefinitely. Recovery required manual DevTools cookie surgery. Server-side verification (login → cookie → refresh replayed via curl through the same Vite proxy) proved the auth chain itself was correct; the sessions for the recent logins were intact in Mongo.
+- **Secondary finding:** on a logged-out load, `NotificationContext` fired `GET /notifications/unread-count` unconditionally on mount (seed effect ran with an empty dep array) and again in the badge-sync effect, generating the 401 spam (and refresh attempts) before any login — 3× per load with React StrictMode double-effects. The poller's interval closure also captured `isAuthenticated` at start time, so a logout wouldn't stop already-scheduled ticks.
+- **Fixes:**
+  - `backend/src/controllers/auth.controller.ts` — `refresh()` now clears the `refreshToken` cookie (attributes mirrored from `login()`: dev Lax / prod `None`+`Secure`) whenever a cookie was presented but rejected; no cookie → no `Set-Cookie` noise. `logout()` mirrors the same attributes in its `clearCookie`.
+  - `frontend/src/contexts/NotificationContext.tsx` — the seed effect, badge-sync effect, and poller now run only while `isAuthenticated`; the badge resets to 0 on logout.
+  - `frontend/src/contexts/AppDataContext.tsx` — the poll interval checks an `isAuthRef` per tick, so a logout stops polling even mid-interval.
+- **Fix plan:**
+  - [x] Clear the dead cookie on failed refresh (with attribute-mirrored `clearCookie`) — done.
+  - [x] Guard all notification fetching/polling behind `isAuthenticated` — done.
+  - [x] Regression tests in `auth.test.ts`: stale token → 401 + `Set-Cookie: refreshToken=; Expires=Thu, 01 Jan 1970`; invalid token → same; no cookie → **no** `Set-Cookie` — done.
+  - [x] Confirm in the browser (2026-09-14, user-verified): log in → **reload now persists the session**, and the stale-cookie loop no longer reproduces — a failed refresh clears the dead cookie, so a broken session costs one clean logout instead of an infinite loop. (Deeper drill — deliberately deleting a Mongo session row and reloading — left as an optional exercise; the auth.test.ts coverage asserts the same behavior.)
+  - [x] Diagnostics added: `login` logs `refreshTokenSuffix` and a failed `refresh` logs `presentedTokenSuffix` + the raw Cookie header (last 8 chars / first 120 chars only) so a browser-vs-server token mismatch is visible in the terminal without exposing JWTs.
+  - [ ] Optional hardening: `getCurrentUser`'s refresh path and the apiClient 401 path currently both fire `POST /auth/refresh` on a cold load; consolidate through the single-flight helper to avoid redundant refresh POSTs (cosmetic — requests are cheap and correct).
+
+### A12. Frontend production build fails (`tsc -b`): missing/unused imports left by the M12 edit [FIXED — 2026-09-14]
+- **Where:** `npm run build` in `frontend/` failed with 13 type errors across `pages/user/Dashboard.tsx`, `Submissions.tsx`, `Timesheets.tsx` (uses of `formatWeekRange` / `parseLocalDate` without imports; unused `formatDate`), `pages/user/TimesheetEditor.tsx` (dead `weekEnd` memo), `pages/admin/Approvals.tsx` (missing `formatWeekRange` import), `components/approvals/ReviewPanel.tsx` (unused `formatDate`), `pages/admin/Dashboard.tsx` (missing `ProjectStatus` type import), `pages/admin/EditUser.tsx` (unused `canMakeSupervisor` import + dead `supervisorGuard`), `pages/supervisor/Timesheets.tsx` (unused `useSearchParams`), `utils/permissions.ts` (unused `allUsers` param on `canPromoteToAdmin`).
+- **Impact:** the production build (`tsc -b && vite build`) has been broken independent of any deploy-time check — deploys from a machine that doesn't run the build first would fail or ship a stale bundle.
+- **Fixes:** added the missing `formatWeekRange` / `parseLocalDate` / `ProjectStatus` imports; removed dead code (`weekEnd` memo, `supervisorGuard`, `canMakeSupervisor` import, `useSearchParams`); underscored the intentionally-unused `allUsers` param on `canPromoteToAdmin` (signature kept for API symmetry with the other M10 guards).
+- **Fix plan:**
+  - [x] Fix all 13 errors — done; `npm run build` now succeeds (`✓ built`) and `npm run lint` reports 0 errors.
+  - [ ] Wire the frontend build into the same CI gate as `npm test` (see A2) so a broken build can't land silently.
+
+### A13. Reopening the app lands on the login page despite a live session [FIXED — 2026-09-14]
+- **Symptom (user-confirmed):** reload keeps the session, but closing the tab and reopening dumps the user on `/adminlog` — even though manually typing `/admin/dashboard` gets in without a login prompt (session alive the whole time).
+- **Root cause:** `App.tsx` — the `/` route (and the `*` fallback) rendered an **unconditional** `<Navigate to="/adminlog" replace />` without consulting `AuthContext`; and the public auth pages (`/adminlog`, `/userlog`, `/register`) had no already-authenticated forward. The session restore itself works (the refresh cookie is persistent, `Max-Age=7d`; only the memory-only access token dies with the tab) — the app just never asked about it on those routes.
+- **Fixes:**
+  - New `routes/HomeRedirect.tsx` — waits for the auth restore (`isLoading` → spinner), then routes by role to the dashboard (admin → `/admin/dashboard`, everyone else → `/user/dashboard`, mirroring `ProtectedRoute`'s fallback); logged-out visitors get `/adminlog`. Mounted at both `/` and `*`.
+  - New `routes/RedirectIfAuthenticated.tsx` — wraps `/adminlog`, `/userlog`, `/register`; an authenticated visitor is forwarded to their role dashboard instead of seeing the form.
+  - New `components/ui/FullPageSpinner.tsx` — shared full-page loading state; `ProtectedRoute` reuses it instead of its inline copy.
+- **Fix plan:**
+  - [x] Add the two route gates + shared spinner — done.
+  - [x] Wire `/`, `*`, and the three public auth pages — done; `npm run build` ✓, `npm run lint` 0 errors.
+  - [ ] Verify in the browser: close the tab, reopen at `http://localhost:5173/` → should land on `/admin/dashboard` without a login prompt; `/adminlog` while logged in should bounce to the dashboard; logged-out fresh visitor should still land on `/adminlog`.
 
 ---
 
-## Verified-good (for balance)
-- Unique index on `(userId, projectId, weekStart)` + E11000 friendly error; week normalized to Monday server-side.
-- httpOnly, path-scoped refresh cookie; access token memory-only; single-flight 401 refresh in `apiClient`.
-- IDOR-safe notification read (ownership in the update filter → 404).
-- Last-admin / self-role-change / self-deactivation guards on the backend.
-- File upload validation (MIME allowlist + 10 MB cap) and sanitized storage keys; upload/delete produce activity + notification side effects.
-- Session pruning (max 5) and TTL index on `sessions.expiresAt`.
-- Password policy (8+, upper/lower/digit) mirrored client- and server-side.
-- CSRF posture is reasonable given the Bearer-token + path-scoped, sameSite=lax cookie design.
+## Verified healthy during this review (no action)
+- Auth token design: memory-only access token + httpOnly `SameSite=None` refresh cookie guarded by the `FRONTEND_URL` origin allowlist (`middleware/csrf.ts`); single-flight refresh with 401-retry, `Retry-After` backoff, 15s abort timeout, and multipart-awareness in `frontend/src/services/apiClient.ts`.
+- Rate limiting: global limiter plus a two-axis auth limiter (per-email key + per-IP cap, env-configurable) at `app.ts:52-87`.
+- Mongo index coverage in `lib/collections.ts`, including `userId+projectId+weekStart` uniqueness on timesheets and a TTL index on sessions.
+- Route-level scoping helpers in `middleware/access.ts`, including the supervisor self-review prohibition.
 
----
+## Removed (2026-09-14, per product decision)
+- **Dark mode** has been removed entirely at the user's request: `contexts/ThemeContext.tsx` deleted; `ThemeProvider` unwrapped from `main.tsx`; the "Appearance / Dark Mode" card dropped from `pages/user/Settings.tsx`; the `.dark` token palette removed from `index.css` (the `:root` light palette is now the app's single theme; components' token-driven utilities are unaffected). Stale `theme` keys in users' localStorage are inert — nothing reads them.
 
-## Suggested fix priority
-1. **C1** (isolate the users fetch for non-admins / scope `GET /users` or use `/supervisors/:id/users`) — restores the entire non-admin experience.
-2. **H1** (stop swallowing errors; check results before success toasts) — stops silent data loss.
-3. **C2 + H8** (per-project document fetch + authenticated download) — restores documents.
-4. **C3** (mount cron route before `authenticate`).
-5. **H2 + H3** (mirror backend day rules locally; make week ‹ › a true navigation or warn before moving) **[FIXED — 2026-09-12]** — `TimesheetEditor.handleEntryTypeChange` now zeroes out hours on days the new entry type doesn't allow (Sat/Sun when switching to Regular, Mon–Fri when switching to Overtime) with an info toast listing what was removed; `getValidationErrors` mirrors the backend `validateEntries` inline (regular=Mon–Fri, overtime=Sat–Sun, non-negative, ≤24h/day) and is run before every save/submit. Week ‹ › now navigates (loads/creates that week's timesheet) instead of mutating the open one, and `updateTimesheet` rejects any `weekStart` change server-side. Covered by `timesheet.test.ts` (24 tests) and `timesheet-week-move.test.ts` (2 tests).
-6. ~~C4 + H4 + H5~~ **[DONE — 2026-09-12]** (scope `GET /activities`, align review permissions to the backend, block self-review).
-7. Then the Medium tier (M2, M4, M7, M8 are the most user-visible).
-
----
-
-## Fix-Tracking Checklist
-
-Work top-down (severity order matches the report). Tick `- [x]` as items land and append the PR/commit reference in brackets. Sub-items break a finding into the discrete code changes needed.
-
-### 🔴 Critical
-- [x] **C1 — Non-admin initial data load fails** (`AppDataContext.tsx:78-86`, `routes/users.ts:9`) **[FIXED — safe directory endpoint + allSettled load + failure toast]**
-  - [x] Isolate each fetch so a 403 on `GET /users` can't reject the whole `Promise.all` (per-request `.catch` or `Promise.allSettled`) — `AppDataProvider` now uses `Promise.allSettled` with per-array fallbacks
-  - [x] Give non-admins a directory source: wire `GET /supervisors/:id/users` into `AppDataContext`, or make `GET /users` return a safe self/team projection — chose the latter: `listUsers` now returns a scoped directory (self + project teammates/supervisor/manager + own supervisor + subordinates) for non-admins, withholding `email`/`employeeId`; admins keep the full list
-  - [x] Surface partial-load failures to the user (toast/error state; no silent empty dashboards, no unhandled rejections) — toast when any of the 6 fetches rejects; defensive `.catch` kills unhandled rejections
-  - [x] Regression test: login as `role: 'user'` populates projects, timesheets, notifications, activities — added `src/tests/users-directory.test.ts` (3 tests: non-admin 200 + scoped IDs + no email/employeeId leak; supervisor sees subordinates; admin sees full list). Full suite: **13 files / 128 tests pass**
-- [x] **C2 — Documents never fetched; list always empty** (`documentService.ts:4-7`, `AppDataContext.tsx:83`) **[FIXED — 2026-09-11]**
-  - [x] Fetch documents per accessible project after initial load (or add a store-level list endpoint) — added store-level endpoint: `GET /api/v1/documents` (`myDocumentsRoutes`) returns documents for all projects the requester can access; admins see org-wide, non-admins scoped per `getProjectsForUser`. `myDocumentsController.listMyDocuments` calls `getAllDocuments()` for admins and `getDocumentsByProjectIds(projectIds)` for non-admins
-  - [x] Keep the store in sync after upload/delete (per-project refresh instead of appending to an always-empty array) — `refreshDocuments()` now calls the store-level endpoint and writes the full set into state; upload/delete both call `refreshDocuments()` so the list stays correct
-  - [x] Regression test: document uploaded at project creation appears in ProjectDetails after a reload — added `src/tests/documents-store.test.ts` (3 tests: admin sees all org documents; non-admin sees only accessible-project documents and the unrelated project's doc is excluded; empty list when no accessible projects). Full suite: **14 files / 131 tests pass**
-- [x] **C3 — Cron deadline endpoint unreachable** (`routes/notifications.ts:7-13`) **[FIXED]**
-  - [x] Mount `POST /notifications/cron/deadline` **before** `router.use(authenticate)` (the secret check already protects it)
-  - [x] Integration test: request with only `Bearer CRON_SECRET` reaches the handler and returns `{ sent }` — added `src/tests/notifications-cron.test.ts` (6 tests: valid secret → 200 + `{ sent }`; missing/wrong secret → 401; empty CRON_SECRET → 500; thrown handler → 500; malformed JWT → cron-specific 401 not JWT 401). Full suite: **15 files / 137 tests pass**
-- [x] **C4 — `GET /activities` unscoped; activity log-forging** (`activity.controller.ts:19-99`, `routes/activities.ts:15`) **[FIXED — 2026-09-12]**
-  - [x] Scope `listActivities`: admin → all; supervisor → their projects/subordinates; user → own + member projects — done: non-admins are gated on `?projectId=` (canAccessProject → 403), `?userId=` (own or direct subordinate, else 400), and `?timesheetId=` (rejected for non-admins); the returned set is filtered to `getAccessibleProjectIds`
-  - [x] Enforce `canAccessProject` on the `projectId` filter for non-admins — done
-  - [x] Bound `description` length on `POST /activities` (≤500 chars) and require project/timesheet access checks — done in `createActivityForRequest`
-  - [x] Test: `activities-scoping.test.ts` (6 tests) — admin sees all; non-admin 403s on foreign `?projectId=`; non-admin sees only accessible-project activity; supervisor reads subordinate `?userId=`; supervisor 400s on non-subordinate `?userId=`; non-admin 400s on `?timesheetId=`
-
-### 🟠 High
-- [x] **H1 — Swallowed errors + false success toasts** (`AppDataContext.tsx:212-270`, `TimesheetEditor.tsx:188-258`) **[FIXED — 2026-09-12]**
-  - [x] Preserve error messages in context handlers (rethrow or return `{ ok, error }` instead of `catch { return undefined }`) — the five timesheet handlers in `AppDataContext` now rethrow, so the backend message reaches the caller's `catch` verbatim
-  - [x] `handleSaveDraft`, `handleSubmit`, `handleWithdraw` check the result **before** showing success toasts — falsy results now show an error toast and keep the editor/modal open (no success toast, no navigate-away)
-  - [x] Show backend validation strings (day rules, E11000) verbatim in the editor when a save/submit fails — error toasts surface `err.message` (e.g. `[VALIDATION_ERROR] …`) since the context no longer swallows it
-- [x] **H2 — Day-rule validation parity; hidden hours submitted** (`TimesheetEditor.tsx:69-84,138-140`) **[FIXED — 2026-09-12]**
-  - [x] Zero-out (or confirm) hours for days that don't match the entry type when switching type — `handleEntryTypeChange` zeroes out Sat/Sun when switching to Regular and Mon–Fri when switching to Overtime, with an informational toast listing exactly what was removed (no silent data loss)
-  - [x] Mirror backend `validateEntries` client-side (regular=Mon–Fri, overtime=Sat–Sun) with inline messages — `getValidationErrors` now enforces the same day rules (plus non-negative and ≤24h/day checks) with messages matching the backend wording, shown in the editor's inline error list before any save/submit
-- [x] **H3 — Week ‹ › mutates the open timesheet** (`TimesheetEditor.tsx:94-124`, `timesheet.service.ts:226-231`) **[FIXED — 2026-09-12]**
-  - [x] Make the arrows **navigate** weeks (load/create that week's timesheet) instead of editing the open one's `weekStart` — the editor arrows now open the adjacent week's existing timesheet (same user+project) or create a fresh draft for that week; the open timesheet's `weekStart` is never mutated (navigation uses local-time math via `parseLocalDate`/`addWeeks`)
-  - [x] If week relocation is kept as a feature, require explicit confirmation and pre-check the `(userId, projectId, weekStart)` collision — relocation is **removed entirely**: the client can no longer change an open timesheet's week, and `updateTimesheet` now rejects any `weekStart` change (`Cannot move a timesheet to a different week…`), which is stronger than confirm + pre-check
-  - [x] Add a supported "create timesheet for past week" path on My Timesheets (aligns with Feature_Report §2.5) — the New Timesheet modal now has a **Week starting (Monday)** date picker (defaults to current week), snapped to Monday via `normalizeToMonday`, with the existing duplicate pre-check applied to the chosen week
-- [x] **H4 — Review permission mismatch (UI vs middleware)** (`ReviewPanel.tsx:37-49`, `access.ts:48-57`, `approval.service.ts:15-28`) **[FIXED — 2026-09-12]**
-  - [x] Pick one authority (backend route middleware) and delete the duplicated `canReviewTimesheet` implementations — `access.ts` remains the single authority (admin OR the timesheet's project `supervisorId`, covered by 6 tests in `access.test.ts`); `ReviewPanel`'s UI check now mirrors it exactly (drops the former employee's-supervisor and team-member allowances, so buttons no longer appear when the API would 403); the permissive copy in `utils/permissions.ts` was deleted, and the duplicate in `approval.service.ts` was removed — the service's defense-in-depth re-check now calls the **same** `canReviewTimesheet` from `access.ts` (covered by new `approvals-service.test.ts`)
-  - [ ] Compute reviewability on the frontend from the same rule (admin or project's `supervisorId` only)
-  - [ ] Hide Approve/Decline when review isn't possible; show an explanatory state instead
-- [x] **H5 — Self-approval possible** (`access.ts:48-57`)
-    - [x] Reject review when `timesheet.userId === reviewerId` (document any deliberate admin exception)
-  - [ ] Test: a supervisor cannot approve/decline their own timesheet
-- [x] **H6 — No user directory for supervisors** (`routes/users.ts:9`) **[FIXED by C1 — safe directory projection]**
-  - [x] Wire `GET /supervisors/:id/users` (plus project team membership) into `AppDataContext` for non-admins — resolved via C1's alternative: `GET /users` now returns the scoped directory for non-admins, which `AppDataContext` already stores
-  - [x] Replace `users.find(...)` name lookups on supervisor pages / ReviewPanel with that source — no frontend change needed; all pages read the `users` array from context, which now populates for non-admins
-- [x] **H7 — Deactivate without confirmation / false success** (`UserDetails.tsx:46-49,87`)
-  - [x] Add a `ConfirmDialog` to deactivation (match the project-delete pattern) — added `<Modal>` confirmation; "Deactivate User" in the dropdown now opens it instead of firing instantly
-  - [x] Check the result; surface the backend error (self-deactivation, last active admin) instead of unconditional success — `handleDeactivate` now checks the returned user and `catch`es errors, toasting a real message (and navigates to `/login` if the admin deactivated themselves)
-- [x] **H8 — Broken document downloads** (`admin/ProjectDetails.tsx`, `user/ProjectDetails.tsx`) **[FIXED — 2026-09-12]**
-  - [x] Give the document store a working list endpoint (done in C2 — `GET /api/v1/documents` now returns the visible document set)
-  - [x] Route downloads through the authenticated `GET /documents/:documentId/download` endpoint (fetch → blob → object URL) — new `downloadBlob()` in `apiClient.ts` + `downloadDocument()` in `documentService.ts`; admin DocumentsTab now streams via the endpoint with a busy state and error toast instead of linking the private blob URL
-  - [x] Add a working download action on the employee ProjectDetails — per-document download button wired to the same endpoint
-  - [x] Wire or remove the dead "Export" button — removed (it had no handler and no backend report endpoint behind it)
-  - [x] Test: `documents-store.test.ts` gains a "Store-level document download (QA H8)" block (3 tests: streams bytes + headers for an authorized user, 403 for an unauthorized user, 404 for unknown id)
-
-### 🟡 Medium
-- [x] **M1** — Fix or remove `getUnreadNotifications` (`?unread=true` → `read=false`) (`notificationService.ts:8-12`) **[FIXED — 2026-09-12]** — `getUnreadNotifications` now queries `GET /notifications?read=false`, the param the backend schema actually understands
-- [x] **M2** — Compute unread count with `countDocuments` (remove the 50 cap) (`notification.controller.ts:21-24`) **[FIXED — 2026-09-12]** — new `countUnreadNotifications()` in `notification.service.ts` runs `countDocuments({ userId, read: false })`; `GET /unread-count` uses it instead of the capped list fetch; locked by 2 regression tests in `notifications.test.ts`
-- [x] **M3** — Support `userId` on `GET /timesheets` or delete the dead service helpers (`timesheet.controller.ts:11-50`, `timesheetService.ts`, `projectService.ts`, `userService.ts`) **[FIXED — 2026-09-12]**
-  - [x] `GET /timesheets` now honors `?userId=` with proper RBAC: admins can narrow to any user; supervisors can filter within their scope (intersect, never widen); regular users always see only their own timesheets
-  - [x] `getTimesheets` service accepts a `userIds` array plus `projectId`/`status`/`weekStart` filters, so `getTimesheetsByProjectId` and `getCurrentWeekTimesheet` now return correct server-scoped data
-  - [x] Regression coverage: `timesheets-userid.test.ts` (4 tests) — admin narrow, supervisor in-scope, supervisor out-of-scope (empty, not widened), regular-user ignore
-- [x] **M4** — Make Settings real: wire profile/password/notification prefs and admin config to backend endpoints, or remove the controls (`user/Settings.tsx:55-67`, `admin/Settings.tsx:40-193`) **[FIXED — 2026-09-12]**
-  - [x] Self-service profile update endpoint (name/email) or make the fields read-only — admin can now update org-wide settings (company name, timezone, workdays, standard weekly hours, weekend overtime) via `PUT /api/v1/settings`; non-admin read of org settings via `GET /api/v1/settings`
-  - [x] Password change flow (endpoint + UI) or remove the expectation — wired existing `POST /api/v1/auth/change-password` to a working change-password form in user Settings
-  - [x] Drive weekly-target/day rules/notifications from admin config or remove the config — `TimesheetEditor` weekly target now sourced from org settings (via `AppDataContext`), notification prefs persist via `PUT /api/v1/settings/me/notification-prefs`
-- [ ] **M5** — Implement a dark theme or remove the toggle (`user/Settings.tsx:49-53`)
-- [ ] **M6** — Remove or wire "Remember me" / "Forgot password?" (`AdminLogin.tsx:126-138`; backend stubs at `auth.controller.ts:70-76`)
-- [ ] **M7** — Sum all same-week timesheets for the dashboard "This Week" card (`user/Dashboard.tsx:34-41`)
-- [x] **M8** — Reports: add status filter (approved-only by default); fix `userId`/`department` overwrite (`report.service.ts:50-84`) **[FIXED — 2026-09-12]**
-  - [x] Add a `status` filter to `ReportFilters` and apply it in `buildMatchStage` (default to approved on the UI) — done
-  - [x] Make `userId` and `department` intersect instead of overwriting — done (`$and` of both conditions; empty department → always-false)
-  - [x] Wire the control into the Reports UI — done (dropdown, defaults to "Approved only")
-  - [x] Regression coverage: `reports.test.ts` (8 tests) — status applied / status=all omitted / userId+department intersect / empty department returns nothing
-- [ ] **M9** — Align `GET /approvals` scoping with the supervisor UI filter (or vice versa) (`approval.service.ts:30-65`, `supervisor/Approvals.tsx:21-23`)
-- [ ] **M10** — Pre-check admin guardrails in the UI (self-role-change, last-admin demotion/deactivation) instead of post-hoc 400s (`EditUser.tsx`, `UserDetails.tsx`)
-- [ ] **M11** — Notifications: deep-link to the related item (`relatedId`); add polling/SSE for live updates (`user/Notifications.tsx:49-60`, `Topbar.tsx`)
-- [ ] **M12** — Normalize week-range rendering through `utils/date.ts` helpers everywhere (UTC-safe) (`user/Timesheets.tsx:158-163`, `Submissions.tsx:50-52`, `supervisor/Timesheets.tsx:121-128`, `supervisor/Approvals.tsx:92-99`, `ReviewPanel.tsx:66-68`, `admin/ProjectDetails.tsx:284-290`)
-- [ ] **M13** — Auth hardening (`routes/auth.ts:11`, `lib/jwt.ts`, `auth.service.ts:54-100`, `middleware/auth.ts:26`)
-  - [ ] Clear the refresh cookie server-side even when the access token is expired (logout robustness)
-  - [ ] Separate access/refresh token secrets or add a `typ`/audience claim check
-  - [ ] Hash refresh sessions at rest; rotate the refresh token on use; add reuse detection
-  - [ ] Call `invalidateUserCache` on role/status change, not just deactivation
-- [ ] **M14** — Rate-limit review: key refresh by user, raise/replace the 10/min auth budget for offices behind NAT (`app.ts:49-62`)
-- [ ] **M15** — Escape/anchor user input in `$regex` search (`user.service.ts:54-59`, `project.service.ts:83-89`)
-- [ ] **M16** — Remove `documentIds` from the Project contract or start maintaining it (`project.service.ts:24,71`)
-- [ ] **M17** — Collision-safe editor entry IDs (`crypto.randomUUID()`) (`TimesheetEditor.tsx:51,143`)
-- [ ] **M18** — Include `archived` in the admin dashboard status breakdown (`admin/Dashboard.tsx:42-50`)
-
-### ⚪ Low / hygiene
-- [ ] Delete or rewire dead code: `utils/permissions.ts`, `src/mock/*`, unused service helpers (`searchTimesheets`, `getProjectsByUserId`, `searchUsers`, …)
-- [ ] Deduplicate approve/decline logic into a single service implementation
-- [ ] Adopt or remove the unused Zustand dependency
-- [ ] Add pagination/limits to users, projects, timesheets, activities lists
-- [ ] Supervisor Team-Timesheets "Review" opens the specific timesheet, not the top of Approvals (`supervisor/Timesheets.tsx:135`)
-- [ ] Time-based greeting on the user dashboard (`user/Dashboard.tsx:74`)
-- [ ] Remove hardcoded demo credentials/buttons from production login screens (`authService.ts:14-21`)
-- [ ] Repo hygiene: remove `backend/dist/**` from git, delete the stray `home/nikhil/Alpha-net/...` nested file, resolve pending uncommitted changes, use meaningful commit messages, prune the root `package.json` devDeps
-- [ ] A11y polish: focus traps + Escape-close for modals, meaningful aria-labels, larger day inputs
-- [ ] Document the Regular/Overtime day rules in the UI copy (tooltip/help text)
-
-### 🧪 Test gaps (add to prevent regressions)
-- [ ] Integration test with real/in-memory Mongo for the auth cookie flow (login → refresh → logout)
-- [ ] Test the cron deadline route with only `CRON_SECRET` (guards C3)
-- [ ] Test documents list/download against the real blob contract (guards C2/H8)
-- [x] Tests for activities scoping (guards C4) — `activities-scoping.test.ts` (6 tests)
-- [x] Tests for the self-approval block (guards H5) and review-permission parity (guards H4)
-
-### Progress summary
-| Tier | Findings | Fixed |
-|------|----------|-------|
-| 🔴 Critical | 4 | 4 (C1, C2, C3, C4) |
-| 🟠 High | 8 | 6 (H6 by C1, H5, H7, H1, H2, H3) |
-| 🟡 Medium | 18 | 0 |
-| ⚪ Low / hygiene | 10 | 0 |
-| 🧪 Test gaps | 5 | 1 (self-approval block for H5) |
-
-> Note: H8 is partially fixed — its "no document list" sub-problem is resolved by C2; downloads (private blob URLs, no employee download action) remain open.
+## Verification snapshot (2026-09-14)
+- Backend: `cd backend && npm test` → 21 files, **179 tests, all passing** (175 pre-existing + 4 new: unauthenticated-401 on settings, stale/invalid-cookie clearing ×2, no-cookie no-`Set-Cookie`).
+- Frontend: `npm run build` succeeds (`tsc -b && vite build`, ✓ built); `npm run lint` → 0 errors (14 pre-existing warnings).
+- Live incident replay: `POST /auth/refresh` with the exact stale cookie from the user's DevTools returned **200** after re-login, and failed-refresh responses now clear the dead cookie (A11).
+- Cleanup: the throwaway `qa-cycle@test.local` account (user + 2 sessions + 1 activity) created during the refresh diagnosis was deleted from the dev DB; the diagnostic script remains at `backend/src/scripts/debug-sessions.ts` for future session inspection.
+- Still open for manual verification: admin Settings page end-to-end (A1), browser session-survival check (A11), CI wiring (A2/A12), and the hygiene items A5–A10.

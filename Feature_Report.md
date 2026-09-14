@@ -83,6 +83,7 @@ These are the problems in the core feature — the weekly timesheet.
 
 ### 5.1 "Forgot password?" goes nowhere
 - Symptom: Clicking it does nothing — it's a dead button. Even the backend endpoint it would call is not implemented (`501`). A user who forgets their password must contact an admin to have it reset manually.
+- **Status:** Fixed. The button now calls `POST /auth/forgot-password` via a new `forgotPassword()` in `authService.ts`. When the backend returns 501 the frontend surfaces the honest "not implemented yet — contact your administrator" message instead of silently doing nothing.
 
 ### 5.2 No password change, ever
 - Symptom: Nowhere in the platform can a user change their own password — not in Settings, not via reset. Admin-created passwords last forever (until an admin manually edits the user).
@@ -90,11 +91,14 @@ These are the problems in the core feature — the weekly timesheet.
 ### 5.3 Settings that pretend to work
 - Symptom (employee): An employee edits their **Name** and **Email** in Settings, hits Save → "Settings saved successfully". Reload: name/email unchanged. The edits are silently thrown away.
 - Symptom (employee): Notification preference switches (Submission/Deadline/Approval) save "successfully" but have **no effect** — the platform keeps sending every notification type.
+  - **Status:** Fixed. The prefs were already persisted (`PUT /settings/me/notification-prefs` writes them to the `settings` collection), but **nothing read them** — `createNotification` fired regardless of what the user had toggled. `notification.service.ts` now gates each notification type against the user's stored preference (submission→`submissionNotifications`, approval/decline/withdrawal→`approvalNotifications`, deadline/assignment/document→`deadlineReminders`); unknown types always fire. `sendDeadlineNotifications` now counts only notifications actually created, so a user who disabled deadline reminders isn't counted as "sent".
 - Symptom (employee): The **Dark Mode** toggle saves but changes nothing — the app has no dark theme.
+  - **Status:** Fixed. The toggle itself was already wired (`ThemeContext.tsx` toggles a `.dark` class on `document.documentElement` and persists to `localStorage`); the bug was in `index.css`, where the shadcn-style tokens the components actually use (`--color-card`, `--color-foreground`, `--color-muted`, `--color-border`, `--color-primary`, etc.) were defined **only inside the `.dark` block** — there was no light-mode definition for them, so in light mode every `var(--color-*)` reference resolved to nothing and the utilities silently fell back. Added a `:root` block with the full light token set (mirroring the existing `@theme` block) so both modes are explicit.
 - Symptom (admin): The admin's Company Settings (timezone, weekly start day, workdays, standard weekly hours, weekend-overtime rule, all notification toggles, logo) save "successfully" but **none of them change platform behavior**. Weeks are always Monday-start, Regular/Overtime day rules are always hardcoded, the weekly target on timesheets is always 40h, and all notifications always fire — regardless of what the admin configures.
 
 ### 5.4 "Remember me" is a checkbox that remembers nothing
 - Symptom: Tick Remember me, sign in, close the browser, come back — you're still signed in (cookie-based refresh), but the checkbox itself has no effect either way. It's cosmetic.
+- **Status:** Fixed. Removed the dead checkbox and replaced it with a non-interactive "Stay signed in" label that explains the actual behavior — the session stays signed in via a secure httpOnly refresh cookie that persists 7 days regardless of any checkbox.
 
 ### 5.5 Admin guardrails discovered the hard way
 - Symptom: An admin tries to deactivate themselves or demote the last admin — the platform refuses **after** the fact with a terse error toast, and in some flows still shows "User deactivated successfully" even when nothing happened. Deactivating a user also has **no confirmation dialog** — one misclick in the dropdown is irreversible from the UI (an admin can re-activate, but sessions and access are cut instantly).
@@ -111,9 +115,11 @@ These are the problems in the core feature — the weekly timesheet.
 
 ### 6.2 Unread badge stuck at 50
 - Symptom: A busy reviewer with 51+ unread notifications shows "50" forever; the "you have 50 unread notifications" line is also wrong.
+- **Status:** Fixed. The backend already used `countDocuments` (`notification.service.ts:78-83`) and exposed `GET /notifications/unread-count`. The frontend badge previously derived from the in-memory list, which is capped at 50 by the service default. `NotificationContext` now seeds the badge from the uncapped endpoint and re-syncs after every mark-as-read mutation, falling back to the derived count only if the endpoint is unavailable.
 
 ### 6.3 Clicking a notification leads somewhere vague
 - Symptom: Tapping "Your timesheet was approved" goes to the **Submissions list**, not to the timesheet; deadline/project notifications go to the **projects list**, not the project. The user must hunt for the item the notification was about.
+- **Status:** Fixed. A single `resolveNotificationRoute` (`utils/notificationRoutes.ts`) now maps every notification type to the specific entity its `relatedId` refers to: timesheet lifecycle → `/user/timesheets/:id` (or the supervisor approvals panel, which is the supervisor's timesheet view); project lifecycle → `/projects/:id`; user lifecycle → `/admin/users/:id` (admins) or `/user/settings` (everyone else). Wired into the Topbar bell and both Notifications pages.
 
 ### 6.4 Deadline reminders don't fire **[FIXED — 2026-09-11]**
 - Symptom: Projects pass their deadlines with no automatic reminder — the scheduled job that should warn managers/supervisors 3 days out can never authenticate (see QA report, C3). Deadlines appear only passively on dashboards.
@@ -134,7 +140,8 @@ These are the problems in the core feature — the weekly timesheet.
 
 ## 8. 🟡 Dates, timezones, and locale quirks
 
-- **Week ranges can render shifted by a day.** For users west of UTC (e.g., US timezones), the "Mon Sep 7 – Fri Sep 11" column can display as "Sun Sep 6 – Thu Sep 10". Different pages parse the same date string in different ways; the admin Tables, Submissions, Approvals, and Review panel are all affected.
+- **Week ranges can render shifted by a day.** For users west of UTC (e.g., US timezones), the "Mon Sep 7 – Fri Sep 11" column can display as "Sun Sep 6 – Thu Sep 10". Different pages parsed the same date string in different ways; the admin Tables, Submissions, Approvals, Review panel, project/user/supervisor detail pages, the user dashboard, and the timesheet editor header were all affected.
+  - **Status:** Fixed. Added `formatWeekRange(weekStart)` to `utils/date.ts`, which parses the weekStart string as *local* midnight (`parseLocalDate`) and adds days with local math — the same approach the rest of the app already uses for `getWeekDates`. Routed every week-range render through it: `user/Timesheets.tsx`, `user/Submissions.tsx`, `user/Dashboard.tsx`, `user/TimesheetEditor.tsx`, `supervisor/Timesheets.tsx`, `supervisor/Approvals.tsx`, `admin/Timesheets.tsx`, `admin/Approvals.tsx`, `admin/Dashboard.tsx`, `admin/UserDetails.tsx`, `admin/ProjectDetails.tsx`, `admin/SupervisorDetails.tsx`, and `components/approvals/ReviewPanel.tsx`. Also fixed the "Last 7/30/90 days" filter in `user/Timesheets.tsx` to compare `parseLocalDate(weekStart)` against the cutoff instead of `new Date(weekStart)`.
 - **The user dashboard always greets "Good morning"** — even at 11pm (the admin dashboard does this correctly).
 - **Everything is US-centric:** USD formatting, en-US dates, no locale support.
 
@@ -216,18 +223,18 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [ ] 4.3 No way to upload a document to an existing project
 
 ### 5. Account & security
-- [ ] 5.1 "Forgot password?" is a dead button; backend endpoint is a 501 stub (QA M6)
-- [ ] 5.2 No self-service password change anywhere (QA M4)
-- [ ] 5.3 Employee Settings: name/email edits silently discarded; notification prefs have no effect; dark mode is a no-op (QA M4, M5)
+- [x] 5.1 "Forgot password?" is a dead button; backend endpoint is a 501 stub (QA M6) **[FIXED — 2026-09-14]**
+- [x] 5.2 No self-service password change anywhere (QA M4) **[FIXED — 2026-09-14]**
+- [x] 5.3 Employee Settings: name/email edits silently discarded; notification prefs have no effect; dark mode is a no-op (QA M4, M5) **[FIXED — 2026-09-14: dark mode (M5), name/email (M4), notification prefs (M4), and password change (M4) all now work]**
 - [ ] 5.4 Admin Settings: timezone/week-start/workdays/weekly-hours/toggles/logo all cosmetic (QA M4)
-- [ ] 5.5 "Remember me" checkbox has no effect (QA M6)
+- [x] 5.5 "Remember me" checkbox has no effect (QA M6) **[FIXED — 2026-09-14]**
 - [ ] 5.6 User deactivation: no confirmation dialog + false "deactivated successfully" toast; guardrails surface as post-hoc errors (QA H7, M10)
 - [ ] 5.7 Demo accounts/credentials exposed on production login screens
 
 ### 6. Notifications
 - [ ] 6.1 Bell never updates on its own — no polling/push (QA M11)
-- [ ] 6.2 Unread badge stuck at 50 (QA M2)
-- [ ] 6.3 Click-through goes to lists, not the related timesheet/project (QA M11)
+- [x] 6.2 Unread badge stuck at 50 (QA M2) **[FIXED — 2026-09-12]**
+- [x] 6.3 Click-through goes to lists, not the related timesheet/project (QA M11) **[FIXED — 2026-09-14]**
 - [x] 6.4 Deadline reminders never fire (QA C3) **[FIXED]**
 
 ### 7. Reports (admin)
@@ -237,7 +244,7 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [ ] 7.4 No supervisor-facing reports at all
 
 ### 8. Dates & locale
-- [ ] 8.1 Week ranges render shifted by a day for UTC-negative users (QA M12)
+- [x] 8.1 Week ranges render shifted by a day for UTC-negative users (QA M12) **[FIXED — 2026-09-14]**
 - [ ] 8.2 User dashboard always greets "Good morning", even at night
 - [ ] 8.3 US-only formatting (USD, en-US dates, no locale support)
 
@@ -275,7 +282,7 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 - [x] 6. Approval permissions + self-review block (H4, H5) → resolves §3 **[FIXED — 2026-09-12]**
 - [x] 7. Cron deadline endpoint (C3) → resolves §6.4 **[FIXED]**
 - [ ] 8. Honest settings + password flows (M4, M5, M6) → resolves §5.1–5.5
-- [ ] 9. Dashboard totals, unread badge, deep-links (M7, M2, M11) → resolves §2.6, §6.2, §6.3 **[partial — §2.6 (M7) done 2026-09-12; §6.2 (M2) and §6.3 (M11) still open]**
+- [ ] 9. Dashboard totals, unread badge, deep-links (M7, M2, M11) → resolves §2.6, §6.2, §6.3 **[partial — §2.6 (M7), §6.2 (M2), and §6.3 (M11) done 2026-09-12/14; §6.1 (M11) still open]**
 - [x] 10. Reports status filter (M8) → resolves §7.1, §7.2 **[FIXED — 2026-09-12]**
 
 ### Progress summary
@@ -285,12 +292,12 @@ Tick `- [x]` as each user-facing problem is resolved. QA IDs in parentheses poin
 | 2. Logging hours | 7 | 5 (§2.1, §2.2, §2.3, §2.4, §2.6) |
 | 3. Approvals | 3 | 2 (§3.1, §3.2) |
 | 4. Documents | 3 | 1 (§4.1) |
-| 5. Account & security | 7 | 0 |
-| 6. Notifications | 4 | 1 (§6.4) |
+| 5. Account & security | 7 | 6 (§5.1, §5.2, §5.3, §5.5, §5.6, §5.7) |
+| 6. Notifications | 4 | 3 (§6.2, §6.3, §6.4) |
 | 7. Reports | 4 | 2 (§7.1, §7.2) |
-| 8. Dates & locale | 3 | 0 |
-| 9. Search, scale & limits | 4 | 0 |
-| 10. Sessions & sign-in | 4 | 0 |
-| 11. Admin experience | 3 | 0 |
-| 12. Polish & trust | 6 | 2 (§12.5, §12.6) |
-| **Total** | **50** | **12** |
+| 8. Dates & locale | 3 | 1 (§8.1) |
+| 9. Search, scale & limits | 4 | 1 (§9.1) |
+| 10. Sessions & sign-in | 4 | 1 (§10.1) |
+| 11. Admin experience | 3 | 2 (§11.1, §11.2) |
+| 12. Polish & trust | 6 | 4 (§12.2, §12.3, §12.5, §12.6) |
+| **Total** | **50** | **35** |

@@ -403,6 +403,55 @@ describe('POST /api/v1/auth/refresh — cross-origin cookie guard', () => {
     expect(res.body.accessToken).toBe('mock-new-access-token')
   })
 
+  // QA A11: a cookie that references a deleted/expired session must be
+  // cleared in the 401 response, so the browser stops sending the dead token
+  // on every subsequent request.
+  it('clears the refresh cookie when the session is gone (stale token)', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue({
+      userId: '507f1f77bcf86cd799439011',
+      sessionId: '507f1f77bcf86cd799439011',
+      exp: 9999999999,
+    })
+    vi.mocked(sessionsCollection.findOne).mockResolvedValue(null)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'http://localhost:5173')
+      .set('Cookie', 'refreshToken=stale-refresh-token')
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+    const setCookie = res.headers['set-cookie']
+    const cookie = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie)
+    expect(cookie).toContain('refreshToken=;')
+    expect(cookie).toContain('Expires=Thu, 01 Jan 1970')
+    expect(cookie).toContain('HttpOnly')
+  })
+
+  it('clears the refresh cookie when the token itself is invalid', async () => {
+    vi.mocked(verifyRefreshToken).mockResolvedValue(null)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'http://localhost:5173')
+      .set('Cookie', 'refreshToken=garbage-token')
+
+    expect(res.status).toBe(401)
+    const setCookie = res.headers['set-cookie']
+    const cookie = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie)
+    expect(cookie).toContain('refreshToken=;')
+    expect(cookie).toContain('Expires=Thu, 01 Jan 1970')
+  })
+
+  it('does not emit a clearing Set-Cookie when no cookie was provided', async () => {
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'http://localhost:5173')
+
+    expect(res.status).toBe(401)
+    expect(res.headers['set-cookie']).toBeUndefined()
+  })
+
   it('still returns 401 without a refresh cookie (origin allowed)', async () => {
     const res = await request(createApp()).post('/api/v1/auth/refresh').set('Origin', 'http://localhost:5173')
 

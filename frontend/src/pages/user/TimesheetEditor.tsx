@@ -10,7 +10,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { addWeeks, formatDateRange, parseLocalDate, toLocalDateString } from '../../utils/date'
+import { addWeeks, formatWeekRange, parseLocalDate, toLocalDateString } from '../../utils/date'
+import { createEntryId } from '../../utils/id'
 import { getOrgSettings } from '../../services/settingsService'
 import type { Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
@@ -54,7 +55,7 @@ export function TimesheetEditor() {
     if (existingTimesheet) {
       return existingTimesheet.entries.map((e) => ({ ...e, hours: { ...e.hours } }))
     }
-    return [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }]
+    return [{ id: createEntryId(), description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }]
   })
   const [notes, setNotes] = useState(() => existingTimesheet?.notes || '')
   const [weekStart] = useState(() => existingTimesheet?.weekStart || (() => {
@@ -132,14 +133,6 @@ export function TimesheetEditor() {
     return errors
   }
 
-  const weekEnd = useMemo(() => {
-    if (!weekStart) return null
-    const start = new Date(weekStart)
-    const end = new Date(start)
-    end.setDate(end.getDate() + 4)
-    return end
-  }, [weekStart])
-
   // H3 (QA.md): the week ‹ › controls must never mutate the open timesheet's
   // weekStart — that silently relocated the whole timesheet to another week
   // (hours shifted weeks; E11000 on the (userId, projectId, weekStart) unique
@@ -159,7 +152,7 @@ export function TimesheetEditor() {
         userId: user.id,
         projectId: project.id,
         weekStart: targetWeekStart,
-        entries: [{ id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
+        entries: [{ id: createEntryId(), description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }],
         notes: '',
       })
       await refreshTimesheets()
@@ -208,7 +201,10 @@ export function TimesheetEditor() {
   }
 
   const handleAddEntry = () => {
-    setEntries((prev) => [...prev, { id: `entry-${Date.now()}`, description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }])
+    // QA M17: use crypto.randomUUID() instead of Date.now() — two entries
+    // added in the same millisecond would share a React key and break row
+    // updates.
+    setEntries((prev) => [...prev, { id: createEntryId(), description: '', entryType: 'regular', hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 } }])
   }
 
   const handleRemoveEntry = (entryId: string) => {
@@ -364,7 +360,7 @@ export function TimesheetEditor() {
         <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border border-border">
             <button type="button" onClick={() => handleNavigateWeek(-1)} disabled={isNavigatingWeek} aria-label="Open previous week" title="Open previous week" className="rounded-l-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="px-4 py-2 text-sm font-medium text-foreground">{weekStart ? formatDateRange(new Date(weekStart), weekEnd!) : '-'}</span>
+            <span className="px-4 py-2 text-sm font-medium text-foreground">{weekStart ? formatWeekRange(weekStart) : '-'}</span>
             <button type="button" onClick={() => handleNavigateWeek(1)} disabled={isNavigatingWeek} aria-label="Open next week" title="Open next week" className="rounded-r-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <StatusBadge status={status} />
@@ -423,7 +419,7 @@ export function TimesheetEditor() {
                           value={entry.hours[day as keyof typeof entry.hours] || ''}
                           onChange={(e) => handleEntryChange(entry.id, day, parseFloat(e.target.value) || 0)}
                           disabled={!isEnabled}
-                          className={`w-16 rounded-lg border px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isEnabled ? 'border-border' : 'border-slate-100 bg-muted text-muted-foreground'}`}
+                          className={`w-20 rounded-lg border px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isEnabled ? 'border-border' : 'border-slate-100 bg-muted text-muted-foreground'}`}
                         />
                       </td>
                     )
@@ -451,6 +447,11 @@ export function TimesheetEditor() {
             <Button variant="secondary" size="sm" onClick={handleAddEntry} leftIcon={<Plus className="h-4 w-4" />}>Add Work Item</Button>
           </div>
         )}
+        {/* QA hygiene: document the Regular/Overtime day rules in the UI copy
+        so users don't have to guess why a day is greyed out. */}
+        <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Day rules:</span> Regular entries only accept hours Mon–Fri; overtime entries only accept hours Sat–Sun. Each day is capped at 24h.
+        </div>
       </Card>
 
       <Card>
@@ -510,7 +511,7 @@ export function TimesheetEditor() {
         onClose={() => setIsSubmitOpen(false)}
         onConfirm={handleSubmit}
         title="Submit Timesheet?"
-        description={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatDateRange(new Date(weekStart), weekEnd!) : ''}. Total hours: ${totals.totalHours.toFixed(1)}h.`}
+        description={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatWeekRange(weekStart) : ''}. Total hours: ${totals.totalHours.toFixed(1)}h.`}
         confirmLabel="Submit"
         isLoading={isProcessing}
       />

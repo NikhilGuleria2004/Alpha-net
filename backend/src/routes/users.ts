@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { listUsers, getUser, create, update, deactivate, activate, assignSupervisor } from '../controllers/user.controller.js'
+import { listUsers, getUser, create, update, deactivate, activate, assignSupervisor, updateMyProfile } from '../controllers/user.controller.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { requireUserManage } from '../middleware/access.js'
 
@@ -13,6 +13,11 @@ export function usersRoutes() {
   router.get('/:id', requireUserManage, getUser)
   router.post('/', requireAdmin, create)
   router.patch('/:id', requireUserManage, update)
+  // QA M4: self-service profile update — any authenticated user can update
+  // their own name/email/employeeId/department. Restricted schema omits
+  // role/status/isSupervisor/supervisorId/password, which remain admin-only
+  // via PATCH /:id above.
+  router.patch('/me', updateMyProfile)
   router.post('/:id/deactivate', requireAdmin, deactivate)
   router.post('/:id/activate', requireAdmin, activate)
   router.patch('/:id/supervisor', requireUserManage, assignSupervisor)

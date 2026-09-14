@@ -61,3 +61,51 @@ export function canManageProjectsByRole(role: UserRole): boolean {
 export function canManageUsersByRole(role: UserRole): boolean {
   return role === 'admin'
 }
+
+/**
+ * QA M10: admin guardrails were discovered post-hoc — the admin clicked
+ * "Deactivate" on the last active admin and got a 400 toast after the fact,
+ * or demoted the last admin via Edit User and saw the same. These helpers
+ * pre-check the same rules the backend enforces so the UI can disable the
+ * offending control and explain why, instead of letting the request fail.
+ */
+export function canDeactivateUser(admin: User, target: User, allUsers: User[]): { ok: boolean; reason?: string } {
+  if (admin.id === target.id) {
+    return { ok: false, reason: 'You cannot deactivate your own account.' }
+  }
+  if (target.role === 'admin' && target.status === 'active') {
+    const activeAdmins = allUsers.filter((u) => u.role === 'admin' && u.status === 'active')
+    if (activeAdmins.length <= 1) {
+      return { ok: false, reason: 'Cannot deactivate the last active admin.' }
+    }
+  }
+  return { ok: true }
+}
+
+// Note: `allUsers` is kept in the signature for API symmetry with
+// canDemoteAdmin/canDeactivateUser (QA M10) — promotion has no guard that
+// needs the directory today, so the parameter is intentionally unused.
+export function canPromoteToAdmin(target: User, _allUsers: User[]): { ok: boolean; reason?: string } {
+  if (target.role === 'admin') {
+    return { ok: false, reason: 'User is already an admin.' }
+  }
+  return { ok: true }
+}
+
+export function canDemoteAdmin(target: User, allUsers: User[]): { ok: boolean; reason?: string } {
+  if (target.role !== 'admin') {
+    return { ok: false, reason: 'User is not an admin.' }
+  }
+  const activeAdmins = allUsers.filter((u) => u.role === 'admin' && u.status === 'active')
+  if (activeAdmins.length <= 1) {
+    return { ok: false, reason: 'Cannot demote the last active admin.' }
+  }
+  return { ok: true }
+}
+
+export function canMakeSupervisor(target: User): { ok: boolean; reason?: string } {
+  if (target.status === 'inactive') {
+    return { ok: false, reason: 'Inactive users cannot become supervisors.' }
+  }
+  return { ok: true }
+}

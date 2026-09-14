@@ -84,6 +84,29 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
   await db.collection(COLLECTIONS.SESSIONS).deleteMany({ userId: new ObjectId(userId) })
 }
 
+// QA M4: self-service password change. Verifies the current password, then
+// hashes and stores the new one and revokes all existing sessions so the user
+// must re-authenticate on every other device.
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  validatePasswordStrength(newPassword)
+  const db = await getDb()
+  const user = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(userId) })
+  if (!user) {
+    throw new Error('User not found')
+  }
+  const valid = await verifyPassword(currentPassword, user.passwordHash)
+  if (!valid) {
+    throw new Error('Current password is incorrect')
+  }
+  const newHash = await hashPassword(newPassword)
+  await db.collection(COLLECTIONS.USERS).updateOne(
+    { _id: new ObjectId(userId) },
+    { $set: { passwordHash: newHash, updatedAt: new Date() } },
+  )
+  await deleteUserSessions(userId)
+  logger.info({ userId }, 'password changed and sessions revoked')
+}
+
 export async function loginUser(email: string, password: string) {
   const db = await getDb()
   const user = await db.collection(COLLECTIONS.USERS).findOne({ email: email.toLowerCase(), status: 'active' })

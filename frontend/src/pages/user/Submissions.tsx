@@ -5,7 +5,7 @@ import { useAppData } from '../../contexts/AppDataContext'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 
 export function Submissions() {
   const { user } = useAuth()
@@ -47,12 +47,9 @@ export function Submissions() {
               <tbody className="divide-y divide-slate-200">
                 {myTimesheets.map((timesheet) => {
                   const project = projects.find((p) => p.id === timesheet.projectId)
-                  const start = new Date(timesheet.weekStart)
-                  const end = new Date(start)
-                  end.setDate(end.getDate() + 4)
                   return (
                     <tr key={timesheet.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/user/submissions/${timesheet.id}`)}>
-                      <td className="px-4 py-3 text-sm text-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>

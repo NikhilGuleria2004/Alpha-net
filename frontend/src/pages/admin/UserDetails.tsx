@@ -11,7 +11,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
+import { canDeactivateUser } from '../../utils/permissions'
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
@@ -32,6 +33,12 @@ export function UserDetails() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const user = users.find((u) => u.id === userId)
+
+  // QA M10: pre-check the same guardrails the backend enforces so the admin
+  // discovers the rule before clicking, not via a 400 toast after the fact.
+  const deactivateGuard = currentUser && user
+    ? canDeactivateUser(currentUser, user, users)
+    : { ok: false, reason: 'Loading…' }
 
   const assignedProjects = useMemo(() => {
     if (!user) return []
@@ -106,9 +113,13 @@ export function UserDetails() {
               <Button variant="secondary" rightIcon={<Edit3 className="h-4 w-4" />} />
             }
           >
-            {user.status === 'active' && (
+            {user.status === 'active' && deactivateGuard.ok ? (
               <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={() => setIsConfirmOpen(true)}>Deactivate User</DropdownItem>
-            )}
+            ) : user.status === 'active' ? (
+              <div className="px-4 py-2 text-sm text-muted-foreground" title={deactivateGuard.reason}>
+                <Trash2 className="mr-2 inline h-4 w-4" />Deactivate User <span className="text-xs text-muted-foreground">— {deactivateGuard.reason}</span>
+              </div>
+            ) : null}
           </Dropdown>
         </div>
       </div>
@@ -189,14 +200,11 @@ export function UserDetails() {
                       </tr>
                     </thead>
                      <tbody className="divide-y divide-slate-200">
-                       {userTimesheets.map((t) => {
-                         const project = projects.find((p) => p.id === t.projectId)
-                         const start = new Date(t.weekStart)
-                         const end = new Date(start)
-                         end.setDate(end.getDate() + 4)
-                         return (
-                          <tr key={t.id} className="hover:bg-muted">
-                            <td className="px-4 py-3 text-sm text-foreground">{formatDate(start)} – {formatDate(end)}</td>
+{userTimesheets.map((t) => {
+                          const project = projects.find((p) => p.id === t.projectId)
+                          return (
+                           <tr key={t.id} className="hover:bg-muted">
+                             <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(t.weekStart)}</td>
                             <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                             <td className="px-4 py-3 text-right text-sm text-foreground">{t.totalHours.toFixed(1)}h</td>
                             <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>

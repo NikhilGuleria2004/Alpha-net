@@ -5,6 +5,7 @@ import { del } from '@vercel/blob'
 import { logger } from '../lib/logger.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
+import { escapeRegex } from '../lib/regex.js'
 
 export type ProjectStatus = 'draft' | 'active' | 'completed' | 'overdue' | 'archived'
 
@@ -21,7 +22,6 @@ export interface Project {
   managerId: string
   supervisorId: string
   teamMemberIds: string[]
-  documentIds: string[]
   createdAt: Date
   updatedAt: Date
 }
@@ -68,7 +68,6 @@ function toProject(doc: any): Project {
     managerId: doc.managerId?.toString(),
     supervisorId: doc.supervisorId?.toString(),
     teamMemberIds: doc.teamMemberIds?.map((id: any) => id.toString()) ?? [],
-    documentIds: doc.documentIds?.map((id: any) => id.toString()) ?? [],
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
@@ -81,10 +80,13 @@ export async function getProjects(filters?: { status?: ProjectStatus; managerId?
   if (filters?.managerId) query.managerId = new ObjectId(filters.managerId)
   if (filters?.supervisorId) query.supervisorId = new ObjectId(filters.supervisorId)
   if (filters?.search) {
+    // QA M15: escape metacharacters so the search is a literal substring
+    // match instead of a regex the user can control.
+    const escaped = escapeRegex(filters.search)
     query.$or = [
-      { name: { $regex: filters.search, $options: 'i' } },
-      { description: { $regex: filters.search, $options: 'i' } },
-      { client: { $regex: filters.search, $options: 'i' } },
+      { name: { $regex: escaped, $options: 'i' } },
+      { description: { $regex: escaped, $options: 'i' } },
+      { client: { $regex: escaped, $options: 'i' } },
     ]
   }
 
@@ -114,7 +116,6 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     managerId: new ObjectId(input.managerId),
     supervisorId: new ObjectId(input.supervisorId),
     teamMemberIds: input.teamMemberIds.map((id) => new ObjectId(id)),
-    documentIds: [],
     createdAt: now,
     updatedAt: now,
   }

@@ -156,6 +156,25 @@ export const apiClient = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
 }
 
+/**
+ * Attempt to restore a session from the httpOnly refresh cookie. Returns true
+ * if a new access token was obtained, false otherwise. Exposed so callers like
+ * getCurrentUser (which hit /auth/me directly, bypassing request()) can use it
+ * instead of giving up on the first 401.
+ */
+export async function refresh(): Promise<boolean> {
+  try {
+    const data = await request<{ accessToken?: string }>('/auth/refresh', { method: 'POST' }, 0)
+    if (data?.accessToken) {
+      accessToken = data.accessToken
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 export { setAccessToken, getAccessToken }
 
 /**

@@ -6,7 +6,7 @@ import { useAppData } from '../../contexts/AppDataContext'
 import { StatCard } from '../../components/dashboard/StatCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDateRange, toLocalDateString } from '../../utils/date'
+import { toLocalDateString, formatWeekRange } from '../../utils/date'
 
 export function UserDashboard() {
   const { user } = useAuth()
@@ -79,10 +79,17 @@ export function UserDashboard() {
     return found?.name || 'Unknown'
   }
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }, [])
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Good morning, {user?.name?.split(' ')[0] || 'User'}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{greeting}, {user?.name?.split(' ')[0] || 'User'}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Here's your work overview.</p>
       </div>
 
@@ -129,7 +136,7 @@ export function UserDashboard() {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">
-                        {formatDateRange(new Date(currentWeekTimesheets[0].weekStart), new Date(new Date(currentWeekTimesheets[0].weekStart).getTime() + 4 * 24 * 60 * 60 * 1000))}
+                        {formatWeekRange(currentWeekTimesheets[0].weekStart)}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Across {currentWeekTimesheets.length} project{currentWeekTimesheets.length === 1 ? '' : 's'}
@@ -204,9 +211,6 @@ export function UserDashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {recentSubmissions.map((timesheet) => {
-                      const start = new Date(timesheet.weekStart)
-                      const end = new Date(start)
-                      end.setDate(end.getDate() + 4)
                       return (
                         <tr
                           key={timesheet.id}
@@ -214,7 +218,7 @@ export function UserDashboard() {
                           onClick={() => navigate(`/user/submissions`)}
                         >
                           <td className="px-4 py-3 text-sm text-foreground">
-                            {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(start)} – {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(end)}
+                            {formatWeekRange(timesheet.weekStart)}
                           </td>
                           <td className="px-4 py-3 text-sm text-foreground">{getProjectName(timesheet.projectId)}</td>
                           <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.totalHours.toFixed(1)}h</td>

@@ -5,7 +5,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { Drawer } from '../../components/ui/Drawer'
 import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { formatDate } from '../../utils/date'
+import { formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
 import type { Project } from '../../types/project'
 import { DeclineModal } from './DeclineModal'
@@ -62,11 +62,8 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
 
   const employee = users.find((u) => u.id === timesheet.userId)
   const project = projects.find((p) => p.id === timesheet.projectId)
-  const start = new Date(timesheet.weekStart)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 4)
 
-        const canReview = canReviewTimesheet(
+  const canReview = canReviewTimesheet(
     currentUser?.id,
     currentUser?.role,
     currentUser?.isSupervisor,
@@ -132,7 +129,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Week</p>
               <p className="mt-1 text-sm text-foreground">
-                {formatDate(start)} – {formatDate(end)}
+                {formatWeekRange(timesheet.weekStart)}
               </p>
             </div>
             <div>

@@ -49,3 +49,18 @@ export async function putMyNotificationPrefs(
   const data = await apiClient.put<{ prefs: UserNotificationPrefs }>('/settings/me/notification-prefs', patch)
   return data.prefs
 }
+
+// QA M4: self-service profile update. PATCH /users/me — a user can change
+// their own name, email, employee ID and department. Restricted schema on the
+// backend omits role/status/isSupervisor/supervisorId/password, which remain
+// admin-only via PATCH /users/:id.
+export interface UpdateMyProfileInput {
+  name?: string
+  email?: string
+  employeeId?: string
+  department?: string
+}
+
+export async function updateMyProfile(patch: UpdateMyProfileInput): Promise<void> {
+  await apiClient.patch('/users/me', patch)
+}

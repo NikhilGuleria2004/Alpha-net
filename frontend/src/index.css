@@ -1,6 +1,21 @@
 @import "tailwindcss";
 
+/* Self-hosted JetBrains Mono (variable weight 100–800, latin subset).
+   Source: @fontsource-variable/jetbrains-mono (OFL-1.1 licensed). */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+}
+
 @theme {
+  /* Default font for the whole app — body { font-family: var(--font-sans) }
+     and Tailwind's preflight both resolve through this token. */
+  --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f8fafc;
   --color-bg-tertiary: #f1f5f9;
@@ -16,56 +31,44 @@
   --color-error: #dc2626;
 }
 
-.dark {
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #cbd5e1;
-  --color-text-tertiary: #94a3b8;
-  --color-border-primary: #334155;
-  --color-border-secondary: #475569;
-  --color-accent: #818cf8;
-  --color-accent-hover: #6366f1;
-  --color-success: #4ade80;
-  --color-warning: #fbbf24;
-  --color-error: #f87171;
+/* Light theme tokens — the app's single theme (dark mode was removed 2026-09-14).
+   The shadcn-style tokens the components use (--color-card, --color-foreground,
+   --color-muted, --color-border, --color-primary, etc.) must be defined here so
+   every var(--color-*) reference resolves. */
+:root {
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #4f46e5;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #4f46e5;
+  --color-sidebar: #f8fafc;
+  --color-sidebar-foreground: #0f172a;
+  --color-sidebar-border: #e2e8f0;
+  --color-sidebar-accent: #f1f5f9;
+  --color-sidebar-accent-foreground: #0f172a;
+  --color-sidebar-ring: #4f46e5;
+  --color-sidebar-primary: #4f46e5;
+  --color-sidebar-primary-foreground: #ffffff;
 }
 
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.dark {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
-  --color-popover: #1e293b;
-  --color-popover-foreground: #f8fafc;
-  --color-primary: #6366f1;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #334155;
-  --color-secondary-foreground: #f8fafc;
-  --color-muted: #334155;
-  --color-muted-foreground: #94a3b8;
-  --color-accent: #334155;
-  --color-accent-foreground: #f8fafc;
-  --color-destructive: #dc2626;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #334155;
-  --color-input: #334155;
-  --color-ring: #6366f1;
-  --color-sidebar: #0f172a;
-  --color-sidebar-foreground: #f8fafc;
-  --color-sidebar-border: #334155;
-  --color-sidebar-accent: #334155;
-  --color-sidebar-accent-foreground: #f8fafc;
-  --color-sidebar-ring: #6366f1;
-  --color-sidebar-primary: #6366f1;
-  --color-sidebar-primary-foreground: #ffffff;
 }
 
 @layer base {

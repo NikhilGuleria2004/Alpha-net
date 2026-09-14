@@ -4,7 +4,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
   placeholder?: string
-  options: Array<{ value: string; label: string }>
+  options: Array<{ value: string; label: string; disabled?: boolean }>
 }
 
 export function Select({ label, error, placeholder, options, className = '', id, ...props }: SelectProps) {
@@ -31,7 +31,7 @@ export function Select({ label, error, placeholder, options, className = '', id,
           </option>
         )}
         {options.map((option, index) => (
-          <option key={option.value ?? `option-${index}`} value={option.value}>
+          <option key={option.value ?? `option-${index}`} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}

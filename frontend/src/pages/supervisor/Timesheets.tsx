@@ -9,7 +9,7 @@ import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 
 export function SupervisorTimesheets() {
   const { user } = useAuth()
@@ -118,21 +118,18 @@ export function SupervisorTimesheets() {
                 {filteredTimesheets.map((timesheet) => {
                   const employee = users.find((u) => u.id === timesheet.userId)
                   const project = projects.find((p) => p.id === timesheet.projectId)
-                  const start = new Date(timesheet.weekStart)
-                  const end = new Date(start)
-                  end.setDate(end.getDate() + 4)
                   return (
                     <tr key={timesheet.id} className="hover:bg-muted">
                       <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</td>
                       <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                       <td className="px-4 py-3 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/supervisor/approvals`)} leftIcon={<Eye className="h-4 w-4" />}>Review</Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/supervisor/approvals?timesheetId=${timesheet.id}`)} leftIcon={<Eye className="h-4 w-4" />}>Review</Button>
                       </td>
                     </tr>
                   )

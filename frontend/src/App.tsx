@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { UserLogin } from './pages/auth/UserLogin'
 import { Register } from './pages/auth/Register'
 import { ProtectedRoute } from './routes/ProtectedRoute'
+import { HomeRedirect } from './routes/HomeRedirect'
+import { RedirectIfAuthenticated } from './routes/RedirectIfAuthenticated'
 import { AppShellLayout } from './components/layout/AppShell'
 import { AdminDashboard } from './pages/admin/Dashboard'
 import { Projects } from './pages/admin/Projects'
@@ -36,10 +38,33 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/adminlog" replace />} />
-        <Route path="/adminlog" element={<AdminLogin />} />
-        <Route path="/userlog" element={<UserLogin />} />
-        <Route path="/register" element={<Register />} />
+        {/* QA A13: role-aware — waits for the session restore, then routes to
+            the user's portal (or /adminlog when logged out). */}
+        <Route path="/" element={<HomeRedirect />} />
+        <Route
+          path="/adminlog"
+          element={
+            <RedirectIfAuthenticated>
+              <AdminLogin />
+            </RedirectIfAuthenticated>
+          }
+        />
+        <Route
+          path="/userlog"
+          element={
+            <RedirectIfAuthenticated>
+              <UserLogin />
+            </RedirectIfAuthenticated>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <RedirectIfAuthenticated>
+              <Register />
+            </RedirectIfAuthenticated>
+          }
+        />
 
         <Route
           path="/admin"
@@ -98,7 +123,7 @@ function App() {
           <Route path="approvals" element={<SupervisorApprovals />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/adminlog" replace />} />
+        <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </BrowserRouter>
   )

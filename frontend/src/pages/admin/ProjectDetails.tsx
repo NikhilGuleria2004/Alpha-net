@@ -14,7 +14,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
-import { formatDate } from '../../utils/date'
+import { formatDate, formatWeekRange } from '../../utils/date'
 import { formatFileSize } from '../../utils/format'
 import { downloadDocument } from '../../services/documentService'
 import type { Activity } from '../../types/activity'
@@ -282,13 +282,10 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
             <tbody className="divide-y divide-slate-200">
               {filtered.map((t) => {
                 const user = users.find((u) => u.id === t.userId)
-                const start = new Date(t.weekStart)
-                const end = new Date(start)
-                end.setDate(end.getDate() + 4)
                 return (
                   <tr key={t.id} className="hover:bg-muted">
                     <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(t.weekStart)}</td>
                     <td className="px-4 py-3 text-right text-sm text-foreground">{t.regularHours.toFixed(1)}h</td>
                     <td className="px-4 py-3 text-right text-sm text-foreground">{t.overtimeHours.toFixed(1)}h</td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>

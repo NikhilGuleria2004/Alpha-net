@@ -10,7 +10,7 @@ import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatDate, getCurrentWeekStart, normalizeToMonday } from '../../utils/date'
+import { formatWeekRange, getCurrentWeekStart, normalizeToMonday, parseLocalDate } from '../../utils/date'
 
 export function Timesheets() {
   const { user } = useAuth()
@@ -54,7 +54,9 @@ export function Timesheets() {
       if (dateRange === '7d') cutoff.setDate(now.getDate() - 7)
       else if (dateRange === '30d') cutoff.setDate(now.getDate() - 30)
       else if (dateRange === '90d') cutoff.setDate(now.getDate() - 90)
-      data = data.filter((t) => new Date(t.weekStart) >= cutoff)
+      // QA M12: parse weekStart as *local* midnight (parseLocalDate) so a
+      // UTC-negative user's week isn't shifted a day in the comparison.
+      data = data.filter((t) => parseLocalDate(t.weekStart) >= cutoff)
     }
     return data
   }, [myTimesheets, projects, search, projectFilter, statusFilter, dateRange])
@@ -165,12 +167,9 @@ export function Timesheets() {
               <tbody className="divide-y divide-slate-200">
                 {filteredTimesheets.map((timesheet) => {
                   const project = projects.find((p) => p.id === timesheet.projectId)
-                  const start = new Date(timesheet.weekStart)
-                  const end = new Date(start)
-                  end.setDate(end.getDate() + 4)
                   return (
                     <tr key={timesheet.id} className="hover:bg-muted">
-                      <td className="px-4 py-3 text-sm text-foreground">{formatDate(start)} – {formatDate(end)}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
                       <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>

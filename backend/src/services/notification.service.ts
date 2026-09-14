@@ -2,6 +2,34 @@ import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
 
+// QA M4: per-user notification preferences are persisted by the settings
+// service (PUT /settings/me/notification-prefs), but nothing was reading them
+// — every notification type fired regardless of what the user had toggled.
+// Map each notification type to the preference that gates it; unknown types
+// always fire.
+const TYPE_PREF_MAP: Record<string, keyof {
+  submissionNotifications: boolean
+  deadlineReminders: boolean
+  approvalNotifications: boolean
+}> = {
+  submission: 'submissionNotifications',
+  submitted: 'submissionNotifications',
+  approval: 'approvalNotifications',
+  decline: 'approvalNotifications',
+  withdrawal: 'approvalNotifications',
+  deadline: 'deadlineReminders',
+  assignment: 'deadlineReminders',
+  document: 'deadlineReminders',
+}
+
+async function prefsAllowNotification(userId: string, type: string): Promise<boolean> {
+  const prefKey = TYPE_PREF_MAP[type]
+  if (!prefKey) return true
+  const db = await getDb()
+  const doc = await db.collection(COLLECTIONS.SETTINGS).findOne({ userId: new ObjectId(userId) })
+  return doc?.[prefKey] !== false
+}
+
 export interface Notification {
   id: string
   userId: string
@@ -20,7 +48,13 @@ export async function createNotification(input: {
   message: string
   read?: boolean
   relatedId?: string
-}): Promise<Notification> {
+}): Promise<Notification | null> {
+  // QA M4: respect the user's notification preferences. If the type they
+  // disabled, silently skip — the caller already handles a null return.
+  if (!(await prefsAllowNotification(input.userId, input.type))) {
+    return null
+  }
+
   const db = await getDb()
   const now = new Date()
   const doc = {
@@ -118,25 +152,27 @@ export async function sendDeadlineNotifications(): Promise<number> {
     const daysRemaining = Math.ceil((new Date(project.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
     if (manager) {
-      await createNotification({
+      const created = await createNotification({
         userId: manager._id.toString(),
         type: 'deadline',
         title: 'Project Deadline Approaching',
         message: `Project "${project.name}" deadline is in ${daysRemaining} day(s) (${project.deadline}).`,
         relatedId: project._id.toString(),
       })
-      sent++
+      // QA M4: count only notifications actually created — a user who disabled
+      // deadline reminders gets nothing, and shouldn't be counted as "sent".
+      if (created) sent++
     }
 
     if (supervisor && supervisor._id.toString() !== manager?._id.toString()) {
-      await createNotification({
+      const created = await createNotification({
         userId: supervisor._id.toString(),
         type: 'deadline',
         title: 'Project Deadline Approaching',
         message: `Project "${project.name}" deadline is in ${daysRemaining} day(s) (${project.deadline}).`,
         relatedId: project._id.toString(),
       })
-      sent++
+      if (created) sent++
     }
   }
 

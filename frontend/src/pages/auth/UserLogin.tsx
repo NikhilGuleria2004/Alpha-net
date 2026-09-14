@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { forgotPassword } from '../../services/authService'
 
 export function UserLogin() {
   const [email, setEmail] = useState('')
@@ -22,6 +23,29 @@ export function UserLogin() {
     if (!password.trim()) newErrors.password = 'Password is required'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  // QA M6: "Forgot password?" used to be a <button type="button"> with no
+  // onClick, while the backend endpoint it would call was a 501 stub — the
+  // control was silently dead. Wire it to the endpoint and surface the honest
+  // "not implemented yet" message instead of doing nothing.
+  const handleForgotPassword = async () => {
+    const trimmed = email.trim()
+    if (!trimmed) {
+      addToast('info', 'Enter your email first, then click "Forgot password?"')
+      return
+    }
+    try {
+      await forgotPassword(trimmed)
+      addToast('success', 'If that account exists, a reset link is on its way.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.toLowerCase().includes('not implemented') || message.toLowerCase().includes('501')) {
+        addToast('info', "Password reset isn't available yet — contact your administrator.")
+      } else {
+        addToast('error', message || 'Failed to request a password reset')
+      }
+    }
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -106,6 +130,15 @@ export function UserLogin() {
                 </button>
               </div>
               {errors.password && <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground" title="Your session stays signed in via a secure refresh cookie.">
+                Stay signed in
+              </span>
+              <button type="button" onClick={handleForgotPassword} className="text-sm text-indigo-600 hover:text-indigo-700">
+                Forgot password?
+              </button>
             </div>
 
             <Button type="submit" loading={isLoading} disabled={isLoading} className="w-full">
