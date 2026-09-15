@@ -29,12 +29,34 @@
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-error: #dc2626;
+
+  /* Semantic (shadcn-style) tokens — MUST live in @theme so Tailwind v4
+     generates utilities like bg-card, text-foreground, border-border,
+     bg-muted, bg-primary, etc. (tokens defined only in :root do NOT
+     generate utilities, which is why the chat panel rendered transparent). */
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #4f46e5;
 }
 
-/* Light theme tokens — the app's single theme (dark mode was removed 2026-09-14).
-   The shadcn-style tokens the components use (--color-card, --color-foreground,
-   --color-muted, --color-border, --color-primary, etc.) must be defined here so
-   every var(--color-*) reference resolves. */
+/* Light theme tokens — kept in :root as runtime fallbacks so every
+   var(--color-*) reference resolves even outside Tailwind utilities.
+   (Dark mode was removed 2026-09-14.) */
 :root {
   --color-background: #ffffff;
   --color-foreground: #0f172a;

@@ -8,24 +8,24 @@ interface AIMessageBubbleProps {
 export function AIMessageBubble({ role, content }: AIMessageBubbleProps) {
   return (
     <div className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
-      <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
+      <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
         role === 'user'
-          ? 'bg-primary text-primary-foreground rounded-br-none'
-          : 'bg-secondary border border-border text-foreground rounded-bl-none'
+          ? 'rounded-br-md bg-indigo-600 text-white'
+          : 'rounded-bl-md border border-slate-200 bg-white text-slate-900'
       }`}>
         {role === 'model' && (
-          <div className="flex items-center gap-2 mb-1">
-            <MessageCircle className="h-4 w-4 text-accent" />
-            <span className="text-xs font-medium text-muted-foreground">
+          <div className="mb-1 flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-indigo-600" />
+            <span className="text-xs font-medium text-slate-500">
               Eniac Assistant
             </span>
           </div>
         )}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
         {role === 'user' && (
-          <div className="flex items-center gap-2 mt-1">
-            <User className="h-4 w-4 text-primary-foreground/60" />
-            <span className="text-xs text-primary-foreground/60">You</span>
+          <div className="mt-1 flex items-center justify-end gap-1.5">
+            <span className="text-[11px] text-indigo-200">You</span>
+            <User className="h-3.5 w-3.5 text-indigo-200" />
           </div>
         )}
       </div>
