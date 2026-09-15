@@ -55,7 +55,7 @@ export function AdminLogin() {
     setErrors({})
     try {
       await login(email, password)
-      addToast('success', 'Welcome back, Administrator')
+      addToast('success', 'Welcome back')
       navigate('/admin/dashboard')
     } catch {
       setErrors({ general: 'Invalid credentials. Please try again.' })
@@ -91,8 +91,8 @@ export function AdminLogin() {
             </div>
             <span className="text-2xl font-bold text-foreground">Eniac</span>
           </div>
-          <h2 className="text-2xl font-semibold text-foreground">Admin Portal</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your administrator account</p>
+          <h2 className="text-2xl font-semibold text-foreground">Login</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to continue</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
