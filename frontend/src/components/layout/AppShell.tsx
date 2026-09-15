@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-import { AIChatWidget } from '../ai/AIChatWidget'
+// import { AIChatWidget } from '../ai/AIChatWidget'
 
 interface AppShellProps {
   children?: ReactNode
