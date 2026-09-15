@@ -13,6 +13,7 @@
     "seed": "tsx src/scripts/seed-demo-users.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",

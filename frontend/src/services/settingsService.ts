@@ -28,7 +28,10 @@ export async function getOrgSettings(): Promise<OrgSettings> {
 export async function putOrgSettings(
   patch: Partial<Omit<OrgSettings, 'orgKey' | 'updatedAt'>>,
 ): Promise<OrgSettings> {
-  const data = await apiClient.patch<{ settings: OrgSettings }>('/settings', {
+  // QA A1: this was apiClient.patch — but the backend mounts org settings as
+  // PUT only (routes/settings.ts), so every save from the admin Settings page
+  // 404'd. The page could load defaults but never persist an update.
+  const data = await apiClient.put<{ settings: OrgSettings }>('/settings', {
     ...patch,
     standardWeeklyHours:
       typeof patch.standardWeeklyHours === 'string'

@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { AppDataProvider } from './contexts/AppDataContext'
 import { NotificationProvider } from './contexts/NotificationContext'
+import { AIChatProvider } from './contexts/AIContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <AppDataProvider>
           <NotificationProvider>
-            <App />
+            <AIChatProvider>
+              <App />
+            </AIChatProvider>
           </NotificationProvider>
         </AppDataProvider>
       </ToastProvider>

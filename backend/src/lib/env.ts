@@ -1,5 +1,5 @@
 export function validateEnv() {
-  const required = ['MONGODB_URI', 'MONGODB_DB_NAME', 'JWT_SECRET', 'CRON_SECRET'] as const
+  const required = ['MONGODB_URI', 'MONGODB_DB_NAME', 'JWT_SECRET', 'CRON_SECRET', 'GEMINI_API_KEY'] as const
   const missing = required.filter((key) => !process.env[key] || process.env[key].trim() === '')
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
@@ -19,3 +19,13 @@ export function getAuthRateLimitConfig() {
     windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 60_000,
   }
 }
+
+export function getAiChatRateLimitConfig() {
+  const isDev = process.env.NODE_ENV !== 'production'
+  return {
+    isDev,
+    maxPerUser: Number(process.env.AI_CHAT_RATE_LIMIT_PER_USER) || (isDev ? 100 : 30),
+    windowMs: Number(process.env.AI_CHAT_RATE_LIMIT_WINDOW_MS) || 60_000,
+  }
+}
+
