@@ -12,5 +12,7 @@ export const aiChatRequestSchema = z.object({
         content: z.string(),
       }),
     )
-    .max(50, 'History too long (max 50 messages)'),
+    .max(50, 'History too long (max 50 messages)')
+    .optional()
+    .default([]),
 })

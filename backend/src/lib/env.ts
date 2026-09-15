@@ -1,6 +1,15 @@
 export function validateEnv() {
-  const required = ['MONGODB_URI', 'MONGODB_DB_NAME', 'JWT_SECRET', 'CRON_SECRET', 'GEMINI_API_KEY'] as const
-  const missing = required.filter((key) => !process.env[key] || process.env[key].trim() === '')
+  const required = ['MONGODB_URI', 'MONGODB_DB_NAME', 'JWT_SECRET', 'CRON_SECRET'] as const
+  const missing: string[] = required.filter((key) => !process.env[key] || process.env[key].trim() === '')
+
+  // The AI assistant needs exactly one provider key — Groq is the current default,
+  // Gemini remains supported. Requiring a SPECIFIC one would break deployments that
+  // legitimately run the other.
+  const hasAiKey = Boolean(process.env.GROQ_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim())
+  if (!hasAiKey) {
+    missing.push('GROQ_API_KEY (or GEMINI_API_KEY)')
+  }
+
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
   }

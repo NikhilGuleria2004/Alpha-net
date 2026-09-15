@@ -116,7 +116,12 @@ export async function request<T>(
 
     const { ok, data, status } = await parseResponse(response)
 
-    if (status === 429 && retries > 0) {
+    // Retrying a 429 makes sense for the platform's own per-minute limiter (the
+    // window slides, so a short wait succeeds). It does NOT make sense when the
+    // AI assistant has exhausted its Gemini quota — that 429 is not transient and
+    // burning extra attempts only delays the clear message to the user.
+    const errorCode = (data as { error?: { code?: string } })?.error?.code
+    if (status === 429 && retries > 0 && errorCode !== 'AI_QUOTA_EXCEEDED') {
       const retryAfter = response.headers.get('retry-after')
       const delayMs = retryAfter ? Number(retryAfter) * 1000 : 1000
       await wait(Math.min(delayMs, 5000))

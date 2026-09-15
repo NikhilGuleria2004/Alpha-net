@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient'
-import type { AIChatMessage, AIChatResponse, AIStatus } from '../types/ai'
+import type { AIChatMessage, AIChatResponse, AIStatus, AIConfirmResult } from '../types/ai'
 
 export async function sendAIChatMessage(
   message: string,
@@ -9,11 +9,19 @@ export async function sendAIChatMessage(
     role: msg.role,
     content: msg.content,
   }))
-  
+
   return apiClient.post<AIChatResponse>('/ai/chat', {
     message,
     history: historyPayload,
   })
+}
+
+export async function confirmAIPendingAction(actionId: string): Promise<AIConfirmResult> {
+  return apiClient.post<AIConfirmResult>(`/ai/actions/${actionId}/confirm`)
+}
+
+export async function cancelAIPendingAction(actionId: string): Promise<{ ok: boolean; id: string }> {
+  return apiClient.post<{ ok: boolean; id: string }>(`/ai/actions/${actionId}/cancel`)
 }
 
 export async function getAIStatus(): Promise<AIStatus> {

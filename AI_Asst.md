@@ -22,6 +22,7 @@ This document describes how to integrate a Gemini-powered AI assistant into the 
 10. [Deployment](#deployment)
 11. [Monitoring & Cost](#monitoring--cost)
 12. [Summary Checklist](#summary-checklist)
+13. [Phase 7: AI Write Actions via Function Calling](#phase-7-ai-write-actions-via-function-calling)
 
 ---
 
@@ -1022,6 +1023,11 @@ Every AI interaction is logged with: user ID, role, message length, response len
 
 # Detailed Implementation Checklist
 
+> **Note:** This checklist tracks the original read-only integration (Phases 1–6).
+> The write-capability design (function calling through the website API, never
+> direct MongoDB access) is specified separately in
+> [Phase 7](#phase-7-ai-write-actions-via-function-calling) below.
+
 This checklist breaks down every task needed to completely implement the AI assistant integration. Work through each section in order.
 
 ## Phase 1: Environment & Dependencies ✅
@@ -1650,6 +1656,374 @@ Phase 1 is mostly complete. The Gemini API key is obtained and stored securely i
 
 ---
 
+## Phase 7: AI Write Actions via Function Calling
+
+> **Status:** ✅ IMPLEMENTED 2026-09-15 (all 14 checklist items complete).
+> Backend type-check clean, frontend build clean, 187/187 backend tests passing
+> (22 test files, incl. 8 new AI action-gate tests).
+> **Extended:** approve/decline review tools added (see §7.6.5) — AI may now stage
+> supervisor review decisions behind the same confirmation-card gate.
+> **Hardened:** four live-API defects fixed and documented in §7.9 (nested
+> `functionResponse`, per-turn context loss, phantom action claims, iteration-cap 503).
+> **Date added:** 2026-09-15
+
+### 7.0 Goal and Non-Goals
+
+**Goal:** Give the AI assistant the ability to make entries (timesheets first,
+other resources later) **only through the website's own HTTP API** — the same
+Express routes the React UI uses. Gemini never receives MongoDB credentials,
+never calls `getDb()`, and never imports a collection. Every AI-initiated write
+automatically inherits JWT authentication, access-control middleware, Zod
+validation, notification fan-out, and activity logging, because it literally
+travels the same code path as a user clicking the equivalent button.
+
+**Non-goals (explicitly out of scope):**
+- No direct MongoDB access from any AI file (`ai.service.ts`, `ai.controller.ts`,
+  `aiTools/*`). The existing read-only `find` calls in `ai.service.ts` should
+  eventually be replaced by read tools over HTTP, but that migration is optional.
+- No privileged "AI service account". The AI always acts **as the logged-in
+  user** by forwarding that user's Bearer token.
+- No silent writes. Every write requires explicit per-action user confirmation
+  in the chat UI (see §7.4).
+
+### 7.1 Architecture
+
+```
+User ──chat──▶ React widget ──POST /api/v1/ai/chat──▶ AI backend ──Gemini──▶ "call this tool"
+                                                                      │
+                              AI backend ──HTTP (localhost)──▶ YOUR OWN API ◀── authenticate,
+                              (internal client)                e.g. POST      requireTimesheetEdit,
+                                                               /timesheets   Zod schema, service layer,
+                                                                             notifications, activity log
+```
+
+Key points:
+1. `POST /api/v1/ai/chat` extracts the caller's Bearer token from the incoming
+   request and threads it through to the AI service layer.
+2. The AI service owns a small internal HTTP client
+   (`backend/src/lib/aiApiClient.ts`) targeting the backend's own base URL
+   (`INTERNAL_API_BASE_URL`, default `http://localhost:3001/api/v1`). Every
+   outbound call sets `Authorization: Bearer <user-token>` — so
+   `POST /timesheets` enforces the exact same ownership and scoping rules as
+   the TimesheetEditor page.
+3. Gemini's response may contain `functionCalls`. The backend validates each
+   call's arguments against the **existing Zod schemas**
+   (`createTimesheetSchema`, `updateTimesheetSchema`, …), stages the action as
+   a `pendingAction` (does NOT execute yet), and returns it to the frontend for
+   human confirmation.
+4. Only after the user clicks **Approve** does the frontend call
+   `POST /api/v1/ai/actions/:id/confirm`, which re-validates the stored payload
+   and executes it through the internal HTTP client.
+5. Results flow back into the Gemini turn so the final reply can narrate what
+   happened ("Done — draft timesheet created for Project X, week of Sep 15").
+
+### 7.2 Step 1 — Token-Forwarding Internal HTTP Client
+
+**Why first:** foundation for every read and write tool. No Gemini changes needed.
+
+New file: `backend/src/lib/aiApiClient.ts` — calls our OWN REST API as the
+calling user. Never uses `getDb()` / `COLLECTIONS`. Forwards the user's Bearer
+token so all existing auth + access-control middleware applies unchanged:
+
+```typescript
+const INTERNAL_API_BASE =
+  process.env.INTERNAL_API_BASE_URL || 'http://localhost:3001/api/v1'
+
+export async function callPlatformApi<T>(
+  userToken: string,
+  method: 'GET' | 'POST' | 'PATCH',
+  path: string,            // e.g. '/timesheets'
+  body?: unknown,
+): Promise<T> {
+  const res = await fetch(`${INTERNAL_API_BASE}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${userToken}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(15_000),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg = (data as any)?.error?.message || `Platform API ${res.status}`
+    throw new Error(`[${(data as any)?.error?.code || 'PLATFORM_ERROR'}] ${msg}`)
+  }
+  return data as T
+}
+```
+
+Controller change (`backend/src/controllers/ai.controller.ts`):
+- Extract the raw Bearer token from `req.headers.authorization` in
+  `aiChatHandler` (and later in the confirm handler) and pass it into
+  `chatWithGemini(req, body, userToken)`. Return 401 early if absent
+  (defense in depth — `authenticate` already guarantees it, but the AI service
+  must never run without a token to forward).
+
+Service change (`backend/src/services/ai.service.ts`):
+- Accept `userToken: string` as a third parameter. All future platform contact
+  goes through `callPlatformApi(userToken, …)`.
+
+Env:
+- `INTERNAL_API_BASE_URL` (optional, default `http://localhost:3001/api/v1`).
+  Needed for Docker/Vercel deployments where localhost is wrong — document in
+  `.env.example`.
+
+### 7.3 Step 2 — Read Tool First (Zero-Risk Proof of Loop)
+
+Before any write tool, implement one read tool to prove the Gemini
+function-calling loop end-to-end with no mutation risk.
+
+Tool declaration (Gemini `functionDeclarations`, added to the model call in
+`ai.service.ts`) — `listMyProjects`: lists the calling user's assigned projects
+(name, sowNumber, status). No parameters.
+
+Execution path: when Gemini returns
+`functionCalls: [{ name: 'listMyProjects' }]`:
+1. Call `callPlatformApi(userToken, 'GET', '/projects')`.
+2. Return the (trimmed) project list as a `functionResponse` part to Gemini.
+3. Gemini composes the final answer from real data.
+
+This step also fixes the current history weakness: keep the **full**
+`geminiHistory` — including prior `functionCall` / `functionResponse` parts —
+across turns (today context is only prepended on turn 1, which would make
+Gemini re-request tools it already called).
+
+### 7.4 Step 3 — First Write Tool: `createTimesheet` (Draft Only)
+
+**Scope discipline:** the first and only write tool creates **draft**
+timesheets. No submit, no approve, no status transitions until this loop is
+proven in production. The tool declaration mirrors `createTimesheetSchema`
+field-for-field (projectId, weekStart, entries[] with description/entryType/
+hours mon–sun, notes) so validation can be shared; the declaration text must
+state the day-type rules (regular Mon–Fri only, overtime Sat–Sun only, max 24h)
+and that drafts never submit.
+
+**Two-phase confirm flow (mandatory — never single-shot writes):**
+
+Phase A — stage (inside the `POST /api/v1/ai/chat` turn loop):
+1. Gemini emits a `createTimesheet` call → backend parses args with
+   `createTimesheetSchema.parse()` (same schema the normal route uses; day-type
+   and 24h rules enforced here, before the user even sees it).
+2. On schema failure: feed the Zod error back to Gemini as a `functionResponse`
+   so it can self-correct ("Saturday hours must go in an overtime entry…").
+3. On success: persist a `pendingActions` record
+   `{ id, userId, tool, args, createdAt, expiresAt (+10 min), status: 'pending' }`
+   and return `{ pendingAction }` to the frontend **without executing**.
+
+Phase B — confirm (new endpoints in `backend/src/routes/ai.ts`):
+- `POST /api/v1/ai/actions/:id/confirm` → re-fetch the pending record, verify
+  ownership + non-expiry, re-run `createTimesheetSchema.parse(storedArgs)`,
+  execute `callPlatformApi(userToken, 'POST', '/timesheets', storedArgs)`,
+  mark record `executed`, return the created timesheet.
+- `POST /api/v1/ai/actions/:id/cancel` → mark record `cancelled`.
+
+`pendingActions` storage: start with an in-memory `Map` (single-instance dev);
+document the upgrade to a Mongo `pending_actions` collection with TTL index for
+multi-instance production.
+
+**Frontend confirmation card** (new component
+`frontend/src/components/ai/AIActionCard.tsx`, rendered inside `AIChatPanel`
+when a message carries `pendingAction`):
+- Human-readable summary: project name, week, per-day hours split
+  regular/overtime, notes.
+- Three buttons: **Approve** → calls confirm endpoint; **Edit** → loads values
+  into the chat input for revision (no write); **Cancel** → calls cancel endpoint.
+- While `status === 'pending'`, show expiry note ("Expires in 10 min").
+
+**Chat turn loop** (backend, max ~3–5 iterations per user message):
+1. Send message + tools → Gemini.
+2. If `functionCalls`: validate → stage pendingAction (writes) or execute
+   inline (reads) → return functionResponses → back to 1.
+3. Else: final text reply (+ optional pendingAction payload) → frontend.
+
+### 7.5 Step 4 — Audit Logging
+
+Every executed AI write must leave a trace attributable beyond a manual write:
+- Reuse the existing `createActivity()` path (it already fires inside
+  `createTimesheet` via the normal service, attributing `userId`).
+- Additionally log at the AI layer with
+  `logger.info({ userId, tool, argsSummary, pendingActionId, via: 'ai-assistant' })`
+  so AI-initiated writes are greppable.
+- Frontend: after a confirmed write, the chat message should link to the created
+  resource (timesheet ID → deep link).
+
+### 7.6 Step 5 — Expanded Tools (approve / decline implemented)
+
+Candidate follow-ups, in suggested safety order:
+1. `updateTimesheet({ timesheetId, entries, notes })` — draft-only, owner-only
+   (the `requireTimesheetEdit` middleware already enforces this).
+2. `submitTimesheet({ timesheetId })` — status-changing; the confirmation card
+   should display the full timesheet summary, not just the ID.
+3. `withdrawTimesheet({ timesheetId })` — same treatment as submit.
+
+### 7.6.5 Step 5b — Supervisor Review Tools (✅ IMPLEMENTED)
+
+`approveTimesheet` and `declineTimesheet` are implemented, with one hard rule
+that differs from §7.4's draft creation: **the AI may stage a review decision but
+the human must confirm it, and the AI can never review its own user's work.**
+
+**Tool declarations added** (`AI_TOOL_DECLARATIONS` in `ai.service.ts`):
+
+| Tool | Args | Kind |
+|---|---|---|
+| `listPendingApprovals` | none | read (executes inline) |
+| `approveTimesheet` | `timesheetId` | write (staged) |
+| `declineTimesheet` | `timesheetId`, `reason` | write (staged) |
+
+**Authority is enforced twice, by design:**
+
+1. **Pre-check at stage time** (`stageReviewAction`): the AI first calls
+   `GET /approvals` with the user's token, builds a name-enriched list, and
+   rejects any `timesheetId` that is not in *that* list. If the AI invents an ID —
+   or tries to stage a review of the user's own submission — it gets a
+   `functionResponse` error telling it to call `listPendingApprovals` instead.
+   This gives the model a self-correctable message rather than a silent failure.
+2. **Real enforcement at confirm time**: `POST /approvals/:id/approve|decline`
+   runs the existing `requireTimesheetReview` middleware (`backend/src/
+   middleware/access.ts`), which re-checks project supervision, pending status,
+   and separation of duties (admins exempt) on the live record.
+
+The pre-check is a UX aid, not the security boundary — the middleware is. Even a
+fully prompt-injected Gemini cannot approve something the user lacks authority
+over, because the confirm call travels the same route the UI button does.
+
+**Decline reason rule:** `aiDeclineTimesheetSchema` reuses
+`declineTimesheetSchema.shape.reason` from `schemas/timesheet.schema.ts`, so the
+AI cannot stage a reasonless decline the approvals endpoint would reject anyway.
+The system prompt instructs the model to *ask the user for a reason* before
+calling the tool.
+
+**Confirm-time execution** (generalized `confirmPendingAction`): maps the staged
+tool to its endpoint —
+
+| Staged tool | Endpoint called with the user's token |
+|---|---|
+| `createTimesheet` | `POST /timesheets` |
+| `approveTimesheet` | `POST /approvals/:id/approve` |
+| `declineTimesheet` | `POST /approvals/:id/decline` (body `{ reason }`) |
+
+**Frontend:** `AIActionCard.tsx` is now tool-aware — approval cards render a
+green **Confirm Approval** button, decline cards a red **Confirm Decline** button
+and a "Decline requires your approval" heading, with tool-specific Edit seeds so
+the user can ask for a different reason. A **Pending Approvals** quick action was
+added to `AIChatPanel`.
+
+**Still permanently banned:** the AI must never *bypass* the confirmation card
+for a review decision, and must never approve/decline on behalf of a user who is
+not the reviewing supervisor. The separation-of-duties rule in the review
+middleware is the backstop.
+
+### 7.7 Threat Model (Why This Design)
+
+| Threat | Mitigation in this design |
+|---|---|
+| Prompt injection → malicious write | Writes can't execute without the user approving exact details on the confirmation card |
+| AI exceeds user authority | User-token forwarding: platform middleware rejects anything the user couldn't do manually |
+| Schema drift (AI sends bad payload) | Shared Zod schemas; invalid args rejected before staging, error fed back for self-correction |
+| Stale approval (approve after data changed) | Pending records expire in 10 min; args re-validated at confirm time |
+| Repudiation ("I didn't create that") | Activity log + `via: 'ai-assistant'` log line + stored pendingAction record |
+| AI reviews its own work / a peer's work | Stage-time pre-check against `GET /approvals` *plus* `requireTimesheetReview` + `canReviewTimesheet` re-check (separation of duties) at confirm time |
+| Reasonless decline staged by the AI | `aiDeclineTimesheetSchema` reuses `declineTimesheetSchema.shape.reason`; an empty reason is rejected before staging |
+| Key/DB credential leak | AI layer holds only the Gemini key; no Mongo credentials outside existing `lib/mongodb.ts` |
+
+### 7.8 Phase 7 Build Checklist
+
+- [x] 7.2a Create `backend/src/lib/aiApiClient.ts` (`callPlatformApi` with token forwarding, 15s timeout, error normalization)
+- [x] 7.2b Thread `userToken` from `aiChatHandler` (extract `Authorization` header, 401 if absent) into `chatWithGemini(req, body, userToken)`
+- [x] 7.2c Add `INTERNAL_API_BASE_URL` to `.env` + document default `http://localhost:3001/api/v1`
+- [x] 7.3a Declare `listMyProjects` function declaration; implement turn loop handling `functionCalls` → `functionResponse`
+- [x] 7.3b Preserve full `geminiHistory` (including function parts) across turns
+- [x] 7.3c Verify read tool E2E in widget (ask "what are my projects?" → real data, no `find` fallback needed)
+- [x] 7.4a Declare `createTimesheet` tool mirroring `createTimesheetSchema`
+- [x] 7.4b Implement stage path: Zod-validate args → persist `pendingActions` record (10-min TTL) → return `pendingAction` without executing
+- [x] 7.4c Add `POST /api/v1/ai/actions/:id/confirm` + `/cancel` (ownership check, re-validation, execute via `callPlatformApi`)
+- [x] 7.4d Build `AIActionCard.tsx` (summary + Approve/Edit/Cancel) and render from `AIChatPanel`
+- [x] 7.4e Implement 3–5 iteration turn loop cap; self-correction path for Zod failures
+- [x] 7.5a Add `via: 'ai-assistant'` structured logging + deep link in chat reply
+- [x] 7.5b Confirm activity feed shows AI-created timesheets attributed to the user
+- [x] 7.6 Review/gate decision before submit/withdraw tools; permanent ban on AI-executed approve/decline
+- [x] 7.6.5a Widen `PendingTool` union to `'createTimesheet' | 'approveTimesheet' | 'declineTimesheet'` in `lib/pendingActions.ts`
+- [x] 7.6.5b Declare `listPendingApprovals` (read), `approveTimesheet` and `declineTimesheet` (staged) tools
+- [x] 7.6.5c Add `aiTimesheetTargetSchema` (24-hex guard) + `aiDeclineTimesheetSchema` reusing `declineTimesheetSchema.shape.reason`
+- [x] 7.6.5d Implement `stageReviewAction` pre-check against `GET /approvals` so invented/foreign IDs are rejected with a self-correctable message
+- [x] 7.6.5e Generalize `confirmPendingAction` into a per-tool executor (create → `/timesheets`, approve/decline → `/approvals/:id/*`)
+- [x] 7.6.5f Make `AIActionCard.tsx` tool-aware (green Confirm Approval / red Confirm Decline, tool-specific Edit seeds)
+- [x] 7.6.5g Add "Pending Approvals" quick action to `AIChatPanel`
+- [x] 7.6.5h Add `src/tests/ai-actions.test.ts` (8 tests: gate, re-validation, ownership, double-execute, platform rejection, cancel)
+
+---
+
+### 7.9 Post-Implementation Fixes & Known Failure Modes
+
+Four defects only surfaced once the assistant was exercised against the **live**
+Gemini API. All are fixed; documented here so they are not re-introduced.
+
+#### F1 — A `functionResponse` must be a `Part`, never a `Content`
+
+Server log symptom:
+```
+[400] Invalid JSON payload received. Unknown name "role" at 'contents[2].parts[0]'
+[400] Invalid JSON payload received. Unknown name "parts" at 'contents[2].parts[0]'
+```
+`chatSession.sendMessage()` accepts `string | Array<string | Part>` and wraps
+whatever it receives as the `parts` of **one** turn. Returning
+`{ role: 'user', parts: [{ functionResponse }] }` from the tool helper nested a
+whole `Content` inside a `Part`, so `contents[N].parts[0]` carried `role`/`parts`
+keys the request schema forbids.
+
+**Fix:** `toFunctionResponsePart()` returns `{ functionResponse: { name, response } }`
+only. Confirmed by capturing the outbound request body — `contents` is now a valid
+`[{ role: 'user'|'model', parts: [...] }]` array.
+
+#### F2 — System prompt was silently dropped from turn 2 onward
+
+The frontend owns the conversation history and stores the user's **raw** text
+only. The system prompt and per-user context were prepended to the first message
+alone, so every follow-up turn lost the platform rules, the tool guidance, and the
+write-safety instructions — producing confident but rule-breaking answers.
+
+**Fix:** the current-user context is re-sent on **every** turn
+(`contextualMessage` in `chatWithGemini`).
+
+#### F3 — Phantom action claims ("prepared" when nothing was staged)
+
+Observed: after calling only a *read* tool, the model replied *"I have prepared
+this approval… Please confirm this on the card"* while `pendingAction` was `null`.
+The card is rendered purely from `pendingAction`, so the user waited for UI that
+never existed.
+
+**Fix:** `guardAgainstPhantomAction(text, hasPendingAction)` — when no action is
+staged, a first-person past-tense claim of a write is replaced with an explicit
+"nothing was saved" message, and bare mentions of the confirmation card are
+softened. The prompt wording that taught the model the word "prepared" was
+tightened as well.
+
+#### F4 — Hitting the iteration cap returned a 503 instead of an answer
+
+When the loop reached `MAX_TOOL_ITERATIONS` with the model still requesting tools,
+`responseText` was empty and the handler threw, surfacing a generic
+`AI_UNAVAILABLE`. Now the staged narrative is used as a fallback and a
+cap-exhaustion message asks the user to supply details one step at a time.
+
+#### Quota reality check (read this before debugging "it stopped working")
+
+`gemini-2.5-flash` on the **free tier allows 20 requests/day**
+(`generate_content_free_tier_requests`). One user message that invokes a tool
+consumes **2+** `generateContent` calls (initial turn + one per loop iteration),
+so a handful of real conversations exhausts the free tier.
+
+Handling:
+- Google's 429 is detected in `ai.controller.ts` (`isQuotaError`) and returned as
+  `AI_QUOTA_EXCEEDED` (HTTP 429) with an actionable message, not `AI_UNAVAILABLE`.
+- `apiClient.ts` deliberately **skips its 429 auto-retry** for that code — quota
+  exhaustion is not transient, and retrying burns attempts and delays the error.
+- Workarounds: set `GEMINI_MODEL` in `backend/.env` to a model with its own quota
+  allowance (quota is per-model per-project), or enable billing on the Google
+  Cloud project.
+
+---
+
 ## Estimated Time to Implement
 
 | Phase | Tasks | Estimated Time |
@@ -1660,7 +2034,8 @@ Phase 1 is mostly complete. The Gemini API key is obtained and stored securely i
 | Phase 4: Security Review | 9 tasks | 1 hour |
 | Phase 5: Documentation & Deployment | 14 tasks | 1-2 hours |
 | Phase 6: Post-Launch Monitoring | Ongoing | N/A |
-| **Total** | **70 tasks** | **6-9 hours** |
+| Phase 7: AI Write Actions (function calling + confirmation gate) | 22 tasks | 4-6 hours |
+| **Total** | **92 tasks** | **10-15 hours** |
 
 ---
 

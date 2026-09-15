@@ -1,5 +1,6 @@
 import { useAIChat } from '../../contexts/AIContext'
 import { AIMessageBubble } from './AIMessageBubble'
+import { AIActionCard } from './AIActionCard'
 import { Button } from '../ui/Button'
 import { Send, Bot, ArrowLeft } from 'lucide-react'
 import { useRef, useEffect } from 'react'
@@ -26,6 +27,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   const quickActions = [
     { label: 'Timesheet Help', message: 'How do I log hours in my timesheet? Can you explain the Regular vs Overtime rule?' },
     { label: 'My Projects', message: 'What projects am I assigned to? Show me my active projects and their deadlines.' },
+    { label: 'Pending Approvals', message: 'Which timesheets are waiting for my review?' },
     { label: 'Submission Status', message: 'What is the status of my timesheet submissions?' },
     { label: 'Deadline Reminder', message: 'Which of my projects have upcoming deadlines?' },
     { label: 'General Help', message: 'How do I use this platform?' },
@@ -98,7 +100,12 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
           )}
 
           {messages.map((msg) => (
-            <AIMessageBubble key={msg.id} role={msg.role} content={msg.content} />
+            <div key={msg.id}>
+              <AIMessageBubble role={msg.role} content={msg.content} />
+              {msg.pendingAction && (
+                <AIActionCard messageId={msg.id} action={msg.pendingAction} />
+              )}
+            </div>
           ))}
 
           {isLoading && (

@@ -1,5 +1,8 @@
 {
   "name": "alpha-net-root",
   "private": true,
-  "description": "Root workspace for Alpha-net (backend + frontend sub-projects). Each sub-project has its own package.json and scripts."
+  "description": "Root workspace for Alpha-net (backend + frontend sub-projects). Each sub-project has its own package.json and scripts.",
+  "dependencies": {
+    "openai": "^7.15.0"
+  }
 }
