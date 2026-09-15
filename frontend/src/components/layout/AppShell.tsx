@@ -25,7 +25,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </main>
       </div>
-      <AIChatWidget />
+      {/* <AIChatWidget /> */}
     </div>
   )
 }

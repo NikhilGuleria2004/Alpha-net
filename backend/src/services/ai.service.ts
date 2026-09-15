@@ -16,7 +16,7 @@ import {
   type PendingTool,
 } from '../lib/pendingActions.js'
 
-const SYSTEM_PROMPT = `You are Eniac Assistant, an AI helper for the Alpha-net employee time-tracking and project management platform.
+const SYSTEM_PROMPT = `You are Eniac Assistant, an AI helper for the Eniac employee time-tracking and project management platform.
 
 Help employees, supervisors, and admins use the platform effectively.
 
@@ -175,7 +175,38 @@ const AI_TOOL_SPECS: AiToolSpec[] = [
         timesheetId: { type: 'string' },
         reason: { type: 'string' },
       },
-      required: ['timesheetId', 'reason'],
+                  required: ['timesheetId', 'reason'],
+    },
+  },
+  {
+    name: 'getMyTimesheets',
+    description:
+      'List the calling user\'s OWN timesheets (the platform scopes this to you/your team automatically). ' +
+      'Use to answer "how many timesheets have I declined/approved/submitted" and similar. ' +
+      'status is optional: one of "draft", "pending", "approved", "declined", "withdrawn". ' +
+      ' projectId and weekStart (YYYY-MM-DD Monday) further narrow the list. ' +
+      'Returns a count plus compact rows (project name, week, status, hours, submit date, decline reason).',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['draft', 'pending', 'approved', 'declined', 'withdrawn'] },
+        projectId: { type: 'string' },
+        weekStart: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'getProjectDetails',
+    description:
+      'Look up a single project by id (must be a project the caller can see). ' +
+      'Returns name, SOW number, status, dates, manager/supervisor and team size. ' +
+      'projectId is required and must come from listMyProjects or an approval row.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string' },
+      },
+      required: ['projectId'],
     },
   },
 ]
@@ -407,7 +438,83 @@ async function handleListMyProjects(userToken: string): Promise<unknown> {
       sowNumber: p.sowNumber || '',
       status: p.status || '',
     })),
+    }
+}
+
+interface AiTimesheetRow {
+  timesheetId: string
+  projectId: string
+  projectName: string
+  weekStart: string
+  status: string
+  totalHours: number
+  submittedAt: string | null
+  reviewReason: string | null
+}
+
+async function handleGetMyTimesheets(
+  userToken: string,
+  args: unknown,
+): Promise<{ count: number; timesheets: AiTimesheetRow[]; note?: string }> {
+  const parsed = z
+    .object({
+      status: z.enum(['draft', 'pending', 'approved', 'declined', 'withdrawn']).optional(),
+      projectId: z.string().optional(),
+      weekStart: z.string().optional(),
+    })
+    .safeParse(args)
+
+  const params = new URLSearchParams()
+  if (parsed.success) {
+    if (parsed.data.status) params.set('status', parsed.data.status)
+    if (parsed.data.projectId) params.set('projectId', parsed.data.projectId)
+    if (parsed.data.weekStart) params.set('weekStart', parsed.data.weekStart)
   }
+
+  const query = params.toString()
+  const data = await callPlatformApi<{ timesheets?: Array<Record<string, unknown>> }>(
+    userToken,
+    'GET',
+    `/timesheets${query ? `?${query}` : ''}`,
+  )
+  const timesheets = Array.isArray(data?.timesheets) ? data.timesheets : []
+
+  // Project names make the rows readable; best-effort (degrade to the id).
+  let nameMap = new Map<string, string>()
+  try {
+    nameMap = readProjectNameMap(
+      await callPlatformApi<{ projects?: Array<Record<string, unknown>> }>(userToken, 'GET', '/projects'),
+    )
+  } catch {
+    /* best-effort */
+  }
+
+  const rows: AiTimesheetRow[] = timesheets.map((t) => {
+    const projectId = String(t.projectId ?? '')
+    const review = (t.review as { reason?: string } | undefined) ?? {}
+    return {
+      timesheetId: String(t.id ?? t._id ?? ''),
+      projectId,
+      projectName: nameMap.get(projectId) || projectId || 'Unnamed project',
+      weekStart: String(t.weekStart ?? ''),
+      status: String(t.status ?? ''),
+      totalHours: Number(t.totalHours ?? 0),
+      submittedAt: typeof t.submittedAt === 'string' ? t.submittedAt : null,
+      reviewReason: typeof review.reason === 'string' ? review.reason : null,
+    }
+  })
+
+  return { count: rows.length, timesheets: rows.slice(0, 50) }
+}
+
+async function handleGetProjectDetails(userToken: string, args: unknown): Promise<unknown> {
+  const parsed = z.object({ projectId: z.string().regex(OBJECT_ID_RE, 'projectId must be a 24-character hex id') }).safeParse(args)
+  if (!parsed.success) {
+    return {
+      error: `Invalid projectId: ${parsed.error.issues.map((i) => i.message).join('; ')}. Ask the user to clarify.`,
+    }
+  }
+  return callPlatformApi(userToken, 'GET', `/projects/${parsed.data.projectId}`)
 }
 
 async function executeToolCall(
@@ -436,6 +543,24 @@ async function executeToolCall(
       }
     } catch (err) {
       const message = err instanceof PlatformApiError ? err.message : 'Failed to list pending approvals'
+            return { payload: { error: message } }
+    }
+  }
+
+  if (call.name === 'getMyTimesheets') {
+    try {
+      return { payload: await handleGetMyTimesheets(ctx.userToken, call.args) }
+    } catch (err) {
+      const message = err instanceof PlatformApiError ? err.message : 'Failed to list your timesheets'
+      return { payload: { error: message } }
+    }
+  }
+
+  if (call.name === 'getProjectDetails') {
+    try {
+      return { payload: await handleGetProjectDetails(ctx.userToken, call.args) }
+    } catch (err) {
+      const message = err instanceof PlatformApiError ? err.message : 'Failed to fetch project details'
       return { payload: { error: message } }
     }
   }

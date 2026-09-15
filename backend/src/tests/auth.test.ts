@@ -358,7 +358,7 @@ describe('login refresh cookie — cross-origin settings', () => {
 describe('POST /api/v1/auth/refresh — cross-origin cookie guard', () => {
   beforeEach(() => {
     setupAuthMocks()
-    process.env.FRONTEND_URL = 'https://alphanet-navy.vercel.app,http://localhost:5173'
+    process.env.FRONTEND_URL = 'https://eniac-navy.vercel.app,http://localhost:5173'
   })
 
   it('rejects refresh from an untrusted origin with 403 FORBIDDEN', async () => {
@@ -396,7 +396,7 @@ describe('POST /api/v1/auth/refresh — cross-origin cookie guard', () => {
 
     const res = await request(createApp())
       .post('/api/v1/auth/refresh')
-      .set('Origin', 'https://alphanet-navy.vercel.app')
+      .set('Origin', 'https://eniac-navy.vercel.app')
       .set('Cookie', 'refreshToken=mock-refresh-token')
 
     expect(res.status).toBe(200)

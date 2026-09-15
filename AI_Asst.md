@@ -1581,8 +1581,11 @@ Phase 1 is mostly complete. The Gemini API key is obtained and stored securely i
 ## Phase 6: Post-Launch Monitoring
 
 ### 6.1 Initial Monitoring (First 24-48 Hours)
-- [ ] Check backend logs for "AI chat completed" entries
-- [ ] Verify no error spikes in logs
+- [ ] Check backend logs for `"AI chat completed"` / `"via":"ai-assistant"` entries
+- [ ] Verify no error spikes in logs (watch for quota 429s, platform 5xx)
+- [ ] Monitor that read tools (`GET /projects`, `GET /timesheets`) fire on question queries
+- [ ] Verify staged writes show as `pendingAction` in responses (card should appear)
+- [ ] Confirm **only** confirmed actions reach `POST /timesheets`, `POST /approvals/:id/approve|decline`
 - [ ] Monitor for any unusual usage patterns
 - [ ] Check that rate limiting is working as expected
 - [ ] Gather initial user feedback
@@ -1658,14 +1661,15 @@ Phase 1 is mostly complete. The Gemini API key is obtained and stored securely i
 
 ## Phase 7: AI Write Actions via Function Calling
 
-> **Status:** ✅ IMPLEMENTED 2026-09-15 (all 14 checklist items complete).
-> Backend type-check clean, frontend build clean, 187/187 backend tests passing
-> (22 test files, incl. 8 new AI action-gate tests).
-> **Extended:** approve/decline review tools added (see §7.6.5) — AI may now stage
-> supervisor review decisions behind the same confirmation-card gate.
-> **Hardened:** four live-API defects fixed and documented in §7.9 (nested
-> `functionResponse`, per-turn context loss, phantom action claims, iteration-cap 503).
-> **Date added:** 2026-09-15
+> **Status:** ✅ IMPLEMENTED 2026-09-15 (all 17 checklist items complete: 14 original + 3 read tools).
+> Backend type-check clean, frontend build clean, **221/221 backend tests passing**
+> (24 test files, incl. 11 new AI tests — 8 action-gate + 3 read-tool loop).
+> **Read tools added:** `getMyTimesheets`, `getProjectDetails`, `listPendingApprovals`
+> (see §7.6.6) — AI can now answer "how many timesheets have I declined?" and
+> similar questions with real data.
+> **Review tools added:** `approveTimesheet`, `declineTimesheet` (see §7.6.5).
+> **Hardened:** four live-API defects fixed (§7.9): nested `functionResponse`,
+> per-turn context loss, phantom action claims, iteration-cap 503.
 
 ### 7.0 Goal and Non-Goals
 
@@ -1856,6 +1860,8 @@ Candidate follow-ups, in suggested safety order:
 2. `submitTimesheet({ timesheetId })` — status-changing; the confirmation card
    should display the full timesheet summary, not just the ID.
 3. `withdrawTimesheet({ timesheetId })` — same treatment as submit.
+4. **Read tools** (already implemented, see §7.6.6): `getMyTimesheets`,
+   `getProjectDetails`, `listPendingApprovals`.
 
 ### 7.6.5 Step 5b — Supervisor Review Tools (✅ IMPLEMENTED)
 
@@ -1909,12 +1915,31 @@ and a "Decline requires your approval" heading, with tool-specific Edit seeds so
 the user can ask for a different reason. A **Pending Approvals** quick action was
 added to `AIChatPanel`.
 
-**Still permanently banned:** the AI must never *bypass* the confirmation card
-for a review decision, and must never approve/decline on behalf of a user who is
-not the reviewing supervisor. The separation-of-duties rule in the review
-middleware is the backstop.
+**Not blocked, but gated:** the AI may stage a review decision, but the human must
+confirm it on the card, and the AI can never review its own user's work (separate-
+tion of duties enforced at both stage-time pre-check and confirm-time middleware).
 
-### 7.7 Threat Model (Why This Design)
+### 7.6.6 Step 5c — AI Answering Read Questions (✅ IMPLEMENTED)
+
+Users ask *"how many timesheets have I declined?"* and the AI shouldn't have to
+say "I can't do that." Two **read-only** tools now close that gap — they execute
+inline (no confirmation card) because they make zero mutations:
+
+| Tool | Args | Calls | Returns |
+|---|---|---|---|
+| `getMyTimesheets` | `status?`, `projectId?`, `weekStart?` | `GET /timesheets?...filters` (+ `GET /projects` for names) | `{ count, timesheets[] }` with project name, week, status, hours, submit date, **and decline reason** |
+| `getProjectDetails` | `projectId` (required) | `GET /projects/:id` | full project object |
+
+This directly answers the "how many declined?" gap: the model filters
+`getMyTimesheets` with `status: 'declined'` and reports the `count`. Filters are
+passed through verbatim to the platform endpoint, so scoping (own vs. team vs.
+org for admins) is enforced exactly as if the user used the Reports page.
+
+**Frontend** (`AIChatPanel` quick actions) gained a **"Pending Approvals"** tile
+that pre-fills *"Which timesheets are waiting for my review?"*, which triggers
+`listPendingApprovals`.
+
+This step is tracked as **7.6.6a–c** below.
 
 | Threat | Mitigation in this design |
 |---|---|
@@ -1942,7 +1967,7 @@ middleware is the backstop.
 - [x] 7.4e Implement 3–5 iteration turn loop cap; self-correction path for Zod failures
 - [x] 7.5a Add `via: 'ai-assistant'` structured logging + deep link in chat reply
 - [x] 7.5b Confirm activity feed shows AI-created timesheets attributed to the user
-- [x] 7.6 Review/gate decision before submit/withdraw tools; permanent ban on AI-executed approve/decline
+- [x] 7.6 Review/gate decision before submit/withdraw tools; approve/decline implemented with confirmation card (NOT permanent ban — see §7.6.5)
 - [x] 7.6.5a Widen `PendingTool` union to `'createTimesheet' | 'approveTimesheet' | 'declineTimesheet'` in `lib/pendingActions.ts`
 - [x] 7.6.5b Declare `listPendingApprovals` (read), `approveTimesheet` and `declineTimesheet` (staged) tools
 - [x] 7.6.5c Add `aiTimesheetTargetSchema` (24-hex guard) + `aiDeclineTimesheetSchema` reusing `declineTimesheetSchema.shape.reason`
@@ -1951,6 +1976,9 @@ middleware is the backstop.
 - [x] 7.6.5f Make `AIActionCard.tsx` tool-aware (green Confirm Approval / red Confirm Decline, tool-specific Edit seeds)
 - [x] 7.6.5g Add "Pending Approvals" quick action to `AIChatPanel`
 - [x] 7.6.5h Add `src/tests/ai-actions.test.ts` (8 tests: gate, re-validation, ownership, double-execute, platform rejection, cancel)
+- [x] 7.6.6a Declare `getMyTimesheets` and `getProjectDetails` read tools
+- [x] 7.6.6b Implement `handleGetMyTimesheets` (status/projectId/weekStart filters, name map, row compaction) and `handleGetProjectDetails` (zod-gated)
+- [x] 7.6.6c Route the two read tools in `executeToolCall`; wire `PendingTool` union in `lib/pendingActions.ts`
 
 ---
 
@@ -2034,8 +2062,8 @@ Handling:
 | Phase 4: Security Review | 9 tasks | 1 hour |
 | Phase 5: Documentation & Deployment | 14 tasks | 1-2 hours |
 | Phase 6: Post-Launch Monitoring | Ongoing | N/A |
-| Phase 7: AI Write Actions (function calling + confirmation gate) | 22 tasks | 4-6 hours |
-| **Total** | **92 tasks** | **10-15 hours** |
+| Phase 7: AI Write Actions (function calling + confirmation gate + approve/decline + read tools) | 25 tasks | 5-7 hours |
+| **Total** | **95 tasks** | **11-16 hours** |
 
 ---
 

@@ -164,8 +164,8 @@ describe('Gemini wire format', () => {
         required: ['mode'],
       },
     }
-    const declaration = toGeminiDeclaration(spec)
-    const params = declaration.parameters as {
+        const declaration = toGeminiDeclaration(spec)
+    const params = declaration.parameters as unknown as {
       type: unknown
       properties: Record<string, Record<string, unknown>>
       required?: string[]

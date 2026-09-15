@@ -81,7 +81,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
                 Welcome!
               </h3>
               <p className="mb-6 max-w-sm text-sm text-slate-500">
-                I'm your AI assistant for the Alpha-net platform. Ask me about
+                I'm your AI assistant for the Eniac platform. Ask me about
                 timesheets, projects, approvals, or any platform feature.
               </p>
               <div className="flex flex-wrap justify-center gap-2">

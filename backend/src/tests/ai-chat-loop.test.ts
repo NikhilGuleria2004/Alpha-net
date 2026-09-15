@@ -151,11 +151,69 @@ describe('AI chat turn loop', () => {
     expect(generate.mock.calls.length).toBeGreaterThan(1)
   })
 
-  it('offers no tools when no user token is available', async () => {
+    it('offers no tools when no user token is available', async () => {
     generate.mockResolvedValueOnce({ text: 'hello', toolCalls: [] })
 
     await chatWithAssistant(fakeRequest(), { message: 'hi' })
 
     expect(generate.mock.calls[0][1]).toEqual([])
+  })
+
+  it('answer "how many timesheets have I declined?" via getMyTimesheets', async () => {
+    generate
+      .mockResolvedValueOnce({
+        text: '',
+        toolCalls: [{ id: 't1', name: 'getMyTimesheets', args: { status: 'declined' } }],
+      })
+      .mockResolvedValueOnce({ text: 'You have 3 declined timesheets.', toolCalls: [] })
+
+    const result = await chatWithAssistant(fakeRequest(), { message: 'how many declined?' }, 'user-token')
+
+    expect(result.response).toBe('You have 3 declined timesheets.')
+    expect(mocks.callPlatformApi).toHaveBeenCalledWith('user-token', 'GET', '/timesheets?status=declined')
+    expect(mocks.callPlatformApi).toHaveBeenCalledWith('user-token', 'GET', '/projects')
+    expect(generate.mock.calls[1][0].at(-1)).toMatchObject({
+      role: 'tool',
+      toolCallId: 't1',
+      name: 'getMyTimesheets',
+    })
+  })
+
+  it('passes optional projectId / weekStart filters to the timesheets endpoint', async () => {
+    generate
+      .mockResolvedValueOnce({
+        text: '',
+        toolCalls: [
+          {
+            id: 't2',
+            name: 'getMyTimesheets',
+            args: { status: 'approved', projectId: PROJECT_ID, weekStart: '2026-09-14' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ text: 'Got it.', toolCalls: [] })
+
+    await chatWithAssistant(fakeRequest(), { message: 'how many approved?' }, 'user-token')
+
+    expect(mocks.callPlatformApi).toHaveBeenCalledWith(
+      'user-token',
+      'GET',
+      `/timesheets?status=approved&projectId=${PROJECT_ID}&weekStart=2026-09-14`,
+    )
+  })
+
+  it('returns a read-only error when getProjectDetails gets an invalid id', async () => {
+    generate
+      .mockResolvedValueOnce({
+        text: '',
+        toolCalls: [{ id: 'p1', name: 'getProjectDetails', args: { projectId: 'bad' } }],
+      })
+      .mockResolvedValueOnce({ text: 'Invalid id.', toolCalls: [] })
+
+    const result = await chatWithAssistant(fakeRequest(), { message: 'show project bad' }, 'user-token')
+
+    const toolResult = JSON.parse(generate.mock.calls[1][0].at(-1).content)
+    expect(toolResult).toHaveProperty('error')
+    expect(result.pendingAction).toBeUndefined()
   })
 })
