@@ -93,28 +93,28 @@ export function AdminDashboard() {
           title="Active Projects"
           value={activeProjectsCount}
           icon={<FolderKanban className="h-6 w-6" />}
-          iconBgColor="bg-indigo-50 text-indigo-600"
+          iconBgColor="bg-accent-soft text-accent"
           onClick={() => navigate('/admin/projects')}
         />
         <StatCard
           title="Active Users"
           value={activeUsersCount}
           icon={<Users className="h-6 w-6" />}
-          iconBgColor="bg-emerald-50 text-emerald-600"
+          iconBgColor="bg-success-soft text-success"
           onClick={() => navigate('/admin/users')}
         />
         <StatCard
           title="Pending Timesheets"
           value={pendingTimesheetsCount}
           icon={<Clock3 className="h-6 w-6" />}
-          iconBgColor="bg-amber-50 text-amber-600"
+          iconBgColor="bg-warning-soft text-warning"
           onClick={() => navigate('/admin/approvals')}
         />
         <StatCard
           title="Upcoming Deadlines"
           value={upcomingDeadlines.filter((d) => d.daysRemaining > 0 && d.daysRemaining <= 14).length}
           icon={<CalendarDays className="h-6 w-6" />}
-          iconBgColor="bg-red-50 text-red-600"
+          iconBgColor="bg-error-soft text-destructive"
           onClick={() => navigate('/admin/projects')}
         />
       </div>
@@ -136,7 +136,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <>
-                  <table className="hidden min-w-full divide-y divide-slate-200 sm:block">
+                  <table className="hidden min-w-full divide-y divide-border sm:block">
                     <thead className="bg-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -148,7 +148,7 @@ export function AdminDashboard() {
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-border">
                       {pendingApprovals.map((timesheet) => {
                         const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
                         return (
@@ -172,7 +172,7 @@ export function AdminDashboard() {
                                   e.stopPropagation()
                                   navigate(`/admin/approvals`)
                                 }}
-                                className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                className="text-sm font-medium text-accent hover:text-accent-hover"
                               >
                                 Review
                               </button>
@@ -182,7 +182,7 @@ export function AdminDashboard() {
                       })}
                     </tbody>
                   </table>
-                  <div className="sm:hidden divide-y divide-slate-200">
+                  <div className="sm:hidden divide-y divide-border">
                     {pendingApprovals.map((timesheet) => {
                       const submittedDate = timesheet.submittedAt ? new Date(timesheet.submittedAt) : null
                       return (
@@ -214,7 +214,7 @@ export function AdminDashboard() {
                               e.stopPropagation()
                               navigate(`/admin/approvals`)
                             }}
-                            className="mt-3 w-full rounded-lg bg-indigo-50 px-3 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+                            className="mt-3 w-full rounded-lg bg-accent-soft px-3 py-2 text-center text-sm font-medium text-accent hover:bg-accent-soft/80"
                           >
                             Review
                           </button>

@@ -88,7 +88,7 @@ export function Supervisors() {
 
   const SortIcon = ({ column }: { column: string }) => {
     if (sortKey !== column) return <span className="text-muted-foreground" />
-    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
+    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-accent" /> : <ChevronDown className="h-4 w-4 text-accent" />
   }
 
   return (
@@ -133,7 +133,7 @@ export function Supervisors() {
               />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   {[
@@ -152,7 +152,7 @@ export function Supervisors() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {filteredSupervisors.map((supervisor) => {
                   const assignedProjects = getAssignedProjects(supervisor.id)
                   const teamMembers = getTeamMembers(supervisor.id)
@@ -170,10 +170,10 @@ export function Supervisors() {
                       <td className="px-4 py-3 text-sm text-foreground">{assignedProjects}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{teamMembers}</td>
                       <td className="px-4 py-3 text-sm text-foreground">
-                        <span className={pendingReviews > 0 ? 'font-medium text-amber-600' : 'text-foreground'}>{pendingReviews}</span>
+                        <span className={pendingReviews > 0 ? 'font-medium text-warning' : 'text-foreground'}>{pendingReviews}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${supervisor.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${supervisor.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
                           {supervisor.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -203,7 +203,7 @@ export function Supervisors() {
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>

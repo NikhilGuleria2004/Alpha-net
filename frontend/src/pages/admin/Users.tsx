@@ -90,7 +90,7 @@ export function Users() {
 
   const SortIcon = ({ column }: { column: string }) => {
     if (sortKey !== column) return <span className="text-muted-foreground" />
-    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
+    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-accent" /> : <ChevronDown className="h-4 w-4 text-accent" />
   }
 
   return (
@@ -137,7 +137,7 @@ export function Users() {
               />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   {[
@@ -156,7 +156,7 @@ export function Users() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {filteredUsers.map((user) => {
                   return (
                     <tr key={user.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/users/${user.id}`)}>
@@ -172,7 +172,7 @@ export function Users() {
                       <td className="px-4 py-3 text-sm text-foreground">{user.role === 'admin' ? 'Admin' : 'User'}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{user.isSupervisor ? 'Yes' : 'No'}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
                           {user.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -187,7 +187,7 @@ export function Users() {
                           <DropdownItem icon={<span className="text-xs">View</span>} onClick={() => navigate(`/admin/users/${user.id}`)}>View</DropdownItem>
                           <DropdownItem icon={<span className="text-xs">Edit</span>} onClick={() => navigate(`/admin/users/${user.id}/edit`)}>Edit</DropdownItem>
                           {user.status === 'active' && (
-                            <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={() => handleDeactivate(user.id, user.name)}>Deactivate</DropdownItem>
+                            <DropdownItem icon={<Trash2 className="h-4 w-4 text-destructive" />} destructive onClick={() => handleDeactivate(user.id, user.name)}>Deactivate</DropdownItem>
                           )}
                         </Dropdown>
                       </td>
@@ -214,7 +214,7 @@ export function Users() {
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>

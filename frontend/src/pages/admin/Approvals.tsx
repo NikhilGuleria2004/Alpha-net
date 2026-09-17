@@ -44,9 +44,9 @@ export function Approvals() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
                     isActive
-                      ? 'border-b-2 border-indigo-600 text-indigo-600'
+                      ? 'border-b-2 border-accent text-accent'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -64,7 +64,7 @@ export function Approvals() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
+              <table className="min-w-full divide-y divide-border">
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -78,7 +78,7 @@ export function Approvals() {
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-border">
                   {filteredTimesheets.map((timesheet) => {
                     const employee = users.find((u) => u.id === timesheet.userId)
                     const project = projects.find((p) => p.id === timesheet.projectId)

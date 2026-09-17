@@ -12,10 +12,10 @@ interface ProgressProps {
 }
 
 const variantClasses: Record<ProgressVariant, string> = {
-  default: 'bg-indigo-600',
-  success: 'bg-emerald-600',
-  warning: 'bg-amber-600',
-  danger: 'bg-red-600',
+  default: 'bg-accent',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-destructive',
   info: 'bg-sky-600',
 }
 

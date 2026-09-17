@@ -155,13 +155,13 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-indigo-600" />
+            <User className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Profile</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
           {profileError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
               {profileError}
             </div>
           )}
@@ -182,13 +182,13 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-indigo-600" />
+            <Lock className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Change Password</h2>
           </div>
         </div>
         <div className="p-5 space-y-4">
           {passwordError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
               {passwordError}
             </div>
           )}
@@ -227,7 +227,7 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-600" />
+            <Bell className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Notification Preferences</h2>
           </div>
         </div>

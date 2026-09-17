@@ -51,7 +51,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full rounded-lg border ${error ? 'border-red-500' : 'border-border'} bg-card px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+        className={`w-full rounded-lg border ${error ? 'border-destructive' : 'border-border'} bg-card px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-accent/20`}
       >
         {selectedDate ? format(selectedDate, 'MMM d, yyyy') : <span className="text-muted-foreground">{placeholder}</span>}
       </button>
@@ -94,11 +94,11 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
                   onClick={() => handleSelect(date)}
                   className={`rounded-lg p-2 text-sm transition-colors ${
                     !isCurrentMonth
-                      ? 'text-slate-300'
+                      ? 'text-muted-foreground/50'
                       : disabled
-                        ? 'cursor-not-allowed text-slate-300'
+                        ? 'cursor-not-allowed text-muted-foreground/50'
                         : isSelected
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          ? 'bg-accent text-white hover:bg-accent-hover'
                           : 'text-foreground hover:bg-muted'
                   }`}
                 >
@@ -118,7 +118,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
           </div>
         </div>
       )}
-      {error && <p className="mt-1 text-sm text-red-600" role="alert">{error}</p>}
+      {error && <p className="mt-1 text-sm text-destructive" role="alert">{error}</p>}
       {helperText && !error && <p className="mt-1 text-sm text-muted-foreground">{helperText}</p>}
     </div>
   )

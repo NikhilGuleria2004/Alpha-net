@@ -68,9 +68,9 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
                 aria-controls={`panel-${tab.id}`}
                 disabled={tab.disabled}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
                   isActive
-                    ? 'border-b-2 border-indigo-600 text-indigo-600'
+                    ? 'border-b-2 border-accent text-accent'
                     : 'text-muted-foreground hover:text-foreground'
                 } ${tab.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
               >
@@ -112,8 +112,8 @@ export function TabTrigger({ id, children, disabled, activeTab, setActiveTab }: 
       aria-selected={isActive}
       disabled={disabled}
       onClick={() => setActiveTab(id)}
-      className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        isActive ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-muted-foreground hover:text-foreground'
+      className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+        isActive ? 'border-b-2 border-accent text-accent' : 'text-muted-foreground hover:text-foreground'
       } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       {children}

@@ -84,7 +84,7 @@ export function DropdownItem({ children, onClick, icon, destructive, divider }: 
         onClick?.()
       }}
       className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-muted ${
-        destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'
+        destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'
       }`}
     >
       {icon && <span className="shrink-0 text-muted-foreground">{icon}</span>}

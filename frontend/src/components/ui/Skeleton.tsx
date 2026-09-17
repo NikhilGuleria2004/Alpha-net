@@ -9,7 +9,7 @@ export function Skeleton({ className = '' }: SkeletonProps) {
 export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; columns?: number }) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
+      <table className="min-w-full divide-y divide-border">
         <thead className="bg-muted">
           <tr>
             {Array.from({ length: columns }).map((_, i) => (
@@ -19,7 +19,7 @@ export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; column
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 bg-card">
+        <tbody className="divide-y divide-border bg-card">
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <tr key={rowIndex}>
               {Array.from({ length: columns }).map((_, colIndex) => (

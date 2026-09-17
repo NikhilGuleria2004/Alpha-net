@@ -98,28 +98,28 @@ export function UserDashboard() {
           title="My Projects"
           value={myProjects.length}
           icon={<FolderKanban className="h-6 w-6" />}
-          iconBgColor="bg-indigo-50 text-indigo-600"
+          iconBgColor="bg-accent-soft text-accent"
           onClick={() => navigate('/user/projects')}
         />
         <StatCard
           title="This Week"
           value={`${thisWeekHours.toFixed(1)}h`}
           icon={<Clock3 className="h-6 w-6" />}
-          iconBgColor="bg-emerald-50 text-emerald-600"
+          iconBgColor="bg-success-soft text-success"
           onClick={() => navigate('/user/timesheets')}
         />
         <StatCard
           title="Pending Review"
           value={pendingReviewCount}
           icon={<ClipboardCheck className="h-6 w-6" />}
-          iconBgColor="bg-amber-50 text-amber-600"
+          iconBgColor="bg-warning-soft text-warning"
           onClick={() => navigate('/user/submissions')}
         />
         <StatCard
           title="Upcoming Deadline"
           value={upcomingDeadlines.length}
           icon={<CalendarDays className="h-6 w-6" />}
-          iconBgColor="bg-red-50 text-red-600"
+          iconBgColor="bg-error-soft text-destructive"
           onClick={() => navigate('/user/projects')}
         />
       </div>
@@ -161,7 +161,7 @@ export function UserDashboard() {
                       <button
                         type="button"
                         onClick={() => navigate('/user/timesheets')}
-                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-accent-hover"
                       >
                         Continue Timesheet
                       </button>
@@ -177,7 +177,7 @@ export function UserDashboard() {
                     <button
                       type="button"
                       onClick={() => navigate('/user/timesheets')}
-                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-accent-hover"
                     >
                   Create Timesheet
                     </button>
@@ -200,7 +200,7 @@ export function UserDashboard() {
                   />
                 </div>
               ) : (
-                <table className="min-w-full divide-y divide-slate-200">
+                <table className="min-w-full divide-y divide-border">
                   <thead className="bg-muted">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
@@ -209,7 +209,7 @@ export function UserDashboard() {
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-border">
                     {recentSubmissions.map((timesheet) => {
                       return (
                         <tr
@@ -249,7 +249,7 @@ export function UserDashboard() {
                     <button
                       type="button"
                       onClick={() => navigate('/user/dashboard')}
-                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-accent-hover"
                     >
                       View Dashboard
                     </button>
@@ -268,7 +268,7 @@ export function UserDashboard() {
                       <button
                         type="button"
                         onClick={() => navigate(`/user/projects/${project.id}`)}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                        className="text-sm font-medium text-accent hover:text-accent-hover"
                       >
                         Open
                       </button>
@@ -296,7 +296,7 @@ export function UserDashboard() {
                           {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(project.deadline))}
                         </p>
                       </div>
-                      <span className={`text-xs font-medium ${project.daysRemaining <= 7 ? 'text-red-600' : 'text-amber-600'}`}>
+                      <span className={`text-xs font-medium ${project.daysRemaining <= 7 ? 'text-destructive' : 'text-warning'}`}>
                         {project.daysRemaining} days
                       </span>
                     </div>

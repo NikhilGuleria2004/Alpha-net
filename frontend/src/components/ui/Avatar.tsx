@@ -18,11 +18,11 @@ interface AvatarProps {
 }
 
 const avatarColors = [
-  'bg-indigo-600',
-  'bg-emerald-600',
-  'bg-amber-600',
-  'bg-red-600',
-  'bg-sky-600',
+  'bg-primary',
+  'bg-success',
+  'bg-warning',
+  'bg-destructive',
+  'bg-accent',
   'bg-violet-600',
   'bg-pink-600',
   'bg-teal-600',
@@ -60,10 +60,10 @@ export function Avatar({ name = '', src, alt, size = 'md', status, className = '
         <span
           className={`absolute bottom-0 right-0 rounded-full border-2 border-white ${
             status === 'online'
-              ? 'bg-emerald-500'
-              : status === 'away'
-                ? 'bg-amber-500'
-                : 'bg-slate-400'
+              ? 'bg-success'
+                : status === 'away'
+                  ? 'bg-warning'
+                  : 'bg-muted-foreground/50'
           } ${size === 'sm' ? 'h-2.5 w-2.5' : size === 'md' ? 'h-3 w-3' : 'h-3.5 w-3.5'}`}
           aria-label={status}
         />

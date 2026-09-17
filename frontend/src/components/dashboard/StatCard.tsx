@@ -12,7 +12,7 @@ interface StatCardProps {
   onClick?: () => void
 }
 
-export function StatCard({ title, value, icon, trend, supportingText, iconBgColor = 'bg-indigo-50 text-indigo-600', onClick }: StatCardProps) {
+export function StatCard({ title, value, icon, trend, supportingText, iconBgColor = 'bg-accent-soft text-accent', onClick }: StatCardProps) {
   const isPositive = trend && trend.value > 0
   return (
     <Card hoverable={Boolean(onClick)} onClick={onClick} className="transition-shadow hover:shadow-md">
@@ -22,7 +22,7 @@ export function StatCard({ title, value, icon, trend, supportingText, iconBgColo
           <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
           {trend && (
             <div className="mt-2 flex items-center gap-1 text-sm">
-              <span className={`flex items-center gap-0.5 ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`flex items-center gap-0.5 ${isPositive ? 'text-success' : 'text-destructive'}`}>
                 {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
                 {Math.abs(trend.value)}
               </span>

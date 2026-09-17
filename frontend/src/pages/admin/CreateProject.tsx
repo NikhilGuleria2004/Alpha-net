@@ -199,17 +199,17 @@ export function CreateProject() {
           </div>
           <div className="p-5">
             <div
-              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50"
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500') }}
-              onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-500') }}
+              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-accent hover:bg-accent-soft/50"
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-accent') }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove('border-accent') }}
               onDrop={(e) => {
                 e.preventDefault()
-                e.currentTarget.classList.remove('border-indigo-500')
+                e.currentTarget.classList.remove('border-accent')
                 const files = Array.from(e.dataTransfer.files)
                 addFiles(files)
               }}
             >
-              <div className="mb-3 rounded-full bg-indigo-50 p-3 text-indigo-600">
+              <div className="mb-3 rounded-full bg-accent-soft p-3 text-accent">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
               <p className="text-sm font-medium text-foreground">Drop files here</p>
@@ -235,7 +235,7 @@ export function CreateProject() {
                       <p className="text-sm font-medium text-foreground">{doc.file.name}</p>
                       <p className="text-xs text-muted-foreground">{(doc.file.size / (1024 * 1024)).toFixed(1)} MB</p>
                     </div>
-                    <button type="button" onClick={() => setDocuments((prev) => prev.filter((d) => d.id !== doc.id))} className="text-sm text-red-600 hover:text-red-700">Remove</button>
+                    <button type="button" onClick={() => setDocuments((prev) => prev.filter((d) => d.id !== doc.id))} className="text-sm text-destructive hover:text-destructive">Remove</button>
                   </div>
                 ))}
               </div>

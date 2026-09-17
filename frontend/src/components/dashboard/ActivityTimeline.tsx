@@ -14,10 +14,10 @@ interface ActivityTimelineProps {
 
 const colorClasses: Record<string, string> = {
   default: 'bg-muted text-foreground',
-  success: 'bg-emerald-50 text-emerald-600',
-  warning: 'bg-amber-50 text-amber-600',
-  danger: 'bg-red-50 text-red-600',
-  info: 'bg-indigo-50 text-indigo-600',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-error-soft text-destructive',
+  info: 'bg-accent-soft text-accent',
 }
 
 export function ActivityTimeline({ items }: ActivityTimelineProps) {
@@ -29,7 +29,7 @@ export function ActivityTimeline({ items }: ActivityTimelineProps) {
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colorClasses[item.color || 'default']}`}>
               {item.icon || <Activity className="h-5 w-5" />}
             </div>
-            {index !== items.length - 1 && <div className="mt-2 h-full w-px bg-slate-200" />}
+            {index !== items.length - 1 && <div className="mt-2 h-full w-px bg-border" />}
           </div>
           <div className="flex-1 pb-4">
             <p className="text-sm text-foreground">{item.description}</p>

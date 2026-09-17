@@ -16,7 +16,7 @@ import { canDeactivateUser } from '../../utils/permissions'
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -83,7 +83,7 @@ export function UserDetails() {
   if (!user) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -98,7 +98,7 @@ export function UserDetails() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold text-foreground">{user.name}</h1>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -114,7 +114,7 @@ export function UserDetails() {
             }
           >
             {user.status === 'active' && deactivateGuard.ok ? (
-              <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={() => setIsConfirmOpen(true)}>Deactivate User</DropdownItem>
+              <DropdownItem icon={<Trash2 className="h-4 w-4 text-destructive" />} destructive onClick={() => setIsConfirmOpen(true)}>Deactivate User</DropdownItem>
             ) : user.status === 'active' ? (
               <div className="px-4 py-2 text-sm text-muted-foreground" title={deactivateGuard.reason}>
                 <Trash2 className="mr-2 inline h-4 w-4" />Deactivate User <span className="text-xs text-muted-foreground">— {deactivateGuard.reason}</span>
@@ -137,7 +137,7 @@ export function UserDetails() {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+                <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -190,7 +190,7 @@ export function UserDetails() {
                 <EmptyState title="No submissions yet" description="This user has not submitted any timesheets." />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200">
+                  <table className="min-w-full divide-y divide-border">
                     <thead className="bg-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
@@ -199,7 +199,7 @@ export function UserDetails() {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                       </tr>
                     </thead>
-                     <tbody className="divide-y divide-slate-200">
+                     <tbody className="divide-y divide-border">
 {userTimesheets.map((t) => {
                           const project = projects.find((p) => p.id === t.projectId)
                           return (

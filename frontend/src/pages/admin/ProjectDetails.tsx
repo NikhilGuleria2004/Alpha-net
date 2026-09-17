@@ -27,7 +27,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
@@ -42,7 +42,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -73,7 +73,7 @@ export function ProjectDetails() {
   if (!project) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -179,8 +179,8 @@ function OverviewTab({ project, manager, supervisor }: { project: Project; manag
             <span className="text-foreground">Project Progress</span>
             <span className="font-medium text-foreground">{Math.round(progress)}%</span>
           </div>
-          <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
-            <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
+          <div className="mt-2 h-2 w-full rounded-full bg-border">
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">{elapsedDays} of {totalDays} days elapsed</p>
         </div>
@@ -218,11 +218,11 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
                 <div>
                   <p className="text-sm font-medium text-foreground">{member.name}</p>
                   <p className="text-xs text-muted-foreground">{member.department}</p>
-                  {supervisor?.id === member.id && <span className="text-xs text-indigo-600">Supervisor</span>}
+                  {supervisor?.id === member.id && <span className="text-xs text-accent">Supervisor</span>}
                 </div>
               </div>
               {supervisor?.id !== member.id && (
-                <button type="button" onClick={() => onRemove(member.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600">
+                <button type="button" onClick={() => onRemove(member.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-error-soft hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </button>
               )}
@@ -268,7 +268,7 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
         <EmptyState title="No timesheets" description="No timesheets match the selected filters." />
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -279,7 +279,7 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-border">
               {filtered.map((t) => {
                 const user = users.find((u) => u.id === t.userId)
                 return (

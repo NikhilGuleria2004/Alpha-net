@@ -105,8 +105,8 @@ export function SubmissionDetails() {
                 {timeline.map((event, index) => (
                   <div key={index} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <div className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
-                      {index < timeline.length - 1 && <div className="h-full w-px bg-slate-200" />}
+                      <div className="h-2.5 w-2.5 rounded-full bg-accent" />
+                      {index < timeline.length - 1 && <div className="h-full w-px bg-border" />}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">{event.label}</p>

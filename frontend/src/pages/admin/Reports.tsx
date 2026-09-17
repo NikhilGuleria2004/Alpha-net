@@ -122,11 +122,11 @@ export function Reports() {
   const statusItems = useMemo(() => {
     if (!statusBreakdown) return []
     return [
-      { label: 'Approved', count: statusBreakdown.approved, color: 'bg-emerald-50 text-emerald-700' },
-      { label: 'Pending', count: statusBreakdown.pending, color: 'bg-amber-50 text-amber-700' },
-      { label: 'Declined', count: statusBreakdown.declined, color: 'bg-red-50 text-red-700' },
+      { label: 'Approved', count: statusBreakdown.approved, color: 'bg-success-soft text-success' },
+      { label: 'Pending', count: statusBreakdown.pending, color: 'bg-warning-soft text-warning' },
+      { label: 'Declined', count: statusBreakdown.declined, color: 'bg-error-soft text-destructive' },
       { label: 'Withdrawn', count: statusBreakdown.withdrawn, color: 'bg-muted text-foreground' },
-      { label: 'Draft', count: statusBreakdown.draft, color: 'bg-sky-50 text-sky-700' },
+      { label: 'Draft', count: statusBreakdown.draft, color: 'bg-accent-soft text-accent' },
     ]
   }, [statusBreakdown])
 
@@ -172,7 +172,7 @@ export function Reports() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
         <div className="space-y-6">
@@ -187,11 +187,11 @@ export function Reports() {
                 <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={hoursByProject} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="projectName" tick={{ fontSize: 12, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e8eaf0" />
+                      <XAxis dataKey="projectName" tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                      <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} />
                       <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(value) => [`${Number(value).toFixed(1)}h`, 'Hours']} />
-                      <Bar dataKey="totalHours" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="totalHours" fill="#2563eb" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -209,7 +209,7 @@ export function Reports() {
                   <EmptyState title="No data" description="There are no hours recorded for the selected filters." />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
+                    <table className="min-w-full divide-y divide-border">
                       <thead className="bg-muted">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -220,7 +220,7 @@ export function Reports() {
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200">
+                      <tbody className="divide-y divide-border">
                         {sortedEmployees.map((emp) => (
                           <tr key={emp.userId} className="hover:bg-muted">
                             <td className="px-4 py-3 text-sm font-medium text-foreground">{emp.userName}</td>

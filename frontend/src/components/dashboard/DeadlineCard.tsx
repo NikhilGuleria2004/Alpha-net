@@ -42,7 +42,7 @@ export function DeadlineCard({ projectName, deadline, icon }: DeadlineCardProps)
         {icon && <div className="text-muted-foreground">{icon}</div>}
       </div>
       <div className="mt-4">
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusColor === 'success' ? 'bg-emerald-50 text-emerald-700' : statusColor === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusColor === 'success' ? 'bg-success-soft text-success' : statusColor === 'warning' ? 'bg-warning-soft text-warning' : 'bg-error-soft text-destructive'}`}>
           {statusText}
         </span>
       </div>

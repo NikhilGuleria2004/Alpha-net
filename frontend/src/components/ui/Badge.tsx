@@ -12,10 +12,10 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-muted text-foreground',
-  success: 'bg-emerald-50 text-emerald-700',
-  warning: 'bg-amber-50 text-amber-700',
-  danger: 'bg-red-50 text-red-700',
-  info: 'bg-indigo-50 text-indigo-700',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-error-soft text-destructive',
+  info: 'bg-accent-soft text-accent',
 }
 
 const sizeClasses: Record<BadgeSize, string> = {

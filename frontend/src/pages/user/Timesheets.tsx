@@ -152,7 +152,7 @@ export function Timesheets() {
               <EmptyState title="No timesheets found" description="You haven't submitted any timesheets matching the filters." />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
@@ -164,7 +164,7 @@ export function Timesheets() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {filteredTimesheets.map((timesheet) => {
                   const project = projects.find((p) => p.id === timesheet.projectId)
                   return (
@@ -189,7 +189,7 @@ export function Timesheets() {
 
       {isCreateOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)} />
+          <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)} />
           <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-foreground">New Timesheet</h3>
             <p className="mt-1 text-sm text-muted-foreground">Pick a project and the week you want to log.</p>

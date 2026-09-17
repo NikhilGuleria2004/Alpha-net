@@ -59,7 +59,7 @@ export function EditUser() {
   if (!user) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -139,7 +139,7 @@ export function EditUser() {
                 { value: 'admin', label: 'Admin', disabled: !demoteGuard.ok },
               ]} />
               {!demoteGuard.ok && form.role === 'admin' && (
-                <p className="mt-1 text-xs text-amber-600" role="alert">{demoteGuard.reason}</p>
+                <p className="mt-1 text-xs text-warning" role="alert">{demoteGuard.reason}</p>
               )}
               <Select label="Status" value={form.status} onChange={(e) => updateField('status', e.target.value as 'active' | 'inactive')} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
               <Select label="Supervisor" value={form.supervisorId || ''} onChange={(e) => updateField('supervisorId', e.target.value || undefined)} options={[{ value: '', label: 'None' }, ...supervisorOptions.map((u) => ({ value: u.id, label: u.name }))]} />
@@ -156,7 +156,7 @@ export function EditUser() {
                 type="checkbox"
                 checked={form.isSupervisor}
                 onChange={(e) => updateField('isSupervisor', e.target.checked)}
-                className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-border text-accent focus:ring-accent/20"
               />
               <div>
                 <p className="text-sm font-medium text-foreground">Enable Supervisor Capability</p>
@@ -179,7 +179,7 @@ export function EditUser() {
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
@@ -193,7 +193,7 @@ export function EditUser() {
                 </button>
               </div>
               {errors.password ? (
-                <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
+                <p className="mt-1 text-sm text-destructive" role="alert">{errors.password}</p>
               ) : (
                 <p className="mt-1 text-sm text-muted-foreground">Leave blank to keep the current password. At least 8 characters with an uppercase letter, lowercase letter, and number.</p>
               )}

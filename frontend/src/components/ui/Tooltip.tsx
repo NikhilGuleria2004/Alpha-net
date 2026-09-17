@@ -36,11 +36,11 @@ export function Tooltip({ content, children, delay = 200 }: TooltipProps) {
       {children}
       {isVisible && (
         <div
-          className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white shadow-lg"
+          className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border border-border bg-card px-3 py-1.5 text-[13px] text-foreground shadow-lg"
           role="tooltip"
         >
           {content}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+          <div className="absolute left-1/2 top-full -translate-x-1/2 -mt-1 border-4 border-transparent border-t-card" />
         </div>
       )}
     </div>

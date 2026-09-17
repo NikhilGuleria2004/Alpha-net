@@ -28,7 +28,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
@@ -342,7 +342,7 @@ export function TimesheetEditor() {
   if (!existingTimesheet && !project) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -372,15 +372,15 @@ export function TimesheetEditor() {
           <h2 className="text-lg font-semibold text-foreground">Timesheet Entries</h2>
         </div>
         {validationErrors.length > 0 && (
-          <div className="border-b border-red-200 bg-red-50 px-5 py-3">
-            <p className="text-sm font-medium text-red-700">Please fix the following:</p>
-            <ul className="mt-1 list-disc list-inside text-sm text-red-600">
+          <div className="border-b border-destructive/20 bg-error-soft px-5 py-3">
+            <p className="text-sm font-medium text-destructive">Please fix the following:</p>
+            <ul className="mt-1 list-disc list-inside text-sm text-destructive">
               {validationErrors.map((err) => <li key={err}>{err}</li>)}
             </ul>
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted">
               <tr>
                 <th className="sm:sticky sm:left-0 sm:z-10 bg-muted px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 sm:py-3">Work Item</th>
@@ -395,7 +395,7 @@ export function TimesheetEditor() {
                 {!isReadOnly && <th className="sm:sticky sm:right-0 sm:z-10 bg-muted px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 sm:py-3">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 bg-card">
+            <tbody className="divide-y divide-border bg-card">
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td className="sm:sticky sm:left-0 sm:z-10 bg-card px-3 py-2 sm:px-4 sm:py-2">
@@ -419,7 +419,7 @@ export function TimesheetEditor() {
                           value={entry.hours[day as keyof typeof entry.hours] || ''}
                           onChange={(e) => handleEntryChange(entry.id, day, parseFloat(e.target.value) || 0)}
                           disabled={!isEnabled}
-                          className={`w-20 rounded-lg border px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isEnabled ? 'border-border' : 'border-slate-100 bg-muted text-muted-foreground'}`}
+                          className={`w-20 rounded-lg border px-2 py-1 text-sm text-center focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 ${isEnabled ? 'border-border' : 'border-border bg-muted text-muted-foreground'}`}
                         />
                       </td>
                     )
@@ -427,7 +427,7 @@ export function TimesheetEditor() {
                   <td className="px-3 py-2 text-right text-sm font-medium text-foreground sm:px-4 sm:py-2">{calcEntryTotal(entry).toFixed(1)}</td>
                   {!isReadOnly && (
                     <td className="sm:sticky sm:right-0 sm:z-10 bg-card px-3 py-2 text-right sm:px-4 sm:py-2">
-                      <button type="button" onClick={() => handleRemoveEntry(entry.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => handleRemoveEntry(entry.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-error-soft hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                     </td>
                   )}
                 </tr>
@@ -476,12 +476,12 @@ export function TimesheetEditor() {
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-foreground">Weekly Target</span>
-              <span className={`font-medium ${isAboveTarget ? 'text-amber-600' : 'text-foreground'}`}>{totals.totalHours.toFixed(1)}h / {weeklyTarget}h</span>
+              <span className={`font-medium ${isAboveTarget ? 'text-warning' : 'text-foreground'}`}>{totals.totalHours.toFixed(1)}h / {weeklyTarget}h</span>
             </div>
-            <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
-              <div className={`h-full rounded-full transition-all ${isAboveTarget ? 'bg-amber-500' : 'bg-indigo-600'}`} style={{ width: `${progressPercent}%` }} />
+            <div className="mt-2 h-2 w-full rounded-full bg-border">
+              <div className={`h-full rounded-full transition-all ${isAboveTarget ? 'bg-warning' : 'bg-accent'}`} style={{ width: `${progressPercent}%` }} />
             </div>
-            {isAboveTarget && <p className="mt-1 text-xs text-amber-600">You are above the weekly target</p>}
+            {isAboveTarget && <p className="mt-1 text-xs text-warning">You are above the weekly target</p>}
           </div>
         </div>
       </Card>
@@ -537,7 +537,7 @@ function WithdrawModal({ isOpen, onClose, onConfirm, reason, onReasonChange, isL
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">Withdraw Timesheet</h3>
         <p className="mt-2 text-sm text-muted-foreground">Optionally provide a reason for withdrawing this timesheet.</p>

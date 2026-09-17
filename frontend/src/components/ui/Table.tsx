@@ -77,7 +77,7 @@ export function Table<T>({
 
   return (
     <div className="w-full overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
+      <table className="min-w-full divide-y divide-border">
         <thead className={stickyHeader ? 'sticky top-0 bg-muted z-10' : 'bg-muted'}>
           <tr>
             {columns.map((col) => (
@@ -85,19 +85,19 @@ export function Table<T>({
                 key={col.key}
                 scope="col"
                 onClick={() => col.sortable && handleSort(col.key)}
-                className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground ${alignClasses[col.align || 'left']} ${col.sortable ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
+                className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${alignClasses[col.align || 'left']} ${col.sortable ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
                 style={col.width ? { width: col.width } : undefined}
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}
-                  {col.sortable && sortKey === col.key && <span className="text-indigo-600">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                  {col.sortable && sortKey === col.key && <span className="text-accent">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                 </span>
               </th>
             ))}
             {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 bg-card">
+        <tbody className="divide-y divide-border bg-card">
           {paginatedData.map((row, idx) => (
             <tr
               key={idx}
@@ -127,7 +127,7 @@ export function Table<T>({
             type="button"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-muted"
+            className="rounded-full border border-border bg-card px-3 py-1 text-[13px] disabled:opacity-50 hover:bg-muted"
           >
             Previous
           </button>
@@ -138,7 +138,7 @@ export function Table<T>({
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-muted"
+            className="rounded-full border border-border bg-card px-3 py-1 text-[13px] disabled:opacity-50 hover:bg-muted"
           >
             Next
           </button>

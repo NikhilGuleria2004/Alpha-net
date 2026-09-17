@@ -16,17 +16,17 @@ interface ToastContainerProps {
 }
 
 const iconMap: Record<ToastType, ReactNode> = {
-  success: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
-  error: <XCircle className="h-5 w-5 text-red-600" />,
-  warning: <AlertTriangle className="h-5 w-5 text-amber-600" />,
-  info: <Info className="h-5 w-5 text-indigo-600" />,
+  success: <CheckCircle2 className="h-5 w-5 text-success" />,
+  error: <XCircle className="h-5 w-5 text-destructive" />,
+  warning: <AlertTriangle className="h-5 w-5 text-warning" />,
+  info: <Info className="h-5 w-5 text-accent" />,
 }
 
 const bgMap: Record<ToastType, string> = {
-  success: 'bg-emerald-50 border-emerald-200',
-  error: 'bg-red-50 border-red-200',
-  warning: 'bg-amber-50 border-amber-200',
-  info: 'bg-indigo-50 border-indigo-200',
+  success: 'bg-success-soft border-success/20',
+  error: 'bg-error-soft border-destructive/20',
+  warning: 'bg-warning-soft border-warning/20',
+  info: 'bg-accent-soft border-accent/20',
 }
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
@@ -35,7 +35,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all ${bgMap[toast.type]}`}
+          className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-[13px] shadow-xl transition-all ${bgMap[toast.type]}`}
           role="alert"
         >
           <div className="shrink-0">{iconMap[toast.type]}</div>
@@ -43,7 +43,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           <button
             type="button"
             onClick={() => onDismiss(toast.id)}
-            className="shrink-0 rounded-lg p-1 text-muted-foreground hover:text-muted-foreground"
+            className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-muted-foreground"
             aria-label="Dismiss notification"
           >
             <X className="h-4 w-4" />

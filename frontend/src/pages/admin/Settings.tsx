@@ -113,7 +113,7 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-indigo-600" />
+            <Building2 className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Organization</h2>
           </div>
         </div>
@@ -157,7 +157,7 @@ export function Settings() {
                   Upload Logo
                 </Button>
                 {logoPreview && (
-                  <button type="button" onClick={() => setLogoPreview(null)} className="ml-2 text-xs text-red-600 hover:text-red-700">
+                  <button type="button" onClick={() => setLogoPreview(null)} className="ml-2 text-xs text-destructive hover:text-destructive">
                     Remove
                   </button>
                 )}
@@ -172,7 +172,7 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <Clock3 className="h-5 w-5 text-indigo-600" />
+            <Clock3 className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Timesheet Settings</h2>
           </div>
         </div>
@@ -194,7 +194,7 @@ export function Settings() {
       <Card>
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-600" />
+            <Bell className="h-5 w-5 text-accent" />
             <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
           </div>
         </div>

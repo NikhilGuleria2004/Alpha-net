@@ -110,13 +110,13 @@ export function Register() {
 
   return (
     <div className="flex min-h-screen bg-muted">
-      <div className="hidden w-1/2 bg-slate-900 lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+      <div className="hidden w-1/2 bg-foreground lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600">
+          <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent">
             <span className="text-3xl font-bold text-white">A</span>
           </div>
           <h1 className="text-4xl font-bold text-white">Join Eniac</h1>
-          <p className="mt-4 text-lg text-slate-300">Create your account and start managing projects, people, and time in one place.</p>
+          <p className="mt-4 text-lg text-muted-foreground">Create your account and start managing projects, people, and time in one place.</p>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export function Register() {
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             {errors.general && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+              <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}
               </div>
             )}
@@ -153,7 +153,7 @@ export function Register() {
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(event) => updateField('password', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.password)}
@@ -162,7 +162,7 @@ export function Register() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.password ? <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p> : <p className="mt-1 text-xs text-muted-foreground">Use at least 8 characters with uppercase, lowercase, and a number.</p>}
+                {errors.password ? <p className="mt-1 text-sm text-destructive" role="alert">{errors.password}</p> : <p className="mt-1 text-xs text-muted-foreground">Use at least 8 characters with uppercase, lowercase, and a number.</p>}
               </div>
 
               <div>
@@ -173,7 +173,7 @@ export function Register() {
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
                     onChange={(event) => updateField('confirmPassword', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
                     placeholder="Repeat your password"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.confirmPassword)}
@@ -182,7 +182,7 @@ export function Register() {
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.confirmPassword && <p className="mt-1 text-sm text-red-600" role="alert">{errors.confirmPassword}</p>}
+                {errors.confirmPassword && <p className="mt-1 text-sm text-destructive" role="alert">{errors.confirmPassword}</p>}
               </div>
             </div>
 
@@ -194,7 +194,7 @@ export function Register() {
             </div>
 
             {form.role === 'admin' && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
                 Administrator registration is available only when an administrator pass is configured on the server.
               </div>
             )}
@@ -205,7 +205,7 @@ export function Register() {
 
             <p className="text-center text-sm text-foreground">
               Already have an account?{' '}
-              <button type="button" onClick={() => navigate('/userlog')} className="font-medium text-indigo-600 hover:text-indigo-700">
+              <button type="button" onClick={() => navigate('/userlog')} className="font-medium text-accent hover:text-accent-hover">
                 Sign in
               </button>
             </p>

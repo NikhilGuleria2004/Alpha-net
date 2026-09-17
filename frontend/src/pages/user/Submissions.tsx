@@ -31,7 +31,7 @@ export function Submissions() {
               <EmptyState title="No submissions yet" description="Your submitted timesheets will appear here." />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
@@ -44,7 +44,7 @@ export function Submissions() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {myTimesheets.map((timesheet) => {
                   const project = projects.find((p) => p.id === timesheet.projectId)
                   return (
@@ -57,7 +57,7 @@ export function Submissions() {
                       <td className="px-4 py-3 text-sm text-muted-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</td>
                       <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                       <td className="px-4 py-3 text-right">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/user/submissions/${timesheet.id}`) }} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">View</button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/user/submissions/${timesheet.id}`) }} className="text-sm font-medium text-accent hover:text-accent-hover">View</button>
                       </td>
                     </tr>
                   )

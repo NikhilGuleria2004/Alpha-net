@@ -101,7 +101,7 @@ export function CreateUser() {
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'}`}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
@@ -115,7 +115,7 @@ export function CreateUser() {
                 </button>
               </div>
               {errors.password ? (
-                <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>
+                <p className="mt-1 text-sm text-destructive" role="alert">{errors.password}</p>
               ) : (
                 <p className="mt-1 text-sm text-muted-foreground">At least 8 characters with an uppercase letter, lowercase letter, and number. Share it with the user so they can sign in.</p>
               )}
@@ -137,7 +137,7 @@ export function CreateUser() {
                 type="checkbox"
                 checked={form.isSupervisor}
                 onChange={(e) => updateField('isSupervisor', e.target.checked)}
-                className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-border text-accent focus:ring-accent/20"
               />
               <div>
                 <p className="text-sm font-medium text-foreground">Enable Supervisor Capability</p>

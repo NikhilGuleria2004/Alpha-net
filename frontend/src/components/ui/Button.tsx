@@ -1,7 +1,7 @@
 import { type ReactNode, type ButtonHTMLAttributes, type AnchorHTMLAttributes } from 'react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
-type ButtonSize = 'sm' | 'md' | 'lg'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'pill' | 'icon'
+type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -13,16 +13,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-primary-foreground hover:opacity-90 focus:ring-ring',
+  primary: 'bg-primary text-primary-foreground hover:bg-accent-hover focus:ring-ring',
   secondary: 'bg-card border border-border text-foreground hover:bg-muted focus:ring-ring',
   danger: 'bg-destructive text-destructive-foreground hover:opacity-90 focus:ring-destructive',
   ghost: 'bg-transparent text-muted-foreground hover:bg-muted focus:ring-ring',
+  pill: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus:ring-ring',
+  icon: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus:ring-ring',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-2.5 text-base',
+  sm: 'h-[30px] px-3 text-xs',
+  md: 'h-9 px-4 text-sm',
+  lg: 'h-10 px-5 text-sm',
+  icon: 'h-8 w-8 p-1.5 text-sm',
 }
 
 export function Button({

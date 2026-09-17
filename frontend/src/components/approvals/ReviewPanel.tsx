@@ -14,7 +14,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
@@ -143,7 +143,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
           <div>
             <p className="text-sm font-medium text-muted-foreground mb-3">Timesheet Entries</p>
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="min-w-full divide-y divide-slate-200">
+              <table className="min-w-full divide-y divide-border">
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Work Item</th>
@@ -157,7 +157,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
                     <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 bg-card">
+                <tbody className="divide-y divide-border bg-card">
                   {timesheet.entries.map((entry) => {
                     const entryTotal = Object.values(entry.hours).reduce((sum, h) => sum + h, 0)
                     return (

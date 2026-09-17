@@ -18,7 +18,7 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
     ? {
         heading: 'Decline requires your approval — not saved yet',
         confirm: 'Confirm Decline',
-        confirmClass: 'bg-red-600 hover:bg-red-700',
+        confirmClass: 'bg-destructive hover:bg-destructive',
         seed: 'Please revise this decline:\n',
         changes: '\n\nDifferent reason: ',
       }
@@ -26,14 +26,14 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
       ? {
           heading: 'Approval requires your confirmation — not saved yet',
           confirm: 'Confirm Approval',
-          confirmClass: 'bg-emerald-600 hover:bg-emerald-700',
+          confirmClass: 'bg-success hover:bg-success',
           seed: 'Please change this approval:\n',
           changes: '\n\nWhat I want instead: ',
         }
       : {
           heading: 'Action requires approval — not saved yet',
           confirm: 'Approve & Save',
-          confirmClass: 'bg-indigo-600 hover:bg-indigo-700',
+          confirmClass: 'bg-accent hover:bg-accent-hover',
           seed: 'Please revise this draft timesheet:\n',
           changes: '\n\nChanges needed: ',
         }
@@ -51,20 +51,20 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
 
   return (
     <div className="mb-3 flex justify-start">
-      <div className="max-w-[90%] rounded-2xl rounded-bl-md border-2 border-indigo-300 bg-indigo-50 px-4 py-3 shadow-sm">
+      <div className="max-w-[90%] rounded-2xl rounded-bl-md border-2 border-accent/30 bg-accent-soft px-4 py-3 shadow-sm">
         <div className="mb-2 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-indigo-600" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+          <AlertTriangle className="h-4 w-4 text-accent" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-accent-hover">
             {copy.heading}
           </span>
         </div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-900">{action.summary}</p>
-        <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{action.summary}</p>
+        <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           Expires in ~{Math.max(1, Math.round(action.expiresInSeconds / 60))} min
         </p>
         {actionError && (
-          <p className="mt-2 text-xs font-medium text-red-600">{actionError}</p>
+          <p className="mt-2 text-xs font-medium text-destructive">{actionError}</p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -80,7 +80,7 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
             type="button"
             disabled={busy}
             onClick={handleEdit}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
             <Pencil className="h-4 w-4" />
             Edit
@@ -89,7 +89,7 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
             type="button"
             disabled={busy}
             onClick={() => cancelAction(messageId)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-white px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-error-soft disabled:opacity-50"
           >
             <X className="h-4 w-4" />
             Cancel

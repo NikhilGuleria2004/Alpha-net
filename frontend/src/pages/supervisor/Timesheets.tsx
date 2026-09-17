@@ -100,7 +100,7 @@ export function SupervisorTimesheets() {
               <EmptyState title="No timesheets found" description="There are no timesheets matching the filters." />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -114,7 +114,7 @@ export function SupervisorTimesheets() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {filteredTimesheets.map((timesheet) => {
                   const employee = users.find((u) => u.id === timesheet.userId)
                   const project = projects.find((p) => p.id === timesheet.projectId)

@@ -92,7 +92,7 @@ export function Projects() {
 
   const SortIcon = ({ column }: { column: string }) => {
     if (sortKey !== column) return <span className="text-muted-foreground" />
-    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-indigo-600" /> : <ChevronDown className="h-4 w-4 text-indigo-600" />
+    return sortDir === 'asc' ? <ChevronUp className="h-4 w-4 text-accent" /> : <ChevronDown className="h-4 w-4 text-accent" />
   }
 
   return (
@@ -140,7 +140,7 @@ export function Projects() {
               />
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
                   {[
@@ -166,7 +166,7 @@ export function Projects() {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {filteredProjects.map((project) => {
                   const manager = appUsers.find((u) => u.id === project.managerId)
                   return (
@@ -194,7 +194,7 @@ export function Projects() {
                           }
                         >
                           <DropdownItem icon={<span className="text-xs">Edit</span>} onClick={() => navigate(`/admin/projects/${project.id}/edit`)}>Edit</DropdownItem>
-                          <DropdownItem icon={<Trash2 className="h-4 w-4 text-red-500" />} destructive onClick={() => handleDelete(project.id, project.name)}>Delete</DropdownItem>
+                          <DropdownItem icon={<Trash2 className="h-4 w-4 text-destructive" />} destructive onClick={() => handleDelete(project.id, project.name)}>Delete</DropdownItem>
                         </Dropdown>
                       </td>
                     </tr>

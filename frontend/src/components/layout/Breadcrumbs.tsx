@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Home } from 'lucide-react'
 
 interface BreadcrumbItem {
   label: string
@@ -13,22 +13,32 @@ interface BreadcrumbsProps {
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex items-center gap-2 text-sm">
+      <ol className="flex items-center gap-1.5 text-[13px]">
         {items.map((item, index) => {
           const isLast = index === items.length - 1
+          const isFirst = index === 0
+          const chip = 'flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1'
           return (
-            <li key={index} className="flex items-center gap-2">
-              {index > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+            <li key={index} className="flex items-center gap-1.5">
+              {index > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
               {isLast || !item.href ? (
-                <span className="font-medium text-foreground" aria-current="page">
+                isFirst ? (
+                  <span className={`${chip} font-medium text-foreground`} aria-current="page">
+                    <Home className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                    {item.label}
+                  </span>
+                ) : (
+                  <span className="font-medium text-foreground" aria-current="page">
+                    {item.label}
+                  </span>
+                )
+              ) : isFirst ? (
+                <button type="button" onClick={item.onClick} className={`${chip} text-muted-foreground hover:text-accent`}>
+                  <Home className="h-3.5 w-3.5" aria-hidden="true" />
                   {item.label}
-                </span>
+                </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={item.onClick}
-                  className="text-muted-foreground hover:text-indigo-600"
-                >
+                <button type="button" onClick={item.onClick} className="text-muted-foreground hover:text-accent">
                   {item.label}
                 </button>
               )}

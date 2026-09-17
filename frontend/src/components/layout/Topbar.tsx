@@ -145,12 +145,12 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   const recentNotifications = notifications.slice(0, 5)
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-card px-4 sm:px-6">
+      <div className="flex flex-1 items-center gap-4">
         <button
           type="button"
           onClick={onToggleMobile}
-          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground md:hidden"
+          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground md:hidden"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
@@ -167,7 +167,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                       {crumb.label}
                     </span>
                   ) : (
-                    <button type="button" onClick={() => navigate(crumb.href!)} className="text-muted-foreground hover:text-indigo-600">
+                    <button type="button" onClick={() => navigate(crumb.href!)} className="text-muted-foreground hover:text-accent">
                       {crumb.label}
                     </button>
                   )}
@@ -178,17 +178,16 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
         </nav>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
-        <div ref={searchRef} className="relative">
+      <div ref={searchRef} className="relative">
           <button
             type="button"
             onClick={() => setIsSearchOpen((prev) => !prev)}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:border-border hover:text-muted-foreground"
+            className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-border/40"
             aria-label="Open search"
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search projects, users...</span>
-            <kbd className="ml-2 hidden rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground sm:inline-block">⌘K</kbd>
+            <kbd className="ml-2 hidden rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">⌘K</kbd>
           </button>
           {isSearchOpen && (
             <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-border bg-card shadow-lg sm:w-80" role="search">
@@ -198,7 +197,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search projects, users, timesheets..."
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                   aria-label="Search projects, users, timesheets"
                   autoFocus
                 />
@@ -232,18 +231,19 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               )}
             </div>
           )}
-        </div>
+      </div>
 
+      <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">
         <div className="relative" ref={notificationsRef}>
           <button
             type="button"
             onClick={() => setIsNotificationsOpen((prev) => !prev)}
-            className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-0.5 text-[10px] font-semibold text-white">
                 {unreadCount}
               </span>
             )}
@@ -260,7 +260,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                         await markAllAsRead()
                         addToast('success', 'All notifications marked as read')
                       }}
-                      className="text-xs text-indigo-600 hover:text-indigo-700"
+                      className="text-xs text-accent hover:text-accent-hover"
                     >
                       Mark all as read
                     </button>
@@ -273,7 +273,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                     <EmptyState title="No notifications" description="You're up to date." />
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-200">
+                  <div className="divide-y divide-border">
                     {recentNotifications.map((notification) => (
                       <button
                         key={notification.id}
@@ -286,9 +286,9 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                           if (route) navigate(route)
                           setIsNotificationsOpen(false)
                         }}
-                        className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted ${notification.read ? 'opacity-60' : 'bg-indigo-50/50'}`}
+                        className={`flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted ${notification.read ? 'opacity-60' : 'bg-accent-soft/50'}`}
                       >
-                        <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />
+                        <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground">{notification.title}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">{notification.message}</p>
@@ -307,7 +307,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           <button
             type="button"
             onClick={() => setIsProfileOpen((prev) => !prev)}
-            className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-muted"
+            className="flex items-center gap-2 rounded-full p-1 hover:bg-muted"
             aria-label="User menu"
           >
             <Avatar name={user?.name || ''} size="sm" />
@@ -350,7 +350,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-error-soft"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out

@@ -16,19 +16,26 @@
   --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
+  /* Style overhaul (style_overhaul.md): canvas page background + hairline
+     borders + blue-600 accent. Accent moved indigo → blue (#4f46e5 → #2563eb). */
+  --color-canvas: #f7f8fa;
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f8fafc;
   --color-bg-tertiary: #f1f5f9;
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-tertiary: #64748b;
-  --color-border-primary: #e2e8f0;
-  --color-border-secondary: #cbd5e1;
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
+  --color-border-primary: #e8eaf0;
+  --color-border-secondary: #d6dae3;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #eff4ff;
   --color-success: #16a34a;
+  --color-success-soft: #e8f7ee;
   --color-warning: #d97706;
+  --color-warning-soft: #fdf2e2;
   --color-error: #dc2626;
+  --color-error-soft: #fdecec;
 
   /* Semantic (shadcn-style) tokens — MUST live in @theme so Tailwind v4
      generates utilities like bg-card, text-foreground, border-border,
@@ -40,7 +47,7 @@
   --color-card-foreground: #0f172a;
   --color-popover: #ffffff;
   --color-popover-foreground: #0f172a;
-  --color-primary: #4f46e5;
+  --color-primary: #2563eb;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f1f5f9;
   --color-secondary-foreground: #0f172a;
@@ -49,46 +56,51 @@
   --color-accent-foreground: #ffffff;
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #4f46e5;
+  --color-border: #e8eaf0;
+  --color-input: #d6dae3;
+  --color-ring: #2563eb;
 }
 
 /* Light theme tokens — kept in :root as runtime fallbacks so every
    var(--color-*) reference resolves even outside Tailwind utilities.
    (Dark mode was removed 2026-09-14.) */
 :root {
+  --color-canvas: #f7f8fa;
   --color-background: #ffffff;
   --color-foreground: #0f172a;
   --color-card: #ffffff;
   --color-card-foreground: #0f172a;
   --color-popover: #ffffff;
   --color-popover-foreground: #0f172a;
-  --color-primary: #4f46e5;
+  --color-primary: #2563eb;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f1f5f9;
   --color-secondary-foreground: #0f172a;
   --color-muted: #f1f5f9;
   --color-muted-foreground: #64748b;
-  --color-accent: #4f46e5;
+  --color-accent: #2563eb;
+  --color-accent-soft: #eff4ff;
   --color-accent-foreground: #ffffff;
+  --color-success-soft: #e8f7ee;
+  --color-warning-soft: #fdf2e2;
+  --color-error-soft: #fdecec;
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #4f46e5;
+  --color-border: #e8eaf0;
+  --color-input: #d6dae3;
+  --color-ring: #2563eb;
   --color-sidebar: #f8fafc;
   --color-sidebar-foreground: #0f172a;
-  --color-sidebar-border: #e2e8f0;
+  --color-sidebar-border: #e8eaf0;
   --color-sidebar-accent: #f1f5f9;
   --color-sidebar-accent-foreground: #0f172a;
-  --color-sidebar-ring: #4f46e5;
-  --color-sidebar-primary: #4f46e5;
+  --color-sidebar-ring: #2563eb;
+  --color-sidebar-primary: #2563eb;
   --color-sidebar-primary-foreground: #ffffff;
 }
 
 body {
-  background-color: var(--color-bg-primary);
+  background-color: var(--color-canvas);
   color: var(--color-text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -98,7 +110,7 @@ body {
     border-color: var(--color-border);
   }
   body {
-    background-color: var(--color-background);
+    background-color: var(--color-canvas);
     color: var(--color-foreground);
     transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   }

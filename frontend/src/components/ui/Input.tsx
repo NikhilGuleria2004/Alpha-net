@@ -30,7 +30,7 @@ export function Input({ label, error, helperText, leftIcon, rightIcon, className
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`w-full rounded-lg border ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-indigo-500 focus:ring-indigo-500'} bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
+          className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus:ring-destructive' : 'border-border focus:border-accent focus:ring-accent'} bg-card px-3 h-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
           {...props}
         />
         {rightIcon && (
@@ -40,7 +40,7 @@ export function Input({ label, error, helperText, leftIcon, rightIcon, className
         )}
       </div>
       {error && (
-        <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+        <p id={errorId} className="mt-1 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}

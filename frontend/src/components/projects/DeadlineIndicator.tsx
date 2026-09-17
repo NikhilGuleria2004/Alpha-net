@@ -31,9 +31,9 @@ export function DeadlineIndicator({ deadline }: DeadlineIndicatorProps) {
   }
 
   const colorClasses = {
-    normal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
-    overdue: 'bg-red-50 text-red-700 border-red-200',
+    normal: 'bg-success-soft text-success border-success/20',
+    warning: 'bg-warning-soft text-warning border-warning/20',
+    overdue: 'bg-error-soft text-destructive border-destructive/20',
   }
 
   return (

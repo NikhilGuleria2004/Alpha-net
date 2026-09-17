@@ -63,11 +63,11 @@ export function Notifications() {
       type="button"
       onClick={() => handleNotificationClick(notification)}
       className={`flex w-full gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted ${
-        !notification.read ? 'border-l-4 border-l-indigo-500' : ''
+        !notification.read ? 'border-l-4 border-l-accent' : ''
       }`}
     >
       <div className="mt-1 shrink-0">
-        {!notification.read && <span className="block h-2.5 w-2.5 rounded-full bg-indigo-600" />}
+        {!notification.read && <span className="block h-2.5 w-2.5 rounded-full bg-accent" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{notification.title}</p>

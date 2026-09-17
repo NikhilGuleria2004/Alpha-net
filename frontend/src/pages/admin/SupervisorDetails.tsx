@@ -20,7 +20,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
@@ -35,7 +35,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-red-600 hover:text-red-700' : 'text-foreground'}`}>
+    <button type="button" onClick={onClick} className={`flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-muted ${destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'}`}>
       {icon}
       {children}
     </button>
@@ -83,7 +83,7 @@ export function SupervisorDetails() {
   if (!user) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     )
   }
@@ -105,7 +105,7 @@ export function SupervisorDetails() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold text-foreground">{user.name}</h1>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
                   {user.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -150,7 +150,7 @@ function OverviewTab({ user, assignedProjects, teamMembers, pendingReviews }: { 
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">Status</p>
-            <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-foreground'}`}>
+            <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === 'active' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'}`}>
               {user.status === 'active' ? 'Active' : 'Inactive'}
             </span>
           </div>
@@ -224,7 +224,7 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
         <EmptyState title="No pending reviews" description="All timesheets for this supervisor's projects have been reviewed." />
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
@@ -234,7 +234,7 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-border">
               {pendingReviews.map((t) => {
                 const user = users.find((u) => u.id === t.userId)
                 const project = projects.find((p) => p.id === t.projectId)

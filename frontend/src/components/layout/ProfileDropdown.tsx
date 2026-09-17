@@ -50,13 +50,13 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-muted"
+        className="flex items-center gap-2 rounded-full p-1 hover:bg-muted"
         aria-label="User menu"
         aria-expanded={isOpen}
       >
         {trigger || (
           <>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
               {user?.name ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase() : 'U'}
             </div>
             <div className="hidden text-left sm:block">
@@ -102,7 +102,7 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
               setIsOpen(false)
               setIsLogoutOpen(true)
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-error-soft"
           >
             <LogOut className="h-4 w-4" />
             Sign out

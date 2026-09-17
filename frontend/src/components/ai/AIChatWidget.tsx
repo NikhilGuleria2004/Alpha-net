@@ -24,7 +24,7 @@ export function AIChatWidget() {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-3 text-white shadow-xl transition-all hover:bg-indigo-700 ${
+        className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-white shadow-xl transition-all hover:bg-accent-hover ${
           isOpen ? 'scale-90 opacity-60' : 'scale-100 hover:scale-105'
         }`}
         aria-label={isOpen ? 'Close AI chat' : 'Open AI chat'}
@@ -40,7 +40,7 @@ export function AIChatWidget() {
           </>
         )}
         {messages.length > 0 && (
-          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1 text-xs font-semibold text-indigo-700">
+          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1 text-xs font-semibold text-accent-hover">
             {messages.filter((m) => m.role === 'user').length}
           </span>
         )}

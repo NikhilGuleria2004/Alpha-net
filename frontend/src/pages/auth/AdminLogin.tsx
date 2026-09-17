@@ -67,18 +67,18 @@ export function AdminLogin() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden bg-indigo-900 lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:p-12">
+       <div className="hidden bg-foreground lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-card/10">
             <span className="text-3xl font-bold text-white">A</span>
           </div>
           <h1 className="text-4xl font-bold text-white">Eniac</h1>
-          <p className="mt-4 text-lg text-indigo-200">Internal Project Management</p>
-          <p className="mt-2 text-indigo-300">Manage projects, people and timesheets from one place.</p>
+          <p className="mt-4 text-lg text-accent/70">Internal Project Management</p>
+          <p className="mt-2 text-accent/60">Manage projects, people and timesheets from one place.</p>
           <div className="mt-12 flex justify-center gap-4">
-            <div className="h-2 w-2 rounded-full bg-indigo-400" />
-            <div className="h-2 w-2 rounded-full bg-indigo-600" />
-            <div className="h-2 w-2 rounded-full bg-indigo-400" />
+            <div className="h-2 w-2 rounded-full bg-accent/30" />
+            <div className="h-2 w-2 rounded-full bg-accent" />
+            <div className="h-2 w-2 rounded-full bg-accent/30" />
           </div>
         </div>
       </div>
@@ -86,7 +86,7 @@ export function AdminLogin() {
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-12">
         <div className="mx-auto w-full max-w-sm">
           <div className="lg:hidden mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
               <span className="text-lg font-bold">A</span>
             </div>
             <span className="text-2xl font-bold text-foreground">Eniac</span>
@@ -96,7 +96,7 @@ export function AdminLogin() {
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+              <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}
               </div>
             )}
@@ -116,7 +116,7 @@ export function AdminLogin() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />
@@ -129,14 +129,14 @@ export function AdminLogin() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && <p className="mt-1 text-sm text-red-600" role="alert">{errors.password}</p>}
+              {errors.password && <p className="mt-1 text-sm text-destructive" role="alert">{errors.password}</p>}
             </div>
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground" title="Your session stays signed in via a secure refresh cookie.">
                 Stay signed in
               </span>
-              <button type="button" onClick={handleForgotPassword} className="text-sm text-indigo-600 hover:text-indigo-700">
+              <button type="button" onClick={handleForgotPassword} className="text-sm text-accent hover:text-accent-hover">
                 Forgot password?
               </button>
             </div>
