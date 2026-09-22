@@ -27,5 +27,7 @@ export function formatFileSize(bytes: number): string {
 
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
-  return `${text.slice(0, maxLength - 3)}...`
+  // Guideline 4.12: use the typographic ellipsis character, not three periods.
+  // Slice to maxLength - 1 so the single-glyph ellipsis keeps total length == maxLength.
+  return `${text.slice(0, maxLength - 1)}…`
 }

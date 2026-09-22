@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePageTitle } from '../../hooks/usePageTitle'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
@@ -24,6 +25,7 @@ interface RegistrationForm {
 const departments = ['Engineering', 'Design', 'Marketing', 'Sales', 'QA', 'Finance', 'HR']
 
 export function Register() {
+  usePageTitle('Create account')
   const navigate = useNavigate()
   const { addToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -153,7 +155,7 @@ export function Register() {
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(event) => updateField('password', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus-visible:ring-destructive/20' : 'border-border focus:border-accent focus-visible:ring-accent/20'}`}
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.password)}
@@ -173,7 +175,7 @@ export function Register() {
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
                     onChange={(event) => updateField('confirmPassword', event.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
+                    className={`w-full rounded-lg border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${errors.confirmPassword ? 'border-destructive focus:border-destructive focus-visible:ring-destructive/20' : 'border-border focus:border-accent focus-visible:ring-accent/20'}`}
                     placeholder="Repeat your password"
                     autoComplete="new-password"
                     aria-invalid={Boolean(errors.confirmPassword)}

@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { UserLogin } from './pages/auth/UserLogin'
 import { Register } from './pages/auth/Register'
+import { ResetPassword } from './pages/auth/ResetPassword'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { HomeRedirect } from './routes/HomeRedirect'
 import { RedirectIfAuthenticated } from './routes/RedirectIfAuthenticated'
@@ -17,11 +18,16 @@ import { UserDetails } from './pages/admin/UserDetails'
 import { EditUser } from './pages/admin/EditUser'
 import { Supervisors } from './pages/admin/Supervisors'
 import { SupervisorDetails } from './pages/admin/SupervisorDetails'
+import { Onboarding } from './pages/admin/Onboarding'
+import { InviteRedeem } from './pages/auth/InviteRedeem'
 import { Timesheets } from './pages/admin/Timesheets'
 import { Approvals } from './pages/admin/Approvals'
 import { Reports } from './pages/admin/Reports'
 import { Notifications as AdminNotifications } from './pages/admin/Notifications'
 import { Settings as AdminSettings } from './pages/admin/Settings'
+import { Invoices } from './pages/admin/Invoices'
+import { InvoiceForm } from './pages/admin/InvoiceForm'
+import { InvoiceDetail } from './pages/admin/InvoiceDetail'
 import { UserDashboard } from './pages/user/Dashboard'
 import { Projects as UserProjects } from './pages/user/Projects'
 import { ProjectDetails as UserProjectDetails } from './pages/user/ProjectDetails'
@@ -34,99 +40,128 @@ import { Settings as UserSettings } from './pages/user/Settings'
 import { SupervisorTimesheets } from './pages/supervisor/Timesheets'
 import { Approvals as SupervisorApprovals } from './pages/supervisor/Approvals'
 
+// Data router (frontend_eval.md §12 items 1.2/1.3): createBrowserRouter
+// replaces the declarative <Routes> tree 1:1 — same paths, elements, and role
+// guards — but enables two guideline features the declarative router can't
+// provide:
+//   1. `useBlocker` for the unsaved-changes guard on the TimesheetEditor
+//      (guideline 5.15), and
+//   2. per-route `handle`s that AppShell reads via useMatches() to set an
+//      accurate <title> (guideline 4.3).
+const router = createBrowserRouter([
+  { path: '/', element: <HomeRedirect /> },
+  {
+    path: '/adminlog',
+    element: (
+      <RedirectIfAuthenticated>
+        <AdminLogin />
+      </RedirectIfAuthenticated>
+    ),
+    handle: { title: 'Admin Sign in' },
+  },
+  {
+    path: '/userlog',
+    element: (
+      <RedirectIfAuthenticated>
+        <UserLogin />
+      </RedirectIfAuthenticated>
+    ),
+    handle: { title: 'Employee Sign in' },
+  },
+  {
+    path: '/register',
+    element: (
+      <RedirectIfAuthenticated>
+        <Register />
+      </RedirectIfAuthenticated>
+    ),
+    handle: { title: 'Create account' },
+  },
+  {
+    path: '/invite',
+    element: (
+      <RedirectIfAuthenticated>
+        <InviteRedeem />
+      </RedirectIfAuthenticated>
+    ),
+    handle: { title: 'Accept Invite' },
+  },
+  {
+    path: '/reset-password',
+    element: (
+      <RedirectIfAuthenticated>
+        <ResetPassword />
+      </RedirectIfAuthenticated>
+    ),
+    handle: { title: 'Reset Password' },
+  },
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AppShellLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: 'dashboard', element: <AdminDashboard />, handle: { title: 'Admin · Dashboard' } },
+      { path: 'projects', element: <Projects />, handle: { title: 'Admin · Projects' } },
+      { path: 'projects/new', element: <CreateProject />, handle: { title: 'Admin · New Project' } },
+      { path: 'projects/:projectId', element: <ProjectDetails />, handle: { title: 'Admin · Project Details' } },
+      { path: 'projects/:projectId/edit', element: <EditProject />, handle: { title: 'Admin · Edit Project' } },
+      { path: 'users', element: <Users />, handle: { title: 'Admin · Users' } },
+      { path: 'users/new', element: <CreateUser />, handle: { title: 'Admin · New User' } },
+      { path: 'users/:userId', element: <UserDetails />, handle: { title: 'Admin · User Details' } },
+      { path: 'users/:userId/edit', element: <EditUser />, handle: { title: 'Admin · Edit User' } },
+      { path: 'supervisors', element: <Supervisors />, handle: { title: 'Admin · Supervisors' } },
+      { path: 'onboarding', element: <Onboarding />, handle: { title: 'Admin · Onboarding' } },
+      { path: 'supervisors/:userId', element: <SupervisorDetails />, handle: { title: 'Admin · Supervisor Details' } },
+      { path: 'timesheets', element: <Timesheets />, handle: { title: 'Admin · Timesheets' } },
+      { path: 'approvals', element: <Approvals />, handle: { title: 'Admin · Approvals' } },
+      { path: 'reports', element: <Reports />, handle: { title: 'Admin · Reports' } },
+      { path: 'notifications', element: <AdminNotifications />, handle: { title: 'Admin · Notifications' } },
+      { path: 'settings', element: <AdminSettings />, handle: { title: 'Admin · Settings' } },
+      { path: 'invoices', element: <Invoices />, handle: { title: 'Admin · Invoices' } },
+      { path: 'invoices/new', element: <InvoiceForm />, handle: { title: 'Admin · New Invoice' } },
+      { path: 'invoices/:invoiceId', element: <InvoiceDetail />, handle: { title: 'Admin · Invoice' } },
+      { path: 'invoices/:invoiceId/form', element: <InvoiceForm />, handle: { title: 'Admin · Edit Invoice' } },
+    ],
+  },
+  {
+    path: '/user',
+    element: (
+      <ProtectedRoute allowedRoles={['user']}>
+        <AppShellLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: 'dashboard', element: <UserDashboard />, handle: { title: 'My Dashboard' } },
+      { path: 'projects', element: <UserProjects />, handle: { title: 'My Projects' } },
+      { path: 'projects/:projectId', element: <UserProjectDetails />, handle: { title: 'Project Details' } },
+      { path: 'timesheets', element: <UserTimesheets />, handle: { title: 'My Timesheets' } },
+      { path: 'timesheets/:timesheetId', element: <UserTimesheetEditor />, handle: { title: 'Timesheet Editor' } },
+      { path: 'submissions', element: <UserSubmissions />, handle: { title: 'My Submissions' } },
+      { path: 'submissions/:submissionId', element: <UserSubmissionDetails />, handle: { title: 'Submission Details' } },
+      { path: 'notifications', element: <UserNotifications />, handle: { title: 'Notifications' } },
+      { path: 'settings', element: <UserSettings />, handle: { title: 'My Settings' } },
+    ],
+  },
+  {
+    path: '/supervisor',
+    element: (
+      <ProtectedRoute allowedRoles={['user']} requireSupervisor>
+        <AppShellLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: 'timesheets', element: <SupervisorTimesheets />, handle: { title: 'Supervisor · Team Timesheets' } },
+      { path: 'approvals', element: <SupervisorApprovals />, handle: { title: 'Supervisor · Approvals' } },
+    ],
+  },
+  { path: '*', element: <HomeRedirect /> },
+])
+
 function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* QA A13: role-aware — waits for the session restore, then routes to
-            the user's portal (or /adminlog when logged out). */}
-        <Route path="/" element={<HomeRedirect />} />
-        <Route
-          path="/adminlog"
-          element={
-            <RedirectIfAuthenticated>
-              <AdminLogin />
-            </RedirectIfAuthenticated>
-          }
-        />
-        <Route
-          path="/userlog"
-          element={
-            <RedirectIfAuthenticated>
-              <UserLogin />
-            </RedirectIfAuthenticated>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <RedirectIfAuthenticated>
-              <Register />
-            </RedirectIfAuthenticated>
-          }
-        />
-
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AppShellLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="projects/new" element={<CreateProject />} />
-          <Route path="projects/:projectId" element={<ProjectDetails />} />
-          <Route path="projects/:projectId/edit" element={<EditProject />} />
-          <Route path="users" element={<Users />} />
-          <Route path="users/new" element={<CreateUser />} />
-          <Route path="users/:userId" element={<UserDetails />} />
-          <Route path="users/:userId/edit" element={<EditUser />} />
-          <Route path="supervisors" element={<Supervisors />} />
-          <Route path="supervisors/:userId" element={<SupervisorDetails />} />
-          <Route path="timesheets" element={<Timesheets />} />
-          <Route path="approvals" element={<Approvals />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="notifications" element={<AdminNotifications />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
-
-        <Route
-          path="/user"
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <AppShellLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="dashboard" element={<UserDashboard />} />
-          <Route path="projects" element={<UserProjects />} />
-          <Route path="projects/:projectId" element={<UserProjectDetails />} />
-          <Route path="timesheets" element={<UserTimesheets />} />
-          <Route path="timesheets/:timesheetId" element={<UserTimesheetEditor />} />
-          <Route path="submissions" element={<UserSubmissions />} />
-          <Route path="submissions/:submissionId" element={<UserSubmissionDetails />} />
-          <Route path="notifications" element={<UserNotifications />} />
-          <Route path="settings" element={<UserSettings />} />
-        </Route>
-
-        <Route
-          path="/supervisor"
-          element={
-            <ProtectedRoute allowedRoles={['user']} requireSupervisor>
-              <AppShellLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="timesheets" element={<SupervisorTimesheets />} />
-          <Route path="approvals" element={<SupervisorApprovals />} />
-        </Route>
-
-        <Route path="*" element={<HomeRedirect />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

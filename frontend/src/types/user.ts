@@ -1,7 +1,10 @@
-export type UserStatus = 'active' | 'inactive'
+export type UserStatus = 'active' | 'inactive' | 'invited'
 
 export interface CreateUserInput {
-  name: string
+  /** Optional when firstName + lastName are provided — the backend composes the display name. */
+  name?: string
+  firstName?: string
+  lastName?: string
   email: string
   employeeId: string
   department: string

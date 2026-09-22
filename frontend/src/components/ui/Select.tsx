@@ -24,7 +24,7 @@ export function Select({ label, error, placeholder, options, className = '', id,
           id={selectId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          className={`w-full appearance-none rounded-full border ${error ? 'border-destructive focus:border-destructive focus:ring-destructive' : 'border-border focus:border-accent focus:ring-accent'} bg-card px-3 h-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 pr-9 ${className}`}
+          className={`w-full appearance-none rounded-full border ${error ? 'border-destructive focus:border-destructive focus-visible:ring-destructive' : 'border-border focus:border-accent focus-visible:ring-accent'} bg-card px-3 h-9 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 pr-9 ${className}`}
           {...props}
         >
           {placeholder && (

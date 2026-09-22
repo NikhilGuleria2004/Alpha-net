@@ -101,7 +101,7 @@ export function CreateUser() {
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
+                  className={`w-full rounded-lg border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus-visible:ring-destructive/20' : 'border-border focus:border-accent focus-visible:ring-accent/20'}`}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
@@ -137,7 +137,7 @@ export function CreateUser() {
                 type="checkbox"
                 checked={form.isSupervisor}
                 onChange={(e) => updateField('isSupervisor', e.target.checked)}
-                className="h-4 w-4 rounded border-border text-accent focus:ring-accent/20"
+                className="h-4 w-4 rounded border-border text-accent focus-visible:ring-accent/20"
               />
               <div>
                 <p className="text-sm font-medium text-foreground">Enable Supervisor Capability</p>

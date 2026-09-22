@@ -233,7 +233,7 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
 
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Team Members" size="md">
         <div className="p-5 space-y-4">
-          <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <Input placeholder="Search users…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           <div className="max-h-80 overflow-y-auto space-y-2">
             {filteredAvailable.map((u) => (
               <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted">

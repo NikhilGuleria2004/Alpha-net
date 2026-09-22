@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useMatches } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-// import { AIChatWidget } from '../ai/AIChatWidget'
+import { AIChatWidget } from '../ai/AIChatWidget'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 interface AppShellProps {
   children?: ReactNode
@@ -10,6 +11,15 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const matches = useMatches()
+
+  // Guideline 4.3 (checklist item 1.3): the <title> reflects the current
+  // context. Titles come from route `handle`s defined in App.tsx; the deepest
+  // match with a handle wins, and usePageTitle appends the app name.
+  const leafMatch = [...matches]
+    .reverse()
+    .find((match) => Boolean((match.handle as { title?: string } | undefined)?.title))
+  usePageTitle((leafMatch?.handle as { title?: string } | undefined)?.title)
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
@@ -25,7 +35,9 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </main>
       </div>
-      {/* <AIChatWidget /> */}
+      {/* Checklist item 1.1: the AI assistant is live — floating trigger +
+          Ctrl/⌘+Shift+A shortcut, focus-managed panel (see AIChatPanel). */}
+      <AIChatWidget />
     </div>
   )
 }

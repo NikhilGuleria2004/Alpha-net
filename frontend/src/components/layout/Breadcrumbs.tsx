@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
 
 interface BreadcrumbItem {
@@ -33,14 +34,14 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
                   </span>
                 )
               ) : isFirst ? (
-                <button type="button" onClick={item.onClick} className={`${chip} text-muted-foreground hover:text-accent`}>
+                <Link to={item.href || '#'} onClick={item.onClick} className={`${chip} text-muted-foreground hover:text-accent`}>
                   <Home className="h-3.5 w-3.5" aria-hidden="true" />
                   {item.label}
-                </button>
+                </Link>
               ) : (
-                <button type="button" onClick={item.onClick} className="text-muted-foreground hover:text-accent">
+                <Link to={item.href || '#'} onClick={item.onClick} className="text-muted-foreground hover:text-accent">
                   {item.label}
-                </button>
+                </Link>
               )}
             </li>
           )

@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { User, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -73,28 +73,22 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
             <p className="text-xs text-muted-foreground">{user?.email}</p>
             <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(false)
-              navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
-            }}
+          <Link
+            to={user?.role === 'admin' ? '/admin/settings' : '/user/settings'}
+            onClick={() => setIsOpen(false)}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
           >
             <User className="h-4 w-4" />
             Profile
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(false)
-              navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
-            }}
+          </Link>
+          <Link
+            to={user?.role === 'admin' ? '/admin/settings' : '/user/settings'}
+            onClick={() => setIsOpen(false)}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
           >
             <Settings className="h-4 w-4" />
             Settings
-          </button>
+          </Link>
           <div className="my-1 border-t border-border" />
           <button
             type="button"

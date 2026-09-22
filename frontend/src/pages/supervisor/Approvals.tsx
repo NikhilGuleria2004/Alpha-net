@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
 import { Card } from '../../components/ui/Card'
@@ -15,7 +16,12 @@ type TabId = 'pending' | 'approved' | 'declined' | 'withdrawn'
 export function Approvals() {
   const { user } = useAuth()
   const { timesheets, users, projects } = useAppData()
-  const [activeTab, setActiveTab] = useState<TabId>('pending')
+  // Guideline 1.11/1.23 (checklist item 1.4): the active tab is URL state
+  // (?tab=). The existing ?timesheetId= effect below already preserves other
+  // params when it clears itself, so the two coexist.
+  const [tab, setTab] = useQueryParamState('tab', 'pending', 'push')
+  const activeTab = tab as TabId
+  const setActiveTab = (id: TabId): void => setTab(id)
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -76,7 +82,7 @@ export function Approvals() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+                  className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 ${
                     isActive
                       ? 'border-b-2 border-accent text-accent'
                       : 'text-muted-foreground hover:text-foreground'

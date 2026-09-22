@@ -68,7 +68,7 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
                 aria-controls={`panel-${tab.id}`}
                 disabled={tab.disabled}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+                className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isActive
                     ? 'border-b-2 border-accent text-accent'
                     : 'text-muted-foreground hover:text-foreground'
@@ -112,7 +112,7 @@ export function TabTrigger({ id, children, disabled, activeTab, setActiveTab }: 
       aria-selected={isActive}
       disabled={disabled}
       onClick={() => setActiveTab(id)}
-      className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+      className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         isActive ? 'border-b-2 border-accent text-accent' : 'text-muted-foreground hover:text-foreground'
       } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >

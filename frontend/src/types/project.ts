@@ -15,6 +15,7 @@ export interface Project {
   managerId: string
   supervisorId: string
   teamMemberIds: string[]
+  hourlyRate?: number | null
   createdAt: string
   updatedAt: string
 }

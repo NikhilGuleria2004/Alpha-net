@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, CalendarDays } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,9 +17,10 @@ export function Projects() {
   const { user } = useAuth()
   const { projects: appProjects, timesheets } = useAppData()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [deadlineFilter, setDeadlineFilter] = useState('')
+  // Guideline 1.11/1.23 (checklist item 1.4): list filters are URL state.
+  const [search, setSearch] = useQueryParamState('q')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [deadlineFilter, setDeadlineFilter] = useQueryParamState('deadline', '', 'push')
 
   const myProjects = useMemo(() => {
     if (!user) return []
@@ -74,7 +76,7 @@ export function Projects() {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search by project name or client..."
+                placeholder="Search by project name or client…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}

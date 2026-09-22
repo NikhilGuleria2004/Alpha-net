@@ -10,39 +10,70 @@ import { escapeRegex } from '../lib/regex.js'
 export interface User {
   id: string
   name: string
+  firstName?: string
+  lastName?: string
   email: string
   employeeId: string
   department: string
   role: 'admin' | 'user'
   isSupervisor: boolean
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
   createdAt: Date
   updatedAt: Date
 }
 
 export interface CreateUserInput {
-  name: string
+  /** Optional when firstName + lastName are provided — the display name is composed. */
+  name?: string
+  firstName?: string
+  lastName?: string
   email: string
   employeeId: string
   department: string
   role: 'admin' | 'user'
   isSupervisor: boolean
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
   password: string
 }
 
 export interface UpdateUserInput {
   name?: string
+  firstName?: string
+  lastName?: string
   email?: string
   employeeId?: string
   department?: string
   role?: 'admin' | 'user'
   isSupervisor?: boolean
-  status?: 'active' | 'inactive'
+  status?: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
   password?: string
+}
+
+/** Display name composed from the profile parts (falls back to existing values). */
+function composeName(firstName?: string | null, lastName?: string | null, fallback?: string | null): string {
+  return [firstName?.trim(), lastName?.trim()].filter(Boolean).join(' ') || fallback?.trim() || ''
+}
+
+/** Shared field mapping for user documents → API shape (never leaks the hash). */
+function toUser(doc: Record<string, any>): User {
+  return {
+    id: doc._id.toString(),
+    name: doc.name,
+    firstName: doc.firstName ?? undefined,
+    lastName: doc.lastName ?? undefined,
+    email: doc.email,
+    employeeId: doc.employeeId,
+    department: doc.department,
+    role: doc.role,
+    isSupervisor: doc.isSupervisor,
+    status: doc.status,
+    supervisorId: doc.supervisorId?.toString(),
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  }
 }
 
 export async function getUsers(filters?: { role?: string; status?: string; isSupervisor?: boolean; supervisorId?: string; search?: string }): Promise<User[]> {
@@ -63,38 +94,14 @@ export async function getUsers(filters?: { role?: string; status?: string; isSup
   }
 
   const users = await db.collection(COLLECTIONS.USERS).find(query).toArray()
-  return users.map((u) => ({
-    id: u._id.toString(),
-    name: u.name,
-    email: u.email,
-    employeeId: u.employeeId,
-    department: u.department,
-    role: u.role,
-    isSupervisor: u.isSupervisor,
-    status: u.status,
-    supervisorId: u.supervisorId?.toString(),
-    createdAt: u.createdAt,
-    updatedAt: u.updatedAt,
-  }))
+  return users.map(toUser)
 }
 
 export async function getUserById(id: string): Promise<User | null> {
   const db = await getDb()
   const user = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(id) })
   if (!user) return null
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    employeeId: user.employeeId,
-    department: user.department,
-    role: user.role,
-    isSupervisor: user.isSupervisor,
-    status: user.status,
-    supervisorId: user.supervisorId?.toString(),
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }
+  return toUser(user)
 }
 
 export interface RegisterUserInput {
@@ -175,8 +182,12 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   const db = await getDb()
   const now = new Date()
   const passwordHash = await hashPassword(input.password)
+  const firstName = input.firstName?.trim()
+  const lastName = input.lastName?.trim()
   const doc = {
-    name: input.name,
+    name: composeName(firstName, lastName, input.name),
+    firstName: firstName ?? '',
+    lastName: lastName ?? '',
     email: input.email.toLowerCase(),
     employeeId: input.employeeId,
     department: input.department,
@@ -194,6 +205,8 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   const createdUser: User = {
     id: result.insertedId.toString(),
     name: doc.name,
+    firstName: doc.firstName || undefined,
+    lastName: doc.lastName || undefined,
     email: doc.email,
     employeeId: doc.employeeId,
     department: doc.department,
@@ -220,6 +233,15 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
   if (input.name !== undefined) update.name = input.name
+  if (input.firstName !== undefined) update.firstName = input.firstName
+  if (input.lastName !== undefined) update.lastName = input.lastName
+  if (input.firstName !== undefined || input.lastName !== undefined) {
+    // Recompose the display name from the newest first/last name parts,
+    // falling back to the stored values for whichever part is unchanged.
+    const first = (input.firstName ?? existing.firstName ?? '') as string
+    const last = (input.lastName ?? existing.lastName ?? '') as string
+    update.name = composeName(first, last, input.name ?? existing.name)
+  }
   if (input.email !== undefined) update.email = input.email.toLowerCase()
   if (input.employeeId !== undefined) update.employeeId = input.employeeId
   if (input.department !== undefined) update.department = input.department
@@ -285,19 +307,7 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
     })
   }
 
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    employeeId: user.employeeId,
-    department: user.department,
-    role: user.role,
-    isSupervisor: user.isSupervisor,
-    status: user.status,
-    supervisorId: user.supervisorId?.toString(),
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }
+  return toUser(user)
 }
 
 export async function activateUser(id: string): Promise<User | null> {
@@ -328,38 +338,14 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const db = await getDb()
   const user = await db.collection(COLLECTIONS.USERS).findOne({ email: email.toLowerCase() })
   if (!user) return null
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    employeeId: user.employeeId,
-    department: user.department,
-    role: user.role,
-    isSupervisor: user.isSupervisor,
-    status: user.status,
-    supervisorId: user.supervisorId?.toString(),
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }
+  return toUser(user)
 }
 
 export async function getUserByEmployeeId(employeeId: string): Promise<User | null> {
   const db = await getDb()
   const user = await db.collection(COLLECTIONS.USERS).findOne({ employeeId })
   if (!user) return null
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    employeeId: user.employeeId,
-    department: user.department,
-    role: user.role,
-    isSupervisor: user.isSupervisor,
-    status: user.status,
-    supervisorId: user.supervisorId?.toString(),
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }
+  return toUser(user)
 }
 
 export async function getSupervisors(): Promise<User[]> {

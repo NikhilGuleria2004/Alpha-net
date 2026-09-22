@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { ToastContainer } from '../components/ui/Toast'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'
 
@@ -34,6 +35,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
+      {/* ToastContainer renders toasts into document.body via a portal. It must
+          live INSIDE the provider so it can read the toasts state; previously it
+          was defined but never mounted, so every addToast (including the
+          forgot-password success message) was silently dropped. */}
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </ToastContext.Provider>
   )
 }

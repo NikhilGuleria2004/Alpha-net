@@ -25,6 +25,18 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
 
   useEffect(() => {
     if (!isOpen) return
+    // Guideline 1.3 (checklist item 2.3): move focus into the drawer on open
+    // and restore it to the trigger on close — mirrors Modal's focus effect.
+    const previousActive = document.activeElement as HTMLElement | null
+    const focusTarget = drawerRef.current?.querySelector<HTMLElement>(
+      'input, select, textarea, [autofocus]',
+    )
+    ;(focusTarget ?? drawerRef.current)?.focus()
+    return () => previousActive?.focus()
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose()
@@ -61,7 +73,8 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
       <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={drawerRef}
-        className={`relative h-full w-full ${sizeClasses[size]} border-l border-border bg-card shadow-xl transition-transform`}
+        tabIndex={-1}
+        className={`relative h-full w-full ${sizeClasses[size]} border-l border-border bg-card shadow-xl transition-transform focus:outline-none`}
       >
         {title && (
           <div className="border-b border-border px-6 py-4">
@@ -71,13 +84,13 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
           </div>
         )}
         <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4">{children}</div>
           {footer && <div className="border-t border-border px-6 py-4">{footer}</div>}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

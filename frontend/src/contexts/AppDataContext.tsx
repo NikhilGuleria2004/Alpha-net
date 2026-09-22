@@ -7,12 +7,14 @@ import type { CreateProjectInput } from '../types/project'
 import type { Notification } from '../types/notification'
 import type { Activity } from '../types/activity'
 import type { Document } from '../types/document'
+import type { Invoice } from '../types/invoice'
 import { getProjects as fetchProjects, createProject as createProjectService, updateProject as updateProjectService, deleteProject as deleteProjectService, addTeamMember as addTeamMemberService, removeTeamMember as removeTeamMemberService, assignSupervisor as assignSupervisorService } from '../services/projectService'
 import { getUsers as fetchUsers, createUser as createUserService, updateUser as updateUserService, deactivateUser as deactivateUserService } from '../services/userService'
 import { getTimesheets as fetchTimesheets, saveDraft as saveDraftService, submitTimesheet as submitTimesheetService, withdrawTimesheet as withdrawTimesheetService, approveTimesheet as approveTimesheetService, declineTimesheet as declineTimesheetService, createTimesheet as createTimesheetService } from '../services/timesheetService'
 import { getNotifications as fetchNotifications, markAsRead as markAsReadService, markAllAsRead as markAllAsReadService } from '../services/notificationService'
 import { getActivities as fetchActivities } from '../services/activityService'
 import { getDocuments as fetchDocuments, uploadProjectDocument as uploadDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
+import { getInvoices as fetchInvoices, createInvoice as createInvoiceService, updateInvoice as updateInvoiceService, sendInvoice as sendInvoiceService } from '../services/invoiceService'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -20,6 +22,7 @@ interface AppDataContextValue {
   projects: Project[]
   users: User[]
   timesheets: Timesheet[]
+  invoices: Invoice[]
   notifications: Notification[]
   activities: Activity[]
   documents: Document[]
@@ -27,6 +30,7 @@ interface AppDataContextValue {
   refreshProjects: () => Promise<void>
   refreshUsers: () => Promise<void>
   refreshTimesheets: () => Promise<void>
+  refreshInvoices: () => Promise<void>
   refreshNotifications: () => Promise<void>
   refreshActivities: () => Promise<void>
   refreshDocuments: () => Promise<Document[]>
@@ -52,6 +56,9 @@ interface AppDataContextValue {
   approveTimesheet: (id: string) => Promise<Timesheet | undefined>
   declineTimesheet: (id: string, reason: string) => Promise<Timesheet | undefined>
   createTimesheet: (data: SaveTimesheetInput) => Promise<Timesheet>
+  createInvoice: (data: { projectId: string; hourlyRate?: number }) => Promise<Invoice>
+  updateInvoice: (id: string, data: { hourlyRate?: number; addVariableCosts?: { amount: number; reason: string }[]; removeVariableCostIds?: string[] }) => Promise<Invoice | undefined>
+  sendInvoice: (id: string) => Promise<Invoice | undefined>
   markNotificationAsRead: (id: string) => Promise<void>
   markAllNotificationsAsRead: () => Promise<void>
   uploadDocument: (projectId: string, file: File) => Promise<Document>
@@ -66,6 +73,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
@@ -92,6 +100,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           fetchProjects(),
           fetchUsers(),
           fetchTimesheets(),
+          fetchInvoices(),
           fetchActivities(),
           fetchDocuments(),
           fetchNotifications(),
@@ -102,7 +111,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setProjects(value(0, [] as Project[]))
           setUsers(value(1, [] as User[]))
           setTimesheets(value(2, [] as Timesheet[]))
-          setActivities(value(3, [] as Activity[]))
+          setInvoices(value(3, [] as Invoice[]))
+          setActivities(value(4, [] as Activity[]))
           setDocuments(value(4, [] as Document[]))
           setNotifications(value(5, [] as Notification[]))
           // Surface partial-load failures (QA C1 sub-item): a rejected fetch
@@ -141,6 +151,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const refreshTimesheets = async () => {
     const data = await fetchTimesheets()
     setTimesheets(data)
+  }
+
+  const refreshInvoices = async () => {
+    const data = await fetchInvoices()
+    setInvoices(data)
   }
 
   // Stable identity (useCallback) so consumers can safely use these in effect dependency arrays.
@@ -340,12 +355,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return success
   }
 
+  const handleCreateInvoice = async (data: { projectId: string; hourlyRate?: number }) => {
+    const invoice = await createInvoiceService(data)
+    setInvoices((prev) => [...prev, invoice])
+    return invoice
+  }
+
+  const handleUpdateInvoice = async (id: string, data: { hourlyRate?: number; addVariableCosts?: { amount: number; reason: string }[]; removeVariableCostIds?: string[] }) => {
+    const updated = await updateInvoiceService(id, data)
+    if (updated) {
+      setInvoices((prev) => prev.map((i) => (i.id === id ? updated : i)))
+    }
+    return updated
+  }
+
+  const handleSendInvoice = async (id: string) => {
+    const sent = await sendInvoiceService(id)
+    if (sent) {
+      setInvoices((prev) => prev.map((i) => (i.id === id ? sent : i)))
+    }
+    return sent
+  }
+
   return (
     <AppDataContext.Provider
       value={{
         projects,
         users,
         timesheets,
+        invoices,
         notifications,
         activities,
         documents,
@@ -353,6 +391,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         refreshProjects,
         refreshUsers,
         refreshTimesheets,
+        refreshInvoices,
         refreshNotifications,
         refreshActivities,
         createProject: handleCreateProject,
@@ -370,6 +409,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         approveTimesheet: handleApproveTimesheet,
         declineTimesheet: handleDeclineTimesheet,
         createTimesheet: handleCreateTimesheet,
+        createInvoice: handleCreateInvoice,
+        updateInvoice: handleUpdateInvoice,
+        sendInvoice: handleSendInvoice,
 markNotificationAsRead: handleMarkNotificationAsRead,
         markAllNotificationsAsRead: handleMarkAllNotificationsAsRead,
         uploadDocument: handleUploadDocument,

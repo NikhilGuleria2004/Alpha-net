@@ -70,7 +70,7 @@ export function Modal({ isOpen, onClose, title, description, size = 'md', childr
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto rounded-none sm:rounded-xl border border-border bg-card shadow-xl transition-all`}
+        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto overscroll-contain rounded-none sm:rounded-xl border border-border bg-card shadow-xl transition-all`}
       >
         {(title || description) && (
           <div className="border-b border-border px-6 py-4">
@@ -87,7 +87,7 @@ export function Modal({ isOpen, onClose, title, description, size = 'md', childr
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

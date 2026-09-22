@@ -32,6 +32,11 @@ export async function activateUser(id: string): Promise<User | undefined> {
   return response.user
 }
 
+export async function getInvites(): Promise<{ email: string; role: 'user' | 'supervisor'; status: string }[]> {
+  const response = await apiClient.get<{ invites: { email: string; role: 'user' | 'supervisor'; status: string }[] }>('/invites')
+  return response.invites
+}
+
 export async function getSupervisors(): Promise<User[]> {
   const response = await apiClient.get<{ supervisors: User[] }>('/supervisors')
   return response.supervisors

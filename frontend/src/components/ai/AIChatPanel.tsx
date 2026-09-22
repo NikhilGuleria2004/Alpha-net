@@ -9,10 +9,43 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   const { messages, isLoading, error, sendMessage, clearChat } = useAIChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const previouslyFocusedRef = useRef<Element | null>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
+
+  // Guideline 1.1/1.3 (checklist item 1.1): the panel behaves like a modal —
+  // focus moves into the composer on open and returns to the trigger on close,
+  // and Escape dismisses it. PreviouslyFocused is captured on mount (before
+  // the auto-focused textarea steals document.activeElement).
+  useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement
+    inputRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        onClose?.()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+      if (previouslyFocusedRef.current instanceof HTMLElement) {
+        previouslyFocusedRef.current.focus()
+      }
+    }
+  }, [onClose])
+
+  // Guideline 1.3 (checklist item 1.1): Cmd/Ctrl+Enter submits from the
+  // composer, matching chat-app conventions. Shift+Enter keeps a newline.
+  const handleComposerKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+      event.preventDefault()
+      event.currentTarget.form?.requestSubmit()
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,13 +67,13 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end" ref={panelRef}>
       <div
         className="fixed inset-0 bg-foreground/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-label="AI chat" className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-white px-6 py-4">
           <button
             type="button"
@@ -71,7 +104,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-canvas px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-6 py-4">
           {messages.length === 0 && (
             <div className="flex min-h-full flex-col items-center justify-center py-8 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
@@ -117,7 +150,7 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
                     <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: '150ms' }} />
                     <span className="h-2 w-2 animate-bounce rounded-full bg-accent" style={{ animationDelay: '300ms' }} />
                   </div>
-                  <span className="text-xs text-muted-foreground">Thinking...</span>
+                  <span className="text-xs text-muted-foreground">Thinking…</span>
                 </div>
               </div>
             </div>
@@ -139,8 +172,10 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
             <textarea
               name="message"
               ref={inputRef}
-              placeholder="Ask me anything..."
-              className="flex-1 resize-none rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+              aria-label="Message the AI assistant"
+              onKeyDown={handleComposerKeyDown}
+              placeholder="Ask me anything… (Ctrl+Enter to send)"
+              className="flex-1 resize-none rounded-xl border border-border bg-white px-4 py-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
               rows={2}
               disabled={isLoading}
             />
@@ -155,7 +190,10 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
             </Button>
           </form>
           <p className="mt-2 text-center text-xs text-muted-foreground/60">
-            AI responses are powered by Gemini. Don't share sensitive personal information.
+            {/* Guideline 8.16: provider-neutral copy — the backend's default LLM
+                provider is Groq (env-changeable to Gemini), so the panel must not
+                name a specific one. */}
+            Responses are AI-generated &amp; may be inaccurate. Don't share sensitive personal information.
           </p>
         </div>
       </div>

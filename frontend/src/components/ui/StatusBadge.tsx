@@ -11,8 +11,9 @@ import {
 } from 'lucide-react'
 import type { ProjectStatus } from '../../types/project'
 import type { TimesheetStatus } from '../../types/timesheet'
+import type { InvoiceStatus } from '../../types/invoice'
 
-type Status = ProjectStatus | TimesheetStatus
+type Status = ProjectStatus | TimesheetStatus | InvoiceStatus
 
 interface StatusBadgeProps {
   status: Status
@@ -21,6 +22,7 @@ interface StatusBadgeProps {
 
 const config: Record<Status, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' | 'info'; icon: ReactNode }> = {
   draft: { label: 'Draft', variant: 'default', icon: <FileText className="h-3.5 w-3.5" /> },
+  sent: { label: 'Sent', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
   pending: { label: 'Pending', variant: 'warning', icon: <Clock className="h-3.5 w-3.5" /> },
   approved: { label: 'Approved', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
   declined: { label: 'Declined', variant: 'danger', icon: <XCircle className="h-3.5 w-3.5" /> },

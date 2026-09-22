@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Eye, Plus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -17,10 +18,11 @@ export function Timesheets() {
   const { timesheets, projects, createTimesheet, refreshTimesheets } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [projectFilter, setProjectFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [dateRange, setDateRange] = useState('')
+  // Guideline 1.11/1.23 (checklist item 1.4): list filters are URL state.
+  const [search, setSearch] = useQueryParamState('q')
+  const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [dateRange, setDateRange] = useQueryParamState('range', '', 'push')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newProjectId, setNewProjectId] = useState('')
   const [newDescription, setNewDescription] = useState('')
@@ -86,7 +88,7 @@ export function Timesheets() {
 
       const existing = timesheets.find((t) => t.userId === user.id && t.projectId === newProjectId && t.weekStart === weekStart)
       if (existing) {
-        addToast('info', 'A timesheet already exists for this week. Opening it...')
+        addToast('info', 'A timesheet already exists for this week. Opening it…')
         setIsCreateOpen(false)
         setNewProjectId('')
         setNewDescription('')
@@ -131,7 +133,7 @@ export function Timesheets() {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search by project or client..."
+                placeholder="Search by project or client…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}
@@ -209,7 +211,7 @@ export function Timesheets() {
             <div className="mt-4">
               <Input
                 label="Description"
-                placeholder="e.g. Project development, meetings, testing..."
+                placeholder="e.g. Project development, meetings, testing…"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 required

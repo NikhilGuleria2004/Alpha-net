@@ -30,7 +30,7 @@ export function Input({ label, error, helperText, leftIcon, rightIcon, className
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus:ring-destructive' : 'border-border focus:border-accent focus:ring-accent'} bg-card px-3 h-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
+          className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus-visible:ring-destructive' : 'border-border focus:border-accent focus-visible:ring-accent'} bg-card px-3 h-9 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
           {...props}
         />
         {rightIcon && (

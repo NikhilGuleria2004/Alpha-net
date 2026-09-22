@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Search, ChevronDown, Menu, Bell, FolderKanban, User, Settings, LogOut, Clock3 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -79,6 +79,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
         supervisors: 'Supervisors',
         timesheets: 'Timesheets',
         approvals: 'Approvals',
+        onboarding: 'Onboarding',
         reports: 'Reports',
         notifications: 'Notifications',
         settings: 'Settings',
@@ -167,9 +168,9 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                       {crumb.label}
                     </span>
                   ) : (
-                    <button type="button" onClick={() => navigate(crumb.href!)} className="text-muted-foreground hover:text-accent">
+                    <Link to={crumb.href || '#'} className="text-muted-foreground hover:text-accent">
                       {crumb.label}
-                    </button>
+                    </Link>
                   )}
                 </li>
               )
@@ -186,7 +187,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
             aria-label="Open search"
           >
             <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">Search projects, users...</span>
+            <span className="hidden sm:inline">Search projects, users…</span>
             <kbd className="ml-2 hidden rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">⌘K</kbd>
           </button>
           {isSearchOpen && (
@@ -196,8 +197,8 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search projects, users, timesheets..."
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  placeholder="Search projects, users, timesheets…"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
                   aria-label="Search projects, users, timesheets"
                   autoFocus
                 />
@@ -205,11 +206,10 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               {searchResults.length > 0 && (
                 <div className="max-h-80 overflow-y-auto border-t border-border p-2">
                   {searchResults.map((result) => (
-                    <button
+                    <Link
                       key={`${result.type}-${result.id}`}
-                      type="button"
+                      to={result.href}
                       onClick={() => {
-                        navigate(result.href)
                         setIsSearchOpen(false)
                         setSearchQuery('')
                       }}
@@ -222,7 +222,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                         <p className="truncate text-foreground">{result.name}</p>
                         <p className="text-xs text-muted-foreground">{result.type}</p>
                       </div>
-                    </button>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -324,28 +324,22 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
                 <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Employee'}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false)
-                  navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
-                }}
+              <Link
+                to={user?.role === 'admin' ? '/admin/settings' : '/user/settings'}
+                onClick={() => setIsProfileOpen(false)}
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
               >
                 <User className="h-4 w-4" />
                 Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false)
-                  navigate(user?.role === 'admin' ? '/admin/settings' : '/user/settings')
-                }}
+              </Link>
+              <Link
+                to={user?.role === 'admin' ? '/admin/settings' : '/user/settings'}
+                onClick={() => setIsProfileOpen(false)}
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
               >
                 <Settings className="h-4 w-4" />
                 Settings
-              </button>
+              </Link>
               <div className="my-1 border-t border-border" />
               <button
                 type="button"

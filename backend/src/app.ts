@@ -9,7 +9,7 @@ import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
 import { getAllowedOrigins } from './lib/origins.js'
 import { getAuthRateLimitConfig } from './lib/env.js'
-import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes } from './routes/index.js'
+import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes, invoicesRoutes, invitesRoutes } from './routes/index.js'
 
 export function createApp() {
   const app = express()
@@ -100,8 +100,10 @@ export function createApp() {
   // top-level mount must be myDocumentsRoutes, not documentsRoutes.
   app.use('/api/v1/documents', myDocumentsRoutes())
   app.use('/api/v1/reports', reportsRoutes())
-   app.use('/api/v1/settings', settingsRoutes())
-   app.use('/api/v1/ai', aiRoutes())
+  app.use('/api/v1/settings', settingsRoutes())
+  app.use('/api/v1/ai', aiRoutes())
+  app.use('/api/v1/invoices', invoicesRoutes())
+  app.use('/api/v1/invites', invitesRoutes())
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 

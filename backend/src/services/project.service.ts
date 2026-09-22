@@ -22,6 +22,7 @@ export interface Project {
   managerId: string
   supervisorId: string
   teamMemberIds: string[]
+  hourlyRate: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -38,6 +39,7 @@ export interface CreateProjectInput {
   managerId: string
   supervisorId: string
   teamMemberIds: string[]
+  hourlyRate: number | null
 }
 
 export interface UpdateProjectInput {
@@ -52,6 +54,7 @@ export interface UpdateProjectInput {
   managerId?: string
   supervisorId?: string
   teamMemberIds?: string[]
+  hourlyRate?: number | null
 }
 
 function toProject(doc: any): Project {
@@ -68,6 +71,7 @@ function toProject(doc: any): Project {
     managerId: doc.managerId?.toString(),
     supervisorId: doc.supervisorId?.toString(),
     teamMemberIds: doc.teamMemberIds?.map((id: any) => id.toString()) ?? [],
+    hourlyRate: doc.hourlyRate ?? null,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
@@ -116,6 +120,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     managerId: new ObjectId(input.managerId),
     supervisorId: new ObjectId(input.supervisorId),
     teamMemberIds: input.teamMemberIds.map((id) => new ObjectId(id)),
+    hourlyRate: input.hourlyRate ?? null,
     createdAt: now,
     updatedAt: now,
   }
@@ -144,6 +149,7 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
   if (input.status !== undefined) update.status = input.status
   if (input.managerId !== undefined) update.managerId = new ObjectId(input.managerId)
   if (input.supervisorId !== undefined) update.supervisorId = new ObjectId(input.supervisorId)
+  if (input.hourlyRate !== undefined) update.hourlyRate = input.hourlyRate
   if (input.teamMemberIds !== undefined) update.teamMemberIds = input.teamMemberIds.map((id) => new ObjectId(id))
 
   const result = await db.collection(COLLECTIONS.PROJECTS).findOneAndUpdate(

@@ -11,7 +11,16 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+
+  const focusMenuItems = () =>
+    menuRef.current?.querySelectorAll<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])')
+
+  const closeAndRefocusTrigger = () => {
+    setIsOpen(false)
+    triggerRef.current?.querySelector<HTMLElement>('button, [href], [tabindex]')?.focus()
+  }
 
   const handleToggle = () => {
     if (!isOpen && containerRef.current) {
@@ -38,16 +47,50 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
       setIsOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
+    // Guideline 1.1 (checklist item 2.4): menu keyboard support — focus the
+    // first item on open so Tab/arrow users land inside the menu.
+    focusMenuItems()?.[0]?.focus()
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') setIsOpen(false)
+    if (event.key === 'Escape') {
+      event.stopPropagation()
+      closeAndRefocusTrigger()
+      return
+    }
+    // Guideline 1.1 (checklist item 2.4): arrow-key navigation between items.
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const items = focusMenuItems()
+      if (!items || items.length === 0) return
+      event.preventDefault()
+      const currentIndex = Array.from(items).indexOf(document.activeElement as HTMLElement)
+      const nextIndex =
+        event.key === 'ArrowDown'
+          ? (currentIndex + 1) % items.length
+          : (currentIndex - 1 + items.length) % items.length
+      items[nextIndex].focus()
+    }
   }
 
   return (
     <div ref={containerRef} className="relative inline-block text-left" onKeyDown={handleKeyDown}>
-      <div onClick={handleToggle} className="cursor-pointer">
+      <div
+        ref={triggerRef}
+        onClick={handleToggle}
+        onKeyDown={(event) => {
+          // Enter/Space on a non-button trigger wrapper still toggles the menu.
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            handleToggle()
+          }
+        }}
+        className="cursor-pointer"
+        role="button"
+        tabIndex={0}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+      >
         {trigger}
       </div>
       {isOpen && coords && ReactDOM.createPortal(
@@ -79,9 +122,18 @@ export function DropdownItem({ children, onClick, icon, destructive, divider }: 
   }
   return (
     <button
+      type="button"
       role="menuitem"
       onClick={() => {
         onClick?.()
+      }}
+      onKeyDown={(event) => {
+        // Tab out of the last item closes the menu instead of trapping focus.
+        if (event.key === 'Tab') {
+          event.currentTarget.closest('[role="menu"]')?.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          )
+        }
       }}
       className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-muted ${
         destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'

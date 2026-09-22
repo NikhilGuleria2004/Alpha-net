@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Save, Send, Edit3 }
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -74,6 +75,28 @@ export function TimesheetEditor() {
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [weeklyTarget, setWeeklyTarget] = useState(40)
+
+  // Guideline 5.15 (checklist item 1.2): the editor is dirty when the working
+  // copy differs from the last saved state. The hook covers tab close/refresh
+  // (beforeunload) and in-app navigation (useBlocker); the returned blocker is
+  // rendered as a confirm dialog below.
+  //
+  // savedSnapshot is state (not a mount-time memo): refreshTimesheets() swaps
+  // the context object identity on every save, so snapshotting existingTimesheet
+  // directly would false-positive. Instead the snapshot is re-based explicitly
+  // after each successful save/submit via rebaseSavedSnapshot().
+  const [savedSnapshot, setSavedSnapshot] = useState(() =>
+    JSON.stringify({
+      entries: existingTimesheet?.entries.map((e) => ({ ...e, hours: { ...e.hours } })) ?? null,
+      notes: existingTimesheet?.notes ?? '',
+    }),
+  )
+  const rebaseSavedSnapshot = () => setSavedSnapshot(JSON.stringify({ entries, notes }))
+  const currentSnapshot = JSON.stringify({ entries, notes })
+  // isReadOnly is declared below (derived from status); inline the same check
+  // here to avoid a use-before-declaration error.
+  const isDirty = status !== 'approved' && existingTimesheet != null && currentSnapshot !== savedSnapshot
+  const unsavedBlocker = useUnsavedChanges(isDirty)
 
   useEffect(() => {
     let cancelled = false
@@ -257,6 +280,9 @@ export function TimesheetEditor() {
         return
       }
       addToast('success', 'Draft saved')
+      // Checklist item 1.2: the working copy is now the saved state — leaving
+      // must not prompt.
+      rebaseSavedSnapshot()
       await refreshTimesheets()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save draft'
@@ -304,6 +330,9 @@ export function TimesheetEditor() {
 
       addToast('success', 'Timesheet submitted successfully')
       setIsSubmitOpen(false)
+      // Checklist item 1.2: re-base before the programmatic navigate so the
+      // blocker lets the intended post-submit navigation through.
+      rebaseSavedSnapshot()
       await refreshTimesheets()
       navigate('/user/timesheets')
     } catch (err) {
@@ -327,6 +356,9 @@ export function TimesheetEditor() {
       addToast('success', 'Timesheet withdrawn')
       setIsWithdrawOpen(false)
       setWithdrawReason('')
+      // Checklist item 1.2: same re-base as submit — the intended navigation
+      // must not trip the guard.
+      rebaseSavedSnapshot()
       await refreshTimesheets()
       navigate('/user/timesheets')
     } catch (err) {
@@ -419,7 +451,7 @@ export function TimesheetEditor() {
                           value={entry.hours[day as keyof typeof entry.hours] || ''}
                           onChange={(e) => handleEntryChange(entry.id, day, parseFloat(e.target.value) || 0)}
                           disabled={!isEnabled}
-                          className={`w-20 rounded-lg border px-2 py-1 text-sm text-center focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 ${isEnabled ? 'border-border' : 'border-border bg-muted text-muted-foreground'}`}
+                          className={`w-20 rounded-lg border px-2 py-1 text-base sm:text-sm text-center focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 ${isEnabled ? 'border-border' : 'border-border bg-muted text-muted-foreground'}`}
                         />
                       </td>
                     )
@@ -491,7 +523,7 @@ export function TimesheetEditor() {
           <h2 className="text-lg font-semibold text-foreground">Weekly Notes</h2>
         </div>
         <div className="p-5">
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any notes for this week..." rows={3} disabled={isReadOnly} />
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any notes for this week…" rows={3} disabled={isReadOnly} />
         </div>
       </Card>
 
@@ -523,6 +555,17 @@ export function TimesheetEditor() {
         reason={withdrawReason}
         onReasonChange={setWithdrawReason}
         isLoading={isProcessing}
+      />
+
+      {/* Guideline 5.15 (checklist item 1.2): in-app navigation with unsaved
+          hours is intercepted by useBlocker — confirm to discard, or stay. */}
+      <ConfirmDialog
+        isOpen={unsavedBlocker.state === 'blocked'}
+        onClose={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.reset()}
+        onConfirm={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.proceed()}
+        title="Discard unsaved changes?"
+        description="You have unsaved hours or notes in this timesheet. Leaving now will lose them."
+        confirmLabel="Discard changes"
       />
     </div>
   )

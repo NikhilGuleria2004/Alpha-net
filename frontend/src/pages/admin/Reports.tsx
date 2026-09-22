@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { FileDown, ChevronUp, ChevronDown } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -19,16 +20,19 @@ export function Reports() {
   const { users, projects } = useAppData()
   const { addToast } = useToast()
 
-  const [dateRange, setDateRange] = useState<ReportFilters['dateRange']>('30d')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [projectFilter, setProjectFilter] = useState('')
-  const [employeeFilter, setEmployeeFilter] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState('')
+  // Guideline 1.11/1.23 (checklist item 1.4): every report filter is URL state
+  // (?range=&start=&end=&project=&employee=&department=&status=) so a shared
+  // report link reopens with the exact same data window.
+  const [dateRange, setDateRange] = useQueryParamState('range', '30d', 'push')
+  const [startDate, setStartDate] = useQueryParamState('start')
+  const [endDate, setEndDate] = useQueryParamState('end')
+  const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
+  const [employeeFilter, setEmployeeFilter] = useQueryParamState('employee', '', 'push')
+  const [departmentFilter, setDepartmentFilter] = useQueryParamState('department', '', 'push')
   // QA M8: hours aggregations previously counted draft/declined/withdrawn
   // timesheets as worked hours. Default to approved so the numbers users act
   // on are correct out of the box; "All statuses" opts out.
-  const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('approved')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', 'approved', 'push')
 
   const [hoursByProject, setHoursByProject] = useState<HoursByProject[]>([])
   const [hoursByEmployee, setHoursByEmployee] = useState<HoursByEmployee[]>([])
@@ -40,15 +44,15 @@ export function Reports() {
     // Every preset is resolved to an explicit date window and sent to the
     // backend — previously only 'custom' sent startDate/endDate, so the presets
     // silently bucketed all-time data (C8).
-    const range = resolveReportDateRange(dateRange, startDate, endDate)
+    const range = resolveReportDateRange(dateRange as ReportFilters['dateRange'], startDate, endDate)
     return {
-      dateRange,
+      dateRange: dateRange as ReportFilters['dateRange'],
       startDate: range.startDate,
       endDate: range.endDate,
       projectId: projectFilter || undefined,
       userId: employeeFilter || undefined,
       department: departmentFilter || undefined,
-      status: statusFilter,
+      status: statusFilter as ReportStatusFilter,
     }
   }, [dateRange, startDate, endDate, projectFilter, employeeFilter, departmentFilter, statusFilter])
 
@@ -105,9 +109,10 @@ export function Reports() {
     addToast('success', 'Report exported to CSV')
   }
 
-  const [employeeSortDir, setEmployeeSortDir] = useState<SortDirection>('desc')
+  const [employeeSort, setEmployeeSort] = useQueryParamState('empSort', 'desc', 'push')
+  const employeeSortDir: SortDirection = employeeSort === 'asc' ? 'asc' : 'desc'
   const handleEmployeeSort = () => {
-    setEmployeeSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    setEmployeeSort(employeeSortDir === 'asc' ? 'desc' : 'asc')
   }
 
   const sortedEmployees = useMemo(() => {

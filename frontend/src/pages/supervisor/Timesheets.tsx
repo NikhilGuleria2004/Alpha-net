@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Eye } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -15,11 +16,12 @@ export function SupervisorTimesheets() {
   const { user } = useAuth()
   const { timesheets, users, projects } = useAppData()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [projectFilter, setProjectFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [weekStartFilter, setWeekStartFilter] = useState('')
+  // Guideline 1.11/1.23 (checklist item 1.4): all list controls are URL state.
+  const [search, setSearch] = useQueryParamState('q')
+  const [userFilter, setUserFilter] = useQueryParamState('user', '', 'push')
+  const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [weekStartFilter, setWeekStartFilter] = useQueryParamState('week', '', 'push')
 
   const supervisedProjectIds = useMemo(() => {
     if (!user) return new Set<string>()
@@ -78,7 +80,7 @@ export function SupervisorTimesheets() {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search by employee or project..."
+                placeholder="Search by employee or project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}

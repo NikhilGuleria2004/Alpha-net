@@ -12,6 +12,7 @@ export const createProjectSchema = z.object({
   managerId: z.string().min(1, 'Manager is required'),
   supervisorId: z.string().min(1, 'Supervisor is required'),
   teamMemberIds: z.array(z.string()).min(1, 'At least one team member is required'),
+  hourlyRate: z.number().min(0, 'Hourly rate is required').optional(),
 })
 
 export const updateProjectSchema = z.object({
@@ -26,6 +27,7 @@ export const updateProjectSchema = z.object({
   managerId: z.string().min(1, 'Manager is required').optional(),
   supervisorId: z.string().min(1, 'Supervisor is required').optional(),
   teamMemberIds: z.array(z.string()).optional(),
+  hourlyRate: z.number().min(0, 'Hourly rate must be 0 or greater').optional(),
 })
 
 export const addTeamMemberSchema = z.object({

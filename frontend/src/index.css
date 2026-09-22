@@ -65,6 +65,9 @@
    var(--color-*) reference resolves even outside Tailwind utilities.
    (Dark mode was removed 2026-09-14.) */
 :root {
+  /* Guideline 7.9: declare the scheme so device UI (scrollbars, form controls,
+     forced-colors fallbacks) renders in the light variant this theme expects. */
+  color-scheme: light;
   --color-canvas: #f7f8fa;
   --color-background: #ffffff;
   --color-foreground: #0f172a;
@@ -125,4 +128,54 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------------------
+   Web Interface Guidelines compliance (frontend_eval.md §12, Phase 0)
+   --------------------------------------------------------------------------- */
+
+/* 0.2 — Keyboard-only focus indicator.
+   Elements that manage their own ring (focus-visible:ring-*) also carry
+   focus:outline-none, which wins on specificity and applies on :focus, so they
+   never double up with this outline. Everything else (native links, custom
+   buttons without focus classes) gets a brand outline for keyboard focus and
+   none for pointer focus. */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 0.3 — Touch ergonomics: no gray tap flash, no double-tap zoom on controls.
+   (Modal/Drawer/chat/mobile-nav scroll panels also carry overscroll-contain
+   so overlay scrolling doesn't chain to the page behind them.) */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+[role='button'],
+[role='switch'],
+[role='menuitem'],
+[role='tab'],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* 0.1 — Honor prefers-reduced-motion: collapse animation/transition to
+   near-zero while keeping end states visible (spinners become static marks,
+   drawer slides snap, pulses freeze). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

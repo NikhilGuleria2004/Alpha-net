@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { forgotPassword } from '../../services/authService'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 export function AdminLogin() {
   const [email, setEmail] = useState('')
@@ -16,6 +17,7 @@ export function AdminLogin() {
   const { login } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  usePageTitle('Admin Sign in')
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {}
@@ -27,8 +29,8 @@ export function AdminLogin() {
 
   // QA M6: "Forgot password?" used to be a <button type="button"> with no
   // onClick, while the backend endpoint it would call was a 501 stub — the
-  // control was silently dead. Wire it to the endpoint and surface the honest
-  // "not implemented yet" message instead of doing nothing.
+  // control was silently dead. Wire it to the endpoint; the backend now sends
+  // a real reset email via nodemailer.
   const handleForgotPassword = async () => {
     const trimmed = email.trim()
     if (!trimmed) {
@@ -40,11 +42,7 @@ export function AdminLogin() {
       addToast('success', 'If that account exists, a reset link is on its way.')
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
-      if (message.toLowerCase().includes('not implemented') || message.toLowerCase().includes('501')) {
-        addToast('info', "Password reset isn't available yet — contact your administrator.")
-      } else {
-        addToast('error', message || 'Failed to request a password reset')
-      }
+      addToast('error', message || 'Failed to request a password reset')
     }
   }
 
@@ -116,7 +114,7 @@ export function AdminLogin() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />

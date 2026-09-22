@@ -28,7 +28,7 @@ export function DeclineModal({ isOpen, onClose, onConfirm, reason, onReasonChang
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">A reason is required</p>
         <Textarea
-          placeholder="Enter the reason for declining this timesheet..."
+          placeholder="Enter the reason for declining this timesheet…"
           value={reason}
           onChange={(e) => { onReasonChange(e.target.value); setError('') }}
           error={error}

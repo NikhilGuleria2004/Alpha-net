@@ -1,11 +1,11 @@
 import { type Request, type Response } from 'express'
 import { timingSafeEqual } from 'node:crypto'
-import { loginUser, logoutUser, getMe, refreshUserSession, changePassword } from '../services/auth.service.js'
+import { loginUser, logoutUser, getMe, refreshUserSession, changePassword, requestPasswordReset, resetPasswordWithToken, requestLoginOtp, verifyLoginOtp } from '../services/auth.service.js'
 import { registerUser, RegistrationConflictError } from '../services/user.service.js'
 import { authenticate } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { logger } from '../lib/logger.js'
-import { loginSchema, registrationSchema, changePasswordSchema } from '../schemas/auth.schema.js'
+import { loginSchema, registrationSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema, otpRequestSchema, otpVerifySchema } from '../schemas/auth.schema.js'
 
 function hasValidAdminPass(providedPass: string | undefined): boolean {
   const configuredPass = process.env.ADMIN_REGISTRATION_SECRET
@@ -178,12 +178,77 @@ export async function logout(req: AuthenticatedRequest, res: Response) {
   }
 }
 
-export async function forgotPassword(_req: Request, res: Response) {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented yet' } })
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body)
+    await requestPasswordReset(email)
+    // Same response whether or not the account exists (no enumeration).
+    res.json({ ok: true, message: 'If that account exists, a reset link is on its way.' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid request'
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
 }
 
-export async function resetPassword(_req: Request, res: Response) {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented yet' } })
+// "Forgot password?" on the login page: email a 6-digit OTP so the user can
+// sign in without their password. The response text is the same whether or
+// not the account exists, so the endpoint cannot enumerate users.
+export async function requestOtp(req: Request, res: Response) {
+  try {
+    const { email } = otpRequestSchema.parse(req.body)
+    await requestLoginOtp(email)
+    res.json({ ok: true, message: 'If that account exists, a sign-in code is on its way.' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid request'
+    if (message === 'Please wait a minute before requesting a new code') {
+      return res.status(429).json({ error: { code: 'RATE_LIMITED', message } })
+    }
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
+}
+
+export async function verifyOtp(req: Request, res: Response) {
+  try {
+    const { email, otp } = otpVerifySchema.parse(req.body)
+    const result = await verifyLoginOtp(email, otp)
+
+    const isProd = process.env.NODE_ENV === 'production'
+    res.clearCookie('refreshToken', { path: '/', httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd })
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    })
+    res.json({ user: result.user, accessToken: result.accessToken })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Verification failed'
+    if (message === 'Invalid or expired code') {
+      return res.status(400).json({ error: { code: 'INVALID_OTP', message } })
+    }
+    if (message === 'Too many attempts. Request a new code.') {
+      return res.status(429).json({ error: { code: 'TOO_MANY_ATTEMPTS', message } })
+    }
+    if (message === 'User not found or inactive') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message } })
+    }
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { token, password } = resetPasswordSchema.parse(req.body)
+    await resetPasswordWithToken(token, password)
+    res.json({ ok: true, message: 'Password has been reset. You can now sign in.' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Password reset failed'
+    if (message === 'Invalid or expired reset token') {
+      return res.status(400).json({ error: { code: 'INVALID_TOKEN', message } })
+    }
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
 }
 
 // QA M4: self-service password change. Requires the current password so a

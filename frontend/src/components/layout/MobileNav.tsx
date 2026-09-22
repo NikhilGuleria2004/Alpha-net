@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 
 interface MobileNavProps {
@@ -33,7 +33,7 @@ export function MobileNav({ isOpen, onClose, children }: MobileNavProps) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="overflow-y-auto px-2 py-4">
+        <nav className="overflow-y-auto overscroll-contain px-2 py-4">
           <ul className="space-y-1">{children}</ul>
         </nav>
       </div>
@@ -48,22 +48,20 @@ interface MobileNavItemProps {
 }
 
 export function MobileNavItem({ to, children, icon }: MobileNavItemProps) {
-  const navigate = useNavigate()
   const location = useLocation()
   const isActive = location.pathname.startsWith(to)
 
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => navigate(to)}
+      <Link
+        to={to}
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-accent-soft text-accent' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         }`}
       >
         {icon && <span className={isActive ? 'text-accent' : 'text-muted-foreground'}>{icon}</span>}
         {children}
-      </button>
+      </Link>
     </li>
   )
 }

@@ -20,6 +20,12 @@ interface TableProps<T> {
   rowActions?: (row: T) => ReactNode
   stickyHeader?: boolean
   pageSize?: number
+  /** Guideline 1.11 (checklist item 1.4): lift sort/pagination into the URL by
+   * passing [value, setter] pairs (e.g. derived from useQueryParamState). When
+   * omitted, the table manages its own state as before. */
+  sortState?: readonly [string | null, (key: string | null) => void]
+  sortDirState?: readonly [SortDirection, (dir: SortDirection) => void]
+  pageState?: readonly [number, (page: number) => void]
 }
 
 export function Table<T>({
@@ -31,10 +37,20 @@ export function Table<T>({
   rowActions,
   stickyHeader = false,
   pageSize,
+  sortState,
+  sortDirState,
+  pageState,
 }: TableProps<T>) {
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<SortDirection>('asc')
-  const [page, setPage] = useState(0)
+  const [internalSortKey, setInternalSortKey] = useState<string | null>(null)
+  const [internalSortDir, setInternalSortDir] = useState<SortDirection>('asc')
+  const [internalPage, setInternalPage] = useState(0)
+
+  const sortKey = sortState ? sortState[0] : internalSortKey
+  const setSortKey: (key: string | null) => void = sortState ? sortState[1] : setInternalSortKey
+  const sortDir: SortDirection = (sortDirState ? sortDirState[0] : internalSortDir) === 'desc' ? 'desc' : 'asc'
+  const setSortDir: (dir: SortDirection) => void = sortDirState ? sortDirState[1] : setInternalSortDir
+  const page = pageState ? pageState[0] : internalPage
+  const setPage: (page: number) => void = pageState ? pageState[1] : setInternalPage
 
   const sortedData = (() => {
     if (!sortKey) return data
@@ -54,7 +70,7 @@ export function Table<T>({
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
       setSortDir('asc')
@@ -80,20 +96,43 @@ export function Table<T>({
       <table className="min-w-full divide-y divide-border">
         <thead className={stickyHeader ? 'sticky top-0 bg-muted z-10' : 'bg-muted'}>
           <tr>
-            {columns.map((col) => (
+            {columns.map((col) => {
+              const isSorted = sortKey === col.key
+              const ariaSortValue: 'ascending' | 'descending' | 'none' | undefined = col.sortable
+                ? isSorted
+                  ? sortDir === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+                : undefined
+              return (
               <th
                 key={col.key}
                 scope="col"
-                onClick={() => col.sortable && handleSort(col.key)}
-                className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${alignClasses[col.align || 'left']} ${col.sortable ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
+                aria-sort={ariaSortValue}
+                className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${alignClasses[col.align || 'left']}`}
                 style={col.width ? { width: col.width } : undefined}
               >
-                <span className="inline-flex items-center gap-1">
-                  {col.label}
-                  {col.sortable && sortKey === col.key && <span className="text-accent">{sortDir === 'asc' ? '↑' : '↓'}</span>}
-                </span>
+                {col.sortable ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSort(col.key)}
+                    aria-label={`Sort by ${col.label}${isSorted ? (sortDir === 'asc' ? ', sorted ascending' : ', sorted descending') : ''}`}
+                    className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <span>{col.label}</span>
+                    {sortKey === col.key && (
+                      <span className="text-accent" aria-hidden="true">
+                        {sortDir === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  col.label
+                )}
               </th>
-            ))}
+              )
+            })}
             {rowActions && <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>}
           </tr>
         </thead>
@@ -102,6 +141,17 @@ export function Table<T>({
             <tr
               key={idx}
               onClick={() => onRowClick?.(row)}
+              onKeyDown={
+                onRowClick
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        onRowClick(row)
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
               className={onRowClick ? 'cursor-pointer transition-colors hover:bg-muted' : 'transition-colors hover:bg-muted'}
             >
               {columns.map((col) => (
@@ -125,7 +175,7 @@ export function Table<T>({
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => setPage(Math.max(0, page - 1))}
             disabled={page === 0}
             className="rounded-full border border-border bg-card px-3 py-1 text-[13px] disabled:opacity-50 hover:bg-muted"
           >
@@ -136,7 +186,7 @@ export function Table<T>({
           </span>
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
             disabled={page >= totalPages - 1}
             className="rounded-full border border-border bg-card px-3 py-1 text-[13px] disabled:opacity-50 hover:bg-muted"
           >

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, UserCheck, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -11,6 +12,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Modal } from '../../components/ui/Modal'
+import { createInvite } from '../../services/inviteService'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -18,13 +21,32 @@ export function Users() {
   const { users, deactivateUser, refreshUsers } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [supervisorFilter, setSupervisorFilter] = useState('')
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<SortDirection>('asc')
+  // Guideline 1.11/1.23 (checklist item 1.4): search, filters, and table sort
+  // live in the URL (?q=&department=&status=&supervisor=&sort=&dir=) so refresh
+  // and share restore the exact view; Back/Forward walks filter history.
+  const [search, setSearch] = useQueryParamState('q')
+  const [departmentFilter, setDepartmentFilter] = useQueryParamState('department', '', 'push')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [supervisorFilter, setSupervisorFilter] = useQueryParamState('supervisor', '', 'push')
+  const [sort, setSort] = useQueryParamState('sort', '', 'push')
+  const [dir, setDir] = useQueryParamState('dir', 'asc', 'push')
+  const sortKey = sort || null
+  const sortDir: SortDirection = dir === 'desc' ? 'desc' : 'asc'
+  // Preserve the exact setter shapes the table headers already use — including
+  // the functional update in handleSort.
+  const setSortKey = (key: string | null): void => setSort(key ?? '')
+  const setSortDir = (next: SortDirection | ((prev: SortDirection) => SortDirection)): void => {
+    setDir((prev) => {
+      const current: SortDirection = prev === 'desc' ? 'desc' : 'asc'
+      return typeof next === 'function' ? next(current) : next
+    })
+  }
   const [deactivateConfirm, setDeactivateConfirm] = useState<{ id: string; name: string } | null>(null)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'user' | 'supervisor'>('user')
+  const [inviteErrors, setInviteErrors] = useState<{ email?: string }>({})
+  const [isInviting, setIsInviting] = useState(false)
 
   const departments = useMemo(() => Array.from(new Set(users.map((u) => u.department))), [users])
 
@@ -36,6 +58,7 @@ export function Users() {
     }
     if (departmentFilter) data = data.filter((u) => u.department === departmentFilter)
     if (statusFilter) data = data.filter((u) => u.status === statusFilter)
+    else data = data.filter((u) => u.status !== 'invited')
     if (supervisorFilter) data = data.filter((u) => u.isSupervisor === (supervisorFilter === 'true'))
     if (sortKey) {
       data = [...data].sort((a, b) => {
@@ -70,6 +93,27 @@ export function Users() {
     addToast('success', 'User deactivated successfully')
     refreshUsers()
     setDeactivateConfirm(null)
+  }
+
+  const handleInviteConfirm = async () => {
+    if (!inviteEmail.trim()) {
+      setInviteErrors({ email: 'Email is required' })
+      return
+    }
+    setIsInviting(true)
+    try {
+      await createInvite({ email: inviteEmail.trim(), role: inviteRole })
+      addToast('success', `Invite sent to ${inviteEmail.trim()}`)
+      setShowInviteModal(false)
+      setInviteEmail('')
+      setInviteRole('user')
+      setInviteErrors({})
+      refreshUsers()
+    } catch {
+      addToast('error', 'Failed to create invite')
+    } finally {
+      setIsInviting(false)
+    }
   }
 
   const handleExport = () => {
@@ -110,7 +154,7 @@ export function Users() {
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search by name, email, or employee ID..."
+                placeholder="Search by name, email, or employee ID…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}
@@ -118,8 +162,9 @@ export function Users() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-32" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-32" options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'invited', label: 'Invited' }]} />
               <Select value={supervisorFilter} onChange={(e) => setSupervisorFilter(e.target.value)} className="w-full sm:w-40" options={[{ value: '', label: 'All Roles' }, { value: 'true', label: 'Supervisors' }, { value: 'false', label: 'Non-Supervisors' }]} />
+              <Button variant="secondary" onClick={() => setShowInviteModal(true)} leftIcon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Invite user</Button>
               <Button variant="secondary" onClick={() => { setSearch(''); setDepartmentFilter(''); setStatusFilter(''); setSupervisorFilter('') }} leftIcon={<SlidersHorizontal className="h-4 w-4" />} className="w-full sm:w-auto">Clear</Button>
               <Button variant="secondary" onClick={handleExport} leftIcon={<Download className="h-4 w-4" />} className="w-full sm:w-auto">Export</Button>
             </div>
@@ -208,6 +253,38 @@ export function Users() {
         onConfirm={confirmDeactivate}
         onCancel={() => setDeactivateConfirm(null)}
       />
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => { setShowInviteModal(false); setInviteEmail(''); setInviteRole('user'); setInviteErrors({}) }}
+        title="Invite User"
+        description="Enter the email and role for the new invite."
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => { setShowInviteModal(false); setInviteEmail(''); setInviteRole('user'); setInviteErrors({}) }}>Cancel</Button>
+            <Button onClick={handleInviteConfirm} loading={isInviting} disabled={isInviting}>Send Invite</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Email"
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => { setInviteEmail(e.target.value); if (inviteErrors.email) setInviteErrors((prev) => ({ ...prev, email: '' })) }}
+            error={inviteErrors.email}
+            placeholder="name@eniac.com"
+            autoComplete="email"
+            required
+          />
+          <Select
+            label="Role"
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value as 'user' | 'supervisor')}
+            options={[{ value: 'user', label: 'User' }, { value: 'supervisor', label: 'Supervisor' }]}
+            required
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

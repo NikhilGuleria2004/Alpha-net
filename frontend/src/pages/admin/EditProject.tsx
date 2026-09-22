@@ -192,7 +192,7 @@ export function EditProject() {
 
       <Modal isOpen={isAddUserOpen} onClose={() => setIsAddUserOpen(false)} title="Add Team Members" size="md">
         <div className="p-5 space-y-4">
-          <Input placeholder="Search users..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} autoFocus />
+          <Input placeholder="Search users…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} autoFocus />
           <div className="max-h-80 overflow-y-auto space-y-2">
             {filteredAvailableUsers.map((u) => (
               <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted">

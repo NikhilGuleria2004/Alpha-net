@@ -51,7 +51,7 @@ export function DatePicker({ value, onChange, minDate, maxDate, disabledDates = 
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full rounded-lg border ${error ? 'border-destructive' : 'border-border'} bg-card px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-accent/20`}
+        className={`w-full rounded-lg border ${error ? 'border-destructive' : 'border-border'} bg-card px-3 py-2 text-left text-base sm:text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20`}
       >
         {selectedDate ? format(selectedDate, 'MMM d, yyyy') : <span className="text-muted-foreground">{placeholder}</span>}
       </button>

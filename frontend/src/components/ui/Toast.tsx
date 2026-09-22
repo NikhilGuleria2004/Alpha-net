@@ -31,7 +31,7 @@ const bgMap: Record<ToastType, string> = {
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite">
+    <div className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex flex-col gap-2" aria-live="polite">
       {toasts.map((toast) => (
         <div
           key={toast.id}

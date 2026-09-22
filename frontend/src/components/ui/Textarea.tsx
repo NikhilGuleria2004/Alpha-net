@@ -26,7 +26,7 @@ export function Textarea({ label, error, helperText, showCount, maxLength, class
         maxLength={maxLength}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : helperText ? helperId : undefined}
-        className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus:ring-destructive' : 'border-border focus:border-accent focus:ring-accent'} bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 resize-y ${className}`}
+        className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus-visible:ring-destructive' : 'border-border focus:border-accent focus-visible:ring-accent'} bg-card px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 resize-y ${className}`}
         value={value}
         {...props}
       />

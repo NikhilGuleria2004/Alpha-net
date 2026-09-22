@@ -1,25 +1,40 @@
 import { z } from 'zod'
 
-export const createUserSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  employeeId: z.string().min(1, 'Employee ID is required'),
-  department: z.string().min(1, 'Department is required'),
-  role: z.enum(['admin', 'user']),
-  isSupervisor: z.boolean(),
-  status: z.enum(['active', 'inactive']),
-  supervisorId: z.string().nullish(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
+const nameField = z
+  .string()
+  .trim()
+  .min(1, 'Required')
+  .max(50, 'Must be 50 characters or fewer')
+
+export const createUserSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(100).optional(),
+    firstName: nameField.optional(),
+    lastName: nameField.optional(),
+    email: z.string().email('Invalid email address'),
+    employeeId: z.string().min(1, 'Employee ID is required'),
+    department: z.string().min(1, 'Department is required'),
+    role: z.enum(['admin', 'user']),
+    isSupervisor: z.boolean(),
+    status: z.enum(['active', 'inactive', 'invited']),
+    supervisorId: z.string().nullish(),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+  })
+  .refine(
+    (value) => Boolean(value.name) || (Boolean(value.firstName) && Boolean(value.lastName)),
+    'Provide a name, or both first and last name',
+  )
 
 export const updateUserSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
+  name: z.string().trim().min(1, 'Name is required').max(100).optional(),
+  firstName: nameField.optional(),
+  lastName: nameField.optional(),
   email: z.string().email('Invalid email address').optional(),
   employeeId: z.string().min(1, 'Employee ID is required').optional(),
   department: z.string().min(1, 'Department is required').optional(),
   role: z.enum(['admin', 'user']).optional(),
   isSupervisor: z.boolean().optional(),
-  status: z.enum(['active', 'inactive']).optional(),
+  status: z.enum(['active', 'inactive', 'invited']).optional(),
   supervisorId: z.string().nullish(),
   password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 })
@@ -30,7 +45,9 @@ export const updateUserSchema = z.object({
 // schema deliberately omits the privileged fields so a client can't smuggle
 // them in.
 export const updateMyProfileSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
+  name: z.string().trim().min(1, 'Name is required').max(100).optional(),
+  firstName: nameField.optional(),
+  lastName: nameField.optional(),
   email: z.string().email('Invalid email address').optional(),
   employeeId: z.string().min(1, 'Employee ID is required').optional(),
   department: z.string().min(1, 'Department is required').optional(),

@@ -43,10 +43,34 @@ export async function logout(): Promise<void> {
 
 // QA M6: "Forgot password?" used to be a <button type="button"> with no
 // onClick, while the backend endpoint it would call was a 501 stub — the
-// control was silently dead. Wire it to the endpoint; the frontend surfaces
-// the honest "not implemented yet" message when the backend returns 501.
+// control was silently dead. Wire it to the endpoint; the backend now sends a
+// real reset email via nodemailer.
 export async function forgotPassword(email: string): Promise<void> {
   await apiClient.post<void>('/auth/forgot-password', { email })
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await apiClient.post<void>('/auth/reset-password', { token, password })
+}
+
+// "Forgot password?" OTP login: a 6-digit code is emailed to the registered
+// address, then exchanged for a full session (access token is stored in
+// memory, refresh token in the httpOnly cookie set by the backend).
+export async function requestLoginOtp(email: string): Promise<void> {
+  await apiClient.post<void>('/auth/otp/request', { email })
+}
+
+export async function verifyLoginOtp(email: string, otp: string): Promise<User> {
+  const response = await apiClient.post<{ user: User; accessToken: string }>('/auth/otp/verify', {
+    email,
+    otp,
+  })
+  setAccessToken(response.accessToken)
+  return response.user
+}
+
+export async function loginWithOtp(email: string, otp: string): Promise<User> {
+  return verifyLoginOtp(email, otp)
 }
 
 // QA: getCurrentUser hit /auth/me directly and returned null on the first 401,

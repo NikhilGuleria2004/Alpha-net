@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Eye } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -13,11 +14,12 @@ import { formatDate, formatWeekRange } from '../../utils/date'
 export function Timesheets() {
   const { timesheets, users, projects } = useAppData()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [projectFilter, setProjectFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [weekStartFilter, setWeekStartFilter] = useState('')
+  // Guideline 1.11/1.23 (checklist item 1.4): all list controls are URL state.
+  const [search, setSearch] = useQueryParamState('q')
+  const [userFilter, setUserFilter] = useQueryParamState('user', '', 'push')
+  const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [weekStartFilter, setWeekStartFilter] = useQueryParamState('week', '', 'push')
 
   const userOptions = useMemo(() => users.map((u) => ({ value: u.id, label: u.name })), [users])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: p.name })), [projects])
@@ -59,7 +61,7 @@ export function Timesheets() {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search by employee or project..."
+                placeholder="Search by employee or project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}

@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { LayoutDashboard, FolderKanban, Users, UserCheck, Clock3, ClipboardCheck, FileText, Bell, Settings, ChevronLeft, ChevronRight, ChevronDown, LogOut, X } from 'lucide-react'
+import { LayoutDashboard, FolderKanban, Users, UserCheck, Clock3, ClipboardCheck, FileText, Bell, Settings, ChevronLeft, ChevronRight, ChevronDown, LogOut, X, Receipt, UserPlus } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 
 type SectionKey = 'workspace' | 'time' | 'insights' | 'system' | 'work' | 'supervisor'
@@ -22,9 +22,11 @@ const adminNavItems: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, section: 'workspace' },
   { to: '/admin/projects', label: 'Projects', icon: <FolderKanban className="h-5 w-5" />, section: 'workspace' },
   { to: '/admin/users', label: 'Users', icon: <Users className="h-5 w-5" />, section: 'workspace' },
+  { to: '/admin/onboarding', label: 'Onboarding', icon: <UserPlus className="h-5 w-5" />, section: 'workspace' },
   { to: '/admin/supervisors', label: 'Supervisors', icon: <UserCheck className="h-5 w-5" />, section: 'workspace' },
   { to: '/admin/timesheets', label: 'Timesheets', icon: <Clock3 className="h-5 w-5" />, section: 'time' },
   { to: '/admin/approvals', label: 'Approvals', icon: <ClipboardCheck className="h-5 w-5" />, section: 'time' },
+  { to: '/admin/invoices', label: 'Invoices', icon: <Receipt className="h-5 w-5" />, section: 'insights' },
   { to: '/admin/reports', label: 'Reports', icon: <FileText className="h-5 w-5" />, section: 'insights' },
   { to: '/admin/notifications', label: 'Notifications', icon: <Bell className="h-5 w-5" />, section: 'system' },
   { to: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, section: 'system' },
@@ -187,7 +189,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="overflow-y-auto px-2 py-4">
+        <nav className="overflow-y-auto overscroll-contain px-2 py-4">
           {Object.entries(grouped).map(([section, items]) => (
             <div key={section} className="mb-4">
               <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

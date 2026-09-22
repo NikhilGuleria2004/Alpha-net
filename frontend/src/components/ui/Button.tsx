@@ -13,12 +13,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-primary-foreground hover:bg-accent-hover focus:ring-ring',
-  secondary: 'bg-card border border-border text-foreground hover:bg-muted focus:ring-ring',
-  danger: 'bg-destructive text-destructive-foreground hover:opacity-90 focus:ring-destructive',
-  ghost: 'bg-transparent text-muted-foreground hover:bg-muted focus:ring-ring',
-  pill: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus:ring-ring',
-  icon: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus:ring-ring',
+  primary: 'bg-primary text-primary-foreground hover:bg-accent-hover focus-visible:ring-ring',
+  secondary: 'bg-card border border-border text-foreground hover:bg-muted focus-visible:ring-ring',
+  danger: 'bg-destructive text-destructive-foreground hover:opacity-90 focus-visible:ring-destructive',
+  ghost: 'bg-transparent text-muted-foreground hover:bg-muted focus-visible:ring-ring',
+  pill: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
+  icon: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -40,7 +40,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+    'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
 
   if (props.href) {
     const anchorProps = props as AnchorHTMLAttributes<HTMLAnchorElement>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, FolderKanban, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -21,11 +22,22 @@ export function Projects() {
   const { projects, users: appUsers, deleteProject, refreshProjects, isLoading } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [managerFilter, setManagerFilter] = useState('')
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<SortDirection>('asc')
+  // Guideline 1.11/1.23 (checklist item 1.4): search, filters, and sort are
+  // URL state (?q=&status=&manager=&sort=&dir=).
+  const [search, setSearch] = useQueryParamState('q')
+  const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
+  const [managerFilter, setManagerFilter] = useQueryParamState('manager', '', 'push')
+  const [sort, setSort] = useQueryParamState('sort', '', 'push')
+  const [dir, setDir] = useQueryParamState('dir', 'asc', 'push')
+  const sortKey = sort || null
+  const sortDir: SortDirection = dir === 'desc' ? 'desc' : 'asc'
+  const setSortKey = (key: string | null): void => setSort(key ?? '')
+  const setSortDir = (next: SortDirection | ((prev: SortDirection) => SortDirection)): void => {
+    setDir((prev) => {
+      const current: SortDirection = prev === 'desc' ? 'desc' : 'asc'
+      return typeof next === 'function' ? next(current) : next
+    })
+  }
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const filteredProjects = useMemo(() => {
@@ -112,7 +124,7 @@ export function Projects() {
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
-                placeholder="Search projects by name, SOW, or client..."
+                placeholder="Search projects by name, SOW, or client…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 leftIcon={<Search className="h-4 w-4" />}

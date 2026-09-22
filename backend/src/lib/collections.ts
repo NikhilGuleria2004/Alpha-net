@@ -10,6 +10,11 @@ export const COLLECTIONS = {
   DOCUMENTS: 'documents',
   SESSIONS: 'sessions',
   SETTINGS: 'settings',
+  INVITES: 'invites',
+  INVOICES: 'invoices',
+  INVOICE_COUNTERS: 'invoice_counters',
+  PASSWORD_RESETS: 'password_resets',
+  LOGIN_OTPS: 'login_otps',
 } as const
 
 // Tracks whether indexes have been ensured to prevent redundant calls on cold start
@@ -70,6 +75,29 @@ export async function ensureIndexes(): Promise<void> {
   const settings = db.collection(COLLECTIONS.SETTINGS)
   await settings.createIndex({ orgKey: 1 }, { unique: true })
   await settings.createIndex({ userId: 1 })
+
+  const invoices = db.collection(COLLECTIONS.INVOICES)
+  await invoices.createIndex({ invoiceNumber: 1 }, { unique: true })
+  await invoices.createIndex({ projectId: 1 })
+  await invoices.createIndex({ status: 1 })
+  await invoices.createIndex({ weekStart: 1 })
+  await invoices.createIndex({ projectId: 1, weekStart: 1 })
+
+  const invoiceCounters = db.collection(COLLECTIONS.INVOICE_COUNTERS)
+  await invoiceCounters.createIndex({ key: 1 }, { unique: true })
+
+  const invites = db.collection(COLLECTIONS.INVITES)
+  await invites.createIndex({ token: 1 }, { unique: true })
+  await invites.createIndex({ email: 1 })
+  await invites.createIndex({ expiresAt: 1 })
+
+  const resets = db.collection(COLLECTIONS.PASSWORD_RESETS)
+  await resets.createIndex({ tokenHash: 1 }, { unique: true })
+  await resets.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+  const loginOtps = db.collection(COLLECTIONS.LOGIN_OTPS)
+  await loginOtps.createIndex({ email: 1 })
+  await loginOtps.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
   indexesEnsured = true
   logger.info({ collections: Object.values(COLLECTIONS) }, 'ensured indexes')

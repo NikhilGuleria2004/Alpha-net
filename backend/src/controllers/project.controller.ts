@@ -62,7 +62,7 @@ export async function create(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    const project = await createProject(input)
+    const project = await createProject({ ...input, hourlyRate: input.hourlyRate ?? null })
     res.status(201).json({ project })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create project'
