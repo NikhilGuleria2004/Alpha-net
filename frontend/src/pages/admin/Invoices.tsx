@@ -12,9 +12,9 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDateRange } from '../../utils/date'
 import type { Invoice } from '../../types/invoice'
 
-function InvoiceRow({ invoice, onEdit }: { invoice: Invoice; onEdit: (id: string) => void }) {
+function InvoiceRow({ invoice, onEdit, onNavigate }: { invoice: Invoice; onEdit: (id: string) => void; onNavigate: (id: string) => void }) {
   return (
-    <tr key={invoice.id} className="cursor-pointer hover:bg-muted" onClick={() => onEdit(invoice.id)}>
+    <tr key={invoice.id} className="cursor-pointer hover:bg-muted" onClick={() => onNavigate(invoice.id)}>
       <td className="px-4 py-3 text-sm font-medium text-foreground">{invoice.invoiceNumber}</td>
       <td className="px-4 py-3 text-sm text-foreground">{invoice.projectName}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.periodLabel || formatDateRange(invoice.weekStart, invoice.weekEnd)}</td>
@@ -131,7 +131,7 @@ export function Invoices() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredInvoices.map((inv) => (
-                  <InvoiceRow key={inv.id} invoice={inv} onEdit={(id) => navigate(`/admin/invoices/${id}/form`)} />
+                  <InvoiceRow key={inv.id} invoice={inv} onEdit={(id) => navigate(`/admin/invoices/${id}/form`)} onNavigate={(id) => navigate(`/admin/invoices/${id}`)} />
                 ))}
               </tbody>
             </table>

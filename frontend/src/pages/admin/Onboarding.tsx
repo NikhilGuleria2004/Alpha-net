@@ -100,7 +100,7 @@ export function Onboarding() {
   const [resendState, setResendState] = useState<'idle' | 'submitting'>('idle')
   const [revokeState, setRevokeState] = useState<'idle' | 'submitting'>('idle')
 
-  const [touched, setTouched] = useState<Record<keyof WizardForm, boolean>>({})
+  const [touched, setTouched] = useState<Partial<Record<keyof WizardForm, boolean>>>({})
 
   const markTouched = (key: keyof WizardForm) => {
     setTouched((prev) => ({ ...prev, [key]: true }))
