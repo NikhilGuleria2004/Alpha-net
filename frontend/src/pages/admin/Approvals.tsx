@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useAppData } from '../../contexts/AppDataContext'
 import { Card } from '../../components/ui/Card'
@@ -22,6 +22,8 @@ export function Approvals() {
 
   const pendingCount = timesheets.filter((t) => t.status === 'pending').length
 
+  const accessibleTimesheets = timesheets
+
   const tabs: { id: TabId; label: string }[] = [
     { id: 'pending', label: `Pending (${pendingCount})` },
     { id: 'approved', label: `Approved (${timesheets.filter((t) => t.status === 'approved').length})` },
@@ -29,7 +31,11 @@ export function Approvals() {
     { id: 'withdrawn', label: `Withdrawn (${timesheets.filter((t) => t.status === 'withdrawn').length})` },
   ]
 
-  const filteredTimesheets = timesheets.filter((t) => t.status === activeTab)
+  const filteredTimesheets = useMemo(() =>
+    accessibleTimesheets
+      .filter((t) => t.status === activeTab)
+      .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
+  , [accessibleTimesheets, activeTab])
 
   return (
     <div className="space-y-6">

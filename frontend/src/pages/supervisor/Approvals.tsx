@@ -62,7 +62,11 @@ export function Approvals() {
     { id: 'withdrawn', label: `Withdrawn (${accessibleTimesheets.filter((t) => t.status === 'withdrawn').length})` },
   ]
 
-  const filteredTimesheets = accessibleTimesheets.filter((t) => t.status === activeTab)
+  const filteredTimesheets = useMemo(() =>
+    accessibleTimesheets
+      .filter((t) => t.status === activeTab)
+      .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
+  , [accessibleTimesheets, activeTab])
 
   return (
     <div className="space-y-6">

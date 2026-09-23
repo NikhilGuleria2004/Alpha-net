@@ -64,7 +64,10 @@ export function SupervisorDetails() {
   const pendingReviews = useMemo(() => {
     if (!user) return []
     const supervisedProjectIds = assignedProjects.map((p) => p.id)
-    return timesheets.filter((t) => t.status === 'pending' && supervisedProjectIds.includes(t.projectId))
+    // Newest submissions first (QA: lists previously rendered oldest → newest).
+    return timesheets
+      .filter((t) => t.status === 'pending' && supervisedProjectIds.includes(t.projectId))
+      .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
   }, [user, assignedProjects, timesheets])
 
   const userActivities = useMemo(() => {

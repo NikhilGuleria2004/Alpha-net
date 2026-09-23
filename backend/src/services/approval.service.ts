@@ -31,7 +31,7 @@ export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet
         { projectId: { $in: [...supervisedProjectIds, ...memberProjectIds].map((id) => new ObjectId(id)) } },
         { userId: { $in: [...supervisedUserIds].map((id) => new ObjectId(id)) } },
       ],
-    }).toArray()
+    }).sort({ submittedAt: -1 }).toArray()
     return timesheets.map((t) => ({
       id: t._id.toString(),
       userId: t.userId.toString(),
@@ -49,7 +49,7 @@ export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet
       updatedAt: t.updatedAt,
     }))
   }
-  const timesheets = await db.collection(COLLECTIONS.TIMESHEETS).find(query).toArray()
+  const timesheets = await db.collection(COLLECTIONS.TIMESHEETS).find(query).sort({ submittedAt: -1 }).toArray()
   return timesheets.map((t) => ({
     id: t._id.toString(),
     userId: t.userId.toString(),

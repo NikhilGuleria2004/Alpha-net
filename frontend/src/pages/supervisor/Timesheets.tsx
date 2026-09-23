@@ -57,7 +57,8 @@ export function SupervisorTimesheets() {
     if (projectFilter) data = data.filter((t) => t.projectId === projectFilter)
     if (statusFilter) data = data.filter((t) => t.status === statusFilter)
     if (weekStartFilter) data = data.filter((t) => t.weekStart === weekStartFilter)
-    return data
+    // Newest submissions first (QA: lists previously rendered oldest → newest).
+    return [...data].sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
   }, [accessibleTimesheets, users, projects, search, userFilter, projectFilter, statusFilter, weekStartFilter])
 
   const handleClear = () => {

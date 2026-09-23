@@ -13,7 +13,7 @@ vi.mock('../lib/mongodb.js')
 function createMockCollection() {
   return {
     findOne: vi.fn(),
-    insertOne: vi.fn(),
+    insertOne: vi.fn().mockResolvedValue({ insertedId: new ObjectId() }),
     updateOne: vi.fn(),
     findOneAndUpdate: vi.fn(),
     find: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })),

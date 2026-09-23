@@ -24,8 +24,10 @@ export function Timesheets() {
   const userOptions = useMemo(() => users.map((u) => ({ value: u.id, label: u.name })), [users])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: p.name })), [projects])
 
+  // Newest submissions first (QA: lists previously rendered oldest → newest).
   const filteredTimesheets = useMemo(() => {
-    return timesheets.filter((t) => {
+    return timesheets
+      .filter((t) => {
       const employee = users.find((u) => u.id === t.userId)
       if (search.trim()) {
         const lower = search.toLowerCase()
@@ -38,7 +40,8 @@ export function Timesheets() {
       if (statusFilter && t.status !== statusFilter) return false
       if (weekStartFilter && t.weekStart !== weekStartFilter) return false
       return true
-    })
+      })
+      .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
   }, [timesheets, users, projects, search, userFilter, projectFilter, statusFilter, weekStartFilter])
 
   const handleClear = () => {
