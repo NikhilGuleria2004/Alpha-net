@@ -32,7 +32,7 @@ function getTransporter() {
 }
 
 function getFromAddress(): string {
-  return process.env.EMAIL_FROM?.trim() || 'no-reply@alphanet.local'
+  return process.env.EMAIL_FROM?.trim() || 'no-reply@eniac.local'
 }
 
 function getAppUrl(): string {

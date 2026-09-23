@@ -61,8 +61,10 @@ export function AdminDashboard() {
   }, [activities])
 
   const pendingApprovals = useMemo(() => {
+    // Newest submissions first, so the dashboard mirrors the Approvals page.
     return timesheets
       .filter((t) => t.status === 'pending')
+      .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
       .slice(0, 5)
   }, [timesheets])
 
@@ -136,7 +138,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <>
-                  <table className="hidden min-w-full divide-y divide-border sm:block">
+                  <table className="hidden w-full min-w-full divide-y divide-border sm:table">
                     <thead className="bg-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
