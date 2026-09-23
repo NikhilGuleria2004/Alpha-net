@@ -1,6 +1,8 @@
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
+import { randomUUID } from 'node:crypto'
+import { logger } from '../lib/logger.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 export type TimesheetStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'withdrawn'
@@ -416,5 +418,112 @@ export async function withdrawTimesheet(id: string, authenticatedUserId: string,
   })
 
   return updated
+}
+
+// --- Weekly draft auto-creation (cron) --------------------------------------
+// QA: employees previously had to manually create a timesheet for every project
+// they're on, every week (Feature Report §2.5). This job seeds an empty draft
+// timesheet for each (user, project) pair so the week's hours can be entered
+// immediately. It is idempotent: `$setOnInsert` no-ops when a timesheet already
+// exists for that (userId, projectId, weekStart) triple, so a retried or
+// duplicate cron run never creates garbage rows. The unique index on
+// (userId, projectId, weekStart) (lib/collections.ts) is the authority.
+
+const ACTIVE_PROJECT_STATUS_QUERY = { status: { $in: ['active', 'overdue'] } }
+
+/** Build the all-zero placeholder entry a fresh draft starts with. */
+export function emptyEntry(): TimesheetEntry {
+  return {
+    id: randomUUID(),
+    description: '',
+    entryType: 'regular',
+    hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
+  }
+}
+
+export interface CreateWeeklyDraftsResult {
+  weekStart: string
+  created: number
+  skipped: number
+  errors: string[]
+}
+
+/**
+ * Seed draft timesheets for the given week across every active project's team.
+ * `weekStart` defaults to the current week's Monday (UTC). Safe to call for
+ * any Monday; past weeks are accepted too (e.g. for a manual backfill), but
+ * the cron should only ever target the current week.
+ */
+export async function createWeeklyDrafts(weekStart?: string): Promise<CreateWeeklyDraftsResult> {
+  const db = await getDb()
+  const targetWeek = weekStart ? normalizeToMonday(weekStart) : normalizeToMonday(new Date().toISOString())
+  const result: CreateWeeklyDraftsResult = { weekStart: targetWeek, created: 0, skipped: 0, errors: [] }
+
+  const projects = await db
+    .collection(COLLECTIONS.PROJECTS)
+    .find(ACTIVE_PROJECT_STATUS_QUERY)
+    .toArray()
+
+  for (const project of projects) {
+    const teamMemberIds: ObjectId[] = (project.teamMemberIds ?? []).map((id: ObjectId | string) =>
+      id instanceof ObjectId ? id : new ObjectId(id),
+    )
+
+    for (const memberId of teamMemberIds) {
+      try {
+        const user = await db.collection(COLLECTIONS.USERS).findOne({ _id: memberId, status: 'active' })
+        if (!user) {
+          result.skipped++
+          continue
+        }
+
+        const doc = {
+          userId: memberId,
+          projectId: project._id,
+          weekStart: targetWeek,
+          entries: [emptyEntry()],
+          notes: '',
+          regularHours: 0,
+          overtimeHours: 0,
+          totalHours: 0,
+          status: 'draft' as TimesheetStatus,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+
+        // $setOnInsert makes this idempotent: an existing timesheet for this
+        // (user, project, week) is left untouched, so the cron can run daily
+        // without duplicating rows.
+        const res = await db.collection(COLLECTIONS.TIMESHEETS).updateOne(
+          { userId: memberId, projectId: project._id, weekStart: targetWeek },
+          { $setOnInsert: doc },
+          { upsert: true },
+        )
+
+        if (res.upsertedCount > 0) {
+          result.created++
+          const createdId = res.upsertedId ?? project._id
+          await createActivity({
+            userId: user._id.toString(),
+            projectId: project._id.toString(),
+            timesheetId: createdId instanceof ObjectId ? createdId.toString() : String(createdId),
+            description: `Draft timesheet created for week ${targetWeek}.`,
+          })
+        } else {
+          result.skipped++
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        result.errors.push(`project ${project._id.toString()} member ${memberId.toString()}: ${msg}`)
+        result.skipped++
+      }
+    }
+  }
+
+  logger.info(
+    { weekStart: targetWeek, created: result.created, skipped: result.skipped, errors: result.errors.length },
+    'weekly draft timesheets created',
+  )
+  return result
 }
 

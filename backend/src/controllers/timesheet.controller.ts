@@ -2,7 +2,7 @@ import { type Request, type Response } from 'express'
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
-import { getTimesheets, getTimesheetById, createTimesheet, updateTimesheet, submitTimesheet, withdrawTimesheet } from '../services/timesheet.service.js'
+import { getTimesheets, getTimesheetById, createTimesheet, updateTimesheet, submitTimesheet, withdrawTimesheet, createWeeklyDrafts } from '../services/timesheet.service.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { createTimesheetSchema, updateTimesheetSchema } from '../schemas/timesheet.schema.js'
@@ -124,5 +124,29 @@ export async function withdraw(req: AuthenticatedRequest, res: Response) {
     res.json({ timesheet })
   } catch (err) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: (err as Error).message } })
+  }
+}
+
+// --- Weekly draft cron -----------------------------------------------------
+// Mirrors notifications.controller.ts `sendDeadline`: mounted BEFORE
+// `authenticate` so a scheduler holding only CRON_SECRET can reach it. The
+// endpoint self-protects with a Bearer check instead of the JWT middleware.
+export async function createWeeklyDraftsCron(req: Request, res: Response) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || cronSecret.trim() === '') {
+    return res.status(500).json({ error: { code: 'CONFIG_ERROR', message: 'CRON_SECRET is not configured' } })
+  }
+  const authHeader = req.headers.authorization
+  if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid cron secret' } })
+  }
+
+  try {
+    const weekStart = typeof req.query.weekStart === 'string' ? req.query.weekStart : undefined
+    const result = await createWeeklyDrafts(weekStart)
+    res.json(result)
+  } catch (err) {
+    logger.error({ err }, 'failed to create weekly draft timesheets')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
   }
 }
