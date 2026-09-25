@@ -41,6 +41,8 @@ export async function listTimesheets(req: AuthenticatedRequest, res: Response) {
       projectId: req.query.projectId ? String(req.query.projectId) : undefined,
       status: req.query.status ? String(req.query.status) : undefined,
       weekStart: req.query.weekStart ? String(req.query.weekStart) : undefined,
+      // Phase 4 (additive): optional lineage filter.
+      assignmentId: req.query.assignmentId ? String(req.query.assignmentId) : undefined,
     })
     res.json({ timesheets })
   } catch (err) {
@@ -72,6 +74,8 @@ export async function create(req: AuthenticatedRequest, res: Response) {
     const input = createTimesheetSchema.parse(req.body)
     const timesheet = await createTimesheet({
       projectId: input.projectId,
+      assignmentId: input.assignmentId,
+      adjustmentOf: input.adjustmentOf,
       weekStart: input.weekStart,
       entries: input.entries,
       notes: input.notes || '',
@@ -91,6 +95,7 @@ export async function update(req: AuthenticatedRequest, res: Response) {
       weekStart: input.weekStart,
       entries: input.entries || [],
       notes: input.notes || '',
+      assignmentId: input.assignmentId,
     }, req.user!.userId)
     if (!timesheet) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Timesheet not found' } })

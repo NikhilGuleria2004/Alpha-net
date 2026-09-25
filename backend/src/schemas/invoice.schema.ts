@@ -23,6 +23,9 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)')
 
+/** 24-hex ObjectId string. Kept loose enough for legacy string ids. */
+const objectIdLike = z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Must be a valid id')
+
 export const variableCostItemSchema = z.object({
   amount: z.coerce
     .number()
@@ -49,6 +52,27 @@ export const insertInvoiceSchema = z.object({
    * into the audit trail.
    */
   adminUserId: z.string().min(1).optional(),
+  // ─── Flow Integration Phase 5 (all optional, all additive) ───────────────
+  /**
+   * Billing scope: only timesheets linked to this assignment are billed.
+   * Applied on the approved-only path only — the legacy path keeps summing
+   * every timesheet of the project (see createInvoice()).
+   */
+  assignmentId: objectIdLike.optional(),
+  /**
+   * Billing scope: only these timesheets are billed (intersected with
+   * `assignmentId`/approval when both are given). Capped so one request can
+   * never try to bill an unbounded set.
+   */
+  timesheetIds: z.array(objectIdLike).max(500, 'At most 500 timesheet ids per invoice').optional(),
+  /**
+   * Bill ONLY approved, not-yet-billed timesheets and record per-timesheet
+   * `lines[]`. Omitted ⇒ the deployment flag decides: false by default, true
+   * once `FLOW_INTEGRATION_PHASE=invoices` is set (the Phase 5 cutover).
+   * Explicit `false` forces the legacy sum-all path, which is what makes the
+   * cutover reversible without a code change.
+   */
+  approvedOnly: z.boolean().optional(),
 })
 
 export const updateInvoiceSchema = z
@@ -71,6 +95,14 @@ export const updateInvoiceSchema = z
 
 export const sendInvoiceSchema = z.object({
   to: z.string().trim().toLowerCase().email('Valid recipient email is required').optional(),
+})
+
+/**
+ * Flow Integration Phase 5 — POST /invoices/:id/void. The reason is optional
+ * but recorded verbatim on the invoice for the audit trail.
+ */
+export const voidInvoiceSchema = z.object({
+  reason: z.string().trim().max(200, 'Reason must be 200 characters or fewer').optional(),
 })
 
 export const invoiceListQuerySchema = z.object({

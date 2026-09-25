@@ -38,3 +38,48 @@ export function getAiChatRateLimitConfig() {
   }
 }
 
+// Flow Integration Phase 0: feature-flag scaffolding for the Eniac staffing
+// flow integration (see /flowIntegration.md). Defaults to legacy behavior;
+// new code paths must check this flag so production stays on legacy behavior
+// until each phase's backfill is complete and signed off.
+//   - unset / 'legacy' → legacy behavior (default, zero behavior change)
+//   - 'clients' | 'resources' | 'assignments' | 'timesheets' | 'invoices' | 'payroll' | 'margin' | 'full'
+//     → enables new code paths up to and including that phase.
+export type FlowIntegrationPhase =
+  | 'legacy'
+  | 'clients'
+  | 'resources'
+  | 'assignments'
+  | 'timesheets'
+  | 'invoices'
+  | 'payroll'
+  | 'margin'
+  | 'full'
+
+const FLOW_PHASE_ORDER: FlowIntegrationPhase[] = [
+  'legacy',
+  'clients',
+  'resources',
+  'assignments',
+  'timesheets',
+  'invoices',
+  'payroll',
+  'margin',
+  'full',
+]
+
+export function getFlowIntegrationPhase(): FlowIntegrationPhase {
+  const raw = (process.env.FLOW_INTEGRATION_PHASE || 'legacy').trim().toLowerCase()
+  if ((FLOW_PHASE_ORDER as string[]).includes(raw)) {
+    return raw as FlowIntegrationPhase
+  }
+  return 'legacy'
+}
+
+// True when the flag enables at least the given phase (e.g. phase 'full'
+// enables everything; 'legacy' enables nothing new).
+export function isFlowPhaseEnabled(phase: Exclude<FlowIntegrationPhase, 'legacy'>): boolean {
+  const current = getFlowIntegrationPhase()
+  return FLOW_PHASE_ORDER.indexOf(current) >= FLOW_PHASE_ORDER.indexOf(phase)
+}
+

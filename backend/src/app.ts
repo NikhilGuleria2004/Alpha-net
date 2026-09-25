@@ -9,7 +9,7 @@ import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
 import { getAllowedOrigins } from './lib/origins.js'
 import { getAuthRateLimitConfig } from './lib/env.js'
-import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes, invoicesRoutes, invitesRoutes } from './routes/index.js'
+import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes, invoicesRoutes, invitesRoutes, clientsRoutes, assignmentsRoutes, payrollsRoutes } from './routes/index.js'
 
 export function createApp() {
   const app = express()
@@ -72,7 +72,7 @@ export function createApp() {
     legacyHeaders: false,
     // Key by email when present so the cap is per-user, not per-NAT. The
     // email is read from the parsed body — login/register both send it.
-    keyGenerator: (req) => {
+    keyGenerator: (req: express.Request) => {
       const body = (req.body && typeof req.body === 'object') ? req.body : {}
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
       return email || req.ip || 'unknown'
@@ -104,6 +104,12 @@ export function createApp() {
   app.use('/api/v1/ai', aiRoutes())
   app.use('/api/v1/invoices', invoicesRoutes())
   app.use('/api/v1/invites', invitesRoutes())
+  // Flow Integration Phase 1: clients domain (additive — no existing mount touched).
+  app.use('/api/v1/clients', clientsRoutes())
+  // Flow Integration Phase 3: assignments domain (additive — no existing mount touched).
+  app.use('/api/v1/assignments', assignmentsRoutes())
+  // Flow Integration Phase 6: payroll domain (additive — new collection, admin-only).
+  app.use('/api/v1/payrolls', payrollsRoutes())
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 

@@ -5,7 +5,33 @@ import { randomUUID } from 'node:crypto'
 import { logger } from '../lib/logger.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
+import { getActiveAssignment, resolveAssignmentForTimesheet, type Assignment } from './assignment.service.js'
+import { isFlowPhaseEnabled } from '../lib/env.js'
 export type TimesheetStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'withdrawn'
+
+// Flow Integration Phase 8 (§5, item 4) — how the docx submission workflow
+// labels map onto the EXISTING TimesheetStatus enum. Phase 0 froze the enum,
+// so these labels document the same stored values (nothing is renamed):
+//
+//   Draft       → 'draft'
+//   Submitted   → 'pending'    (submitTimesheet)
+//   Rejected    → 'declined'   (declineTimesheet)
+//   Resubmitted → 'pending'    (owner re-submits a declined/withdrawn row)
+//   Approved    → 'approved'   (approveTimesheet)
+//   Locked      → 'approved' + isLocked:true (Phase 4 writes both atomically)
+//   Withdrawn   → 'withdrawn'  (owner recall of a pending row — extra legacy state)
+//
+// The `satisfies` clause makes a future enum rename a COMPILE error here, and
+// responses expose `isLocked` alongside these statuses via timesheetFlowKeys
+// (toTimesheet + approval payloads); legacy docs without the key are unchanged.
+export const TIMESHEET_STATUS_FLOW = [
+  { label: 'Draft', status: 'draft' },
+  { label: 'Submitted', status: 'pending' },
+  { label: 'Rejected', status: 'declined' },
+  { label: 'Resubmitted', status: 'pending' },
+  { label: 'Approved', status: 'approved' },
+  { label: 'Locked', status: 'approved', isLocked: true },
+] as const satisfies readonly { label: string; status: TimesheetStatus; isLocked?: boolean }[]
 
 export interface TimesheetReview {
   reviewedBy: string
@@ -25,6 +51,10 @@ export interface SaveTimesheetInput {
   weekStart?: string
   entries: TimesheetEntry[]
   notes: string
+  /** Flow Integration Phase 4 — validated when sent, auto-attached when omitted. */
+  assignmentId?: string
+  /** Phase 4 — create this row as a correction of an existing locked timesheet. */
+  adjustmentOf?: string
 }
 
 export interface Timesheet {
@@ -40,12 +70,36 @@ export interface Timesheet {
   status: TimesheetStatus
   submittedAt?: string
   review?: TimesheetReview
+  // Flow Integration Phase 4 (additive, optional — absent on legacy docs).
+  assignmentId?: string
+  isLocked?: boolean
+  lockedAt?: string
+  adjustmentOf?: string
   createdAt: Date
   updatedAt: Date
 }
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 const MAX_DAILY_HOURS = 24
+
+/**
+ * Flow Integration Phase 4 (see /flowIntegration.md §5): the additive lineage /
+ * lock keys. Legacy documents have none of them, so every key stays `undefined`
+ * and old response shapes are unchanged in practice.
+ */
+export function timesheetFlowKeys(doc: any): {
+  assignmentId?: string
+  isLocked?: boolean
+  lockedAt?: string
+  adjustmentOf?: string
+} {
+  return {
+    assignmentId: doc?.assignmentId?.toString(),
+    isLocked: doc?.isLocked ?? undefined,
+    lockedAt: doc?.lockedAt instanceof Date ? doc.lockedAt.toISOString() : doc?.lockedAt ?? undefined,
+    adjustmentOf: doc?.adjustmentOf?.toString(),
+  }
+}
 
 function toTimesheet(doc: any): Timesheet {
   return {
@@ -66,6 +120,7 @@ function toTimesheet(doc: any): Timesheet {
     status: doc.status,
     submittedAt: doc.submittedAt,
     review: doc.review,
+    ...timesheetFlowKeys(doc),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
@@ -130,7 +185,98 @@ export function calcTotals(entries: TimesheetEntry[]): { regularHours: number; o
   return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours }
 }
 
-export async function getTimesheets(filters?: { userId?: string; userIds?: string[]; projectId?: string; status?: string; weekStart?: string }): Promise<Timesheet[]> {
+// --- Flow Integration Phase 4 — assignment link helpers ---------------------
+// See /flowIntegration.md §5 Phase 4. Three rules shape this code:
+//   1. An explicit `assignmentId` is caller input, so it is validated loudly
+//      (exists / belongs to the resource / matches the project / active / the
+//      week overlaps the assignment dates).
+//   2. An omitted `assignmentId` is best-effort: we attach the resource's active
+//      assignment for the project when there is one, and NEVER reject when there
+//      is none — legacy clients keep sending only `projectId`.
+//   3. Every lookup failure degrades to "no link", never to a broken request.
+
+/** `2024-01-01` + 6 → `2024-01-07` (UTC, string math kept ISO-safe). */
+export function addDays(dateStr: string, days: number): string {
+  const date = new Date(`${dateStr}T00:00:00.000Z`)
+  if (isNaN(date.getTime())) throw new Error('Invalid date value')
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().split('T')[0]
+}
+
+/**
+ * A timesheet week (Mon–Sun) must overlap the assignment window. ISO `YYYY-MM-DD`
+ * strings compare correctly with `<`/`>`, and an open end date means "still open".
+ */
+function assignmentRangeError(assignment: Assignment, weekStart: string): string | null {
+  const weekEnd = addDays(weekStart, 6)
+  const range = `${assignment.startDate || 'open'} – ${assignment.endDate || 'open'}`
+  if (assignment.startDate && weekEnd < assignment.startDate) {
+    return `Week ${weekStart} is outside the assignment dates (${range})`
+  }
+  if (assignment.endDate && weekStart > assignment.endDate) {
+    return `Week ${weekStart} is outside the assignment dates (${range})`
+  }
+  return null
+}
+
+/**
+ * Resolve the assignment a new timesheet should carry.
+ * Explicit id → validated + returns the projectId to use (inferred when omitted).
+ * Omitted id → best-effort active-assignment auto-attach.
+ */
+export async function resolveTimesheetAssignment(input: {
+  userId: string
+  projectId?: string
+  assignmentId?: string
+  weekStart: string
+}): Promise<{ assignmentId?: string; projectId?: string }> {
+  if (input.assignmentId) {
+    const assignment = await resolveAssignmentForTimesheet({
+      resourceId: input.userId,
+      projectId: input.projectId ?? '',
+      assignmentId: input.assignmentId,
+    })
+    // resolveAssignmentForTimesheet throws on every invalid explicit id; this is
+    // only a type guard (it never returns null on that path).
+    if (!assignment) throw new Error('Assignment not found')
+    const rangeError = assignmentRangeError(assignment, input.weekStart)
+    if (rangeError) throw new Error(rangeError)
+    return { assignmentId: assignment.id, projectId: input.projectId ?? assignment.projectId }
+  }
+
+  if (!input.projectId) return {}
+  try {
+    const active = await getActiveAssignment(input.userId, input.projectId)
+    return active ? { assignmentId: active.id } : {}
+  } catch (err) {
+    logger.warn({ err, userId: input.userId, projectId: input.projectId }, 'timesheet assignment auto-attach skipped')
+    return {}
+  }
+}
+
+/**
+ * `adjustmentOf` must point at one of the caller's own LOCKED timesheets: an
+ * adjustment corrects an already-approved period, it never amends a live one.
+ */
+async function validateAdjustmentReference(adjustmentOf: string, userId: string): Promise<void> {
+  const db = await getDb()
+  if (!ObjectId.isValid(adjustmentOf)) throw new Error('Adjustment reference not found')
+  const original = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: new ObjectId(adjustmentOf) })
+  if (!original) throw new Error('Adjustment reference not found')
+  if (original.userId.toString() !== userId) {
+    throw new Error('Adjustment reference must belong to the same resource')
+  }
+  if (!original.isLocked) throw new Error('Adjustment reference must be a locked timesheet')
+}
+
+export async function getTimesheets(filters?: {
+  userId?: string
+  userIds?: string[]
+  projectId?: string
+  status?: string
+  weekStart?: string
+  assignmentId?: string
+}): Promise<Timesheet[]> {
   const db = await getDb()
   const query: Record<string, unknown> = {}
   if (filters?.userIds) query.userId = { $in: filters.userIds.map((id) => new ObjectId(id)) }
@@ -138,6 +284,8 @@ export async function getTimesheets(filters?: { userId?: string; userIds?: strin
   if (filters?.projectId) query.projectId = new ObjectId(filters.projectId)
   if (filters?.status) query.status = filters.status
   if (filters?.weekStart) query.weekStart = filters.weekStart
+  // Phase 4 (additive): only narrows when asked; legacy rows simply do not match.
+  if (filters?.assignmentId) query.assignmentId = new ObjectId(filters.assignmentId)
 
   const timesheets = await db.collection(COLLECTIONS.TIMESHEETS).find(query).toArray()
   return timesheets.map(toTimesheet)
@@ -153,7 +301,9 @@ export async function getTimesheetById(id: string): Promise<Timesheet | null> {
 export async function createTimesheet(input: SaveTimesheetInput, authenticatedUserId: string): Promise<Timesheet> {
   const db = await getDb()
 
-  if (!input.projectId) {
+  // Phase 4: `projectId` may be omitted when an explicit `assignmentId` supplies
+  // it (the project is inferred). Neither → the exact legacy error.
+  if (!input.projectId && !input.assignmentId) {
     throw new Error('Project ID is required')
   }
   if (!input.weekStart) {
@@ -163,7 +313,35 @@ export async function createTimesheet(input: SaveTimesheetInput, authenticatedUs
   const weekStart = normalizeToMonday(input.weekStart)
   const userId = authenticatedUserId
 
-  const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(input.projectId) })
+  if (input.adjustmentOf) {
+    await validateAdjustmentReference(input.adjustmentOf, userId)
+  }
+
+  // Phase 4: explicit id → validated loudly; omitted → best-effort auto-attach.
+  const link = await resolveTimesheetAssignment({
+    userId,
+    projectId: input.projectId,
+    assignmentId: input.assignmentId,
+    weekStart,
+  })
+  // Phase 9.2 (CUTOVER): NEW timesheets must carry an assignment — but only
+  // once the deployment flag reaches 'full', the signal that the Phase 4
+  // backfill ran to 100% (checklist 4.9: 30/30 linked, 0 missing live). Any
+  // earlier phase (incl. unset/'legacy') keeps Phase 4's exact leniency:
+  // explicit ids validate loudly, omitted ids auto-attach when possible and
+  // are never rejected — so un-backfilled deployments see zero change, and
+  // existing documents are never rewritten or re-validated.
+  if (isFlowPhaseEnabled('full') && !link.assignmentId) {
+    throw new Error(
+      'assignmentId is required: no active assignment covers this resource, project, and week',
+    )
+  }
+  const projectId = input.projectId ?? link.projectId
+  if (!projectId) {
+    throw new Error('Project ID is required')
+  }
+
+  const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(projectId) })
   if (!project) {
     throw new Error('Project not found')
   }
@@ -173,7 +351,7 @@ export async function createTimesheet(input: SaveTimesheetInput, authenticatedUs
 
   const existing = await db.collection(COLLECTIONS.TIMESHEETS).findOne({
     userId: new ObjectId(userId),
-    projectId: new ObjectId(input.projectId),
+    projectId: new ObjectId(projectId),
     weekStart,
   })
   if (existing) {
@@ -188,9 +366,9 @@ export async function createTimesheet(input: SaveTimesheetInput, authenticatedUs
   const totals = calcTotals(input.entries)
 
   const now = new Date()
-  const doc = {
+  const doc: Record<string, unknown> = {
     userId: new ObjectId(userId),
-    projectId: new ObjectId(input.projectId),
+    projectId: new ObjectId(projectId),
     weekStart,
     entries: input.entries,
     notes: input.notes || '',
@@ -201,9 +379,14 @@ export async function createTimesheet(input: SaveTimesheetInput, authenticatedUs
     createdAt: now,
     updatedAt: now,
   }
+  // Phase 4 keys are written ONLY when resolved, so a legacy client's document
+  // keeps exactly the old field set (no nulls, no backfill surprises).
+  if (link.assignmentId) doc.assignmentId = new ObjectId(link.assignmentId)
+  if (input.adjustmentOf) doc.adjustmentOf = new ObjectId(input.adjustmentOf)
 
-  const result = await db.collection(COLLECTIONS.TIMESHEETS).insertOne(doc)
+  const result = await db.collection(COLLECTIONS.TIMESHEETS).insertOne(doc as any)
   const created = toTimesheet({ ...doc, _id: result.insertedId })
+
 
   await createActivity({
     userId: created.userId,
@@ -220,6 +403,12 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
   const existing = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: new ObjectId(id) })
   if (!existing) return null
 
+  // Flow Integration Phase 4: an approved (locked) timesheet is immutable —
+  // corrections happen through a NEW timesheet carrying `adjustmentOf`.
+  if (existing.isLocked) {
+    throw new Error('Timesheet is locked')
+  }
+
   if (existing.userId.toString() !== authenticatedUserId) {
     throw new Error('Only the owner can modify this timesheet')
   }
@@ -232,6 +421,12 @@ export async function updateTimesheet(id: string, input: SaveTimesheetInput, aut
   // collide with an existing timesheet in the target project.
   if (input.projectId && input.projectId !== existing.projectId.toString()) {
     throw new Error('Cannot change the project of an existing timesheet')
+  }
+
+  // Phase 4: the assignment link is immutable after create (same rule as
+  // weekStart below). Legacy rows can be linked by the backfill script instead.
+  if (input.assignmentId !== undefined && existing.assignmentId?.toString() !== input.assignmentId) {
+    throw new Error('Cannot change the assignment of an existing timesheet')
   }
 
   // H3 (QA.md): a timesheet's weekStart is immutable. Mutating it here moved
@@ -293,6 +488,11 @@ export async function submitTimesheet(id: string, authenticatedUserId: string): 
   const db = await getDb()
   const existing = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: new ObjectId(id) })
   if (!existing) return null
+
+  // Phase 4: locked (approved) timesheets can no longer be submitted.
+  if (existing.isLocked) {
+    throw new Error('Timesheet is locked')
+  }
 
   if (existing.userId.toString() !== authenticatedUserId) {
     throw new Error('Only the owner can submit this timesheet')
@@ -360,6 +560,11 @@ export async function withdrawTimesheet(id: string, authenticatedUserId: string,
   const db = await getDb()
   const existing = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: new ObjectId(id) })
   if (!existing) return null
+
+  // Phase 4: locked (approved) timesheets can no longer be withdrawn.
+  if (existing.isLocked) {
+    throw new Error('Timesheet is locked')
+  }
 
   if (existing.userId.toString() !== authenticatedUserId) {
     throw new Error('Only the owner can withdraw this timesheet')
@@ -477,7 +682,21 @@ export async function createWeeklyDrafts(weekStart?: string): Promise<CreateWeek
           continue
         }
 
-        const doc = {
+        // Phase 4: best-effort assignment link. A missing/erroring assignment
+        // lookup must never stop a draft from being seeded (legacy projects have
+        // no assignments at all).
+        let assignmentId: ObjectId | undefined
+        try {
+          const active = await getActiveAssignment(memberId.toString(), project._id.toString())
+          if (active) assignmentId = new ObjectId(active.id)
+        } catch (err) {
+          logger.warn(
+            { err, projectId: project._id.toString(), userId: memberId.toString() },
+            'weekly draft assignment auto-attach skipped',
+          )
+        }
+
+        const doc: Record<string, unknown> = {
           userId: memberId,
           projectId: project._id,
           weekStart: targetWeek,
@@ -490,6 +709,7 @@ export async function createWeeklyDrafts(weekStart?: string): Promise<CreateWeek
           createdAt: new Date(),
           updatedAt: new Date(),
         }
+        if (assignmentId) doc.assignmentId = assignmentId
 
         // $setOnInsert makes this idempotent: an existing timesheet for this
         // (user, project, week) is left untouched, so the cron can run daily

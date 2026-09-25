@@ -4,6 +4,9 @@ export const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   sowNumber: z.string().min(1, 'SOW number is required'),
   client: z.string().min(1, 'Client is required'),
+  // Flow Integration Phase 1: optional FK to the normalized clients collection.
+  // Legacy callers omit it; the service resolves it from `client` when absent.
+  clientId: z.string().min(1).optional(),
   description: z.string().min(1, 'Description is required'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
@@ -13,12 +16,18 @@ export const createProjectSchema = z.object({
   supervisorId: z.string().min(1, 'Supervisor is required'),
   teamMemberIds: z.array(z.string()).min(1, 'At least one team member is required'),
   hourlyRate: z.number().min(0, 'Hourly rate is required').optional(),
+  // Flow Integration Phase 8 (§5, item 2): optional PO/SOW cap input stored on
+  // the project. The balance (poConsumed/poRemaining) is computed per request
+  // from live invoices — only this cap input is ever persisted.
+  poCap: z.number().min(0, 'PO cap must be 0 or greater').optional(),
 })
 
 export const updateProjectSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   sowNumber: z.string().min(1, 'SOW number is required').optional(),
   client: z.string().min(1, 'Client is required').optional(),
+  // Flow Integration Phase 1: optional FK to the normalized clients collection.
+  clientId: z.string().min(1).optional(),
   description: z.string().min(1, 'Description is required').optional(),
   startDate: z.string().min(1, 'Start date is required').optional(),
   endDate: z.string().min(1, 'End date is required').optional(),
@@ -28,6 +37,7 @@ export const updateProjectSchema = z.object({
   supervisorId: z.string().min(1, 'Supervisor is required').optional(),
   teamMemberIds: z.array(z.string()).optional(),
   hourlyRate: z.number().min(0, 'Hourly rate must be 0 or greater').optional(),
+  poCap: z.number().min(0, 'PO cap must be 0 or greater').optional(),
 })
 
 export const addTeamMemberSchema = z.object({

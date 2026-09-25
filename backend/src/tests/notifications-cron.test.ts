@@ -15,7 +15,7 @@ vi.mock('../services/notification.service.js', async (importOriginal) => {
 })
 import { sendDeadlineNotifications } from '../services/notification.service.js'
 
-function createMockCollection(docs = []) {
+function createMockCollection<T extends Record<string, unknown> = Record<string, unknown>>(docs: T[] = []) {
   return {
     find: vi.fn(() => ({ sort: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue(docs) })), toArray: vi.fn().mockResolvedValue(docs) })),
     findOne: vi.fn(),
@@ -24,17 +24,23 @@ function createMockCollection(docs = []) {
   }
 }
 
-let mockDb
-function setupDb(docs = {}) {
+interface SeedCollections {
+  projects?: Record<string, unknown>[]
+  notifications?: Record<string, unknown>[]
+  documents?: Record<string, unknown>[]
+}
+let mockDb: { collection: (name: string) => ReturnType<typeof createMockCollection> }
+function setupDb(docs: SeedCollections = {}) {
   vi.mocked(getDb).mockReset()
-  vi.mocked(getDb).mockResolvedValue({
+  mockDb = {
     collection: vi.fn((name: string) => {
       if (name === COLLECTIONS.PROJECTS) return createMockCollection(docs.projects ?? [])
       if (name === COLLECTIONS.NOTIFICATIONS) return createMockCollection(docs.notifications ?? [])
       if (name === COLLECTIONS.DOCUMENTS) return createMockCollection(docs.documents ?? [])
       return createMockCollection()
     }),
-  })
+  }
+  vi.mocked(getDb).mockResolvedValue(mockDb as never)
 }
 
 describe('Deadline cron route (QA C3) — must be reachable with CRON_SECRET only, never behind JWT authenticate', () => {

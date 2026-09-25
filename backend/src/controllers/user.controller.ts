@@ -103,6 +103,14 @@ export async function create(req: AuthenticatedRequest, res: Response) {
         return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid supervisor' } })
       }
     }
+    // Flow Integration Phase 2: managerId validated only when supplied (must be
+    // an active user). Legacy callers omit it and are unaffected.
+    if (input.managerId) {
+      const manager = await getUserById(input.managerId)
+      if (!manager || manager.status !== 'active') {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Manager not found or inactive' } })
+      }
+    }
     const user = await createUser(input)
     res.status(201).json({ user })
   } catch (err) {
@@ -140,6 +148,16 @@ export async function update(req: AuthenticatedRequest, res: Response) {
       const supervisor = await getUserById(input.supervisorId)
       if (!supervisor || supervisor.status !== 'active' || !supervisor.isSupervisor) {
         return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid supervisor' } })
+      }
+    }
+    // Flow Integration Phase 2: managerId validated only when supplied.
+    if (input.managerId) {
+      if (input.managerId === (req.params.id as string)) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'User cannot be their own manager' } })
+      }
+      const manager = await getUserById(input.managerId)
+      if (!manager || manager.status !== 'active') {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Manager not found or inactive' } })
       }
     }
     // Prevent self-demotion: admin cannot change their own role

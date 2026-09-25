@@ -33,7 +33,7 @@ function createMockCollection(items: Record<string, unknown>[] = []) {
       })),
     })),
     findOne: vi.fn(({ _id }: { _id: ObjectId }) => {
-      const found = storedItems.find((item) => item._id.toString() === _id.toString())
+      const found = storedItems.find((item: Record<string, unknown>) => (item._id as ObjectId).toString() === _id.toString())
       return Promise.resolve(found ?? null)
     }),
     insertOne: vi.fn((doc: Record<string, unknown>) => {

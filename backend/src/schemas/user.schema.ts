@@ -19,6 +19,14 @@ export const createUserSchema = z
     status: z.enum(['active', 'inactive', 'invited']),
     supervisorId: z.string().nullish(),
     password: z.string().min(8, 'Password must be at least 8 characters'),
+    // Flow Integration Phase 2: optional Resource enrichment (see /flowIntegration.md §5 Phase 2).
+    // All optional — legacy callers omit them. Validated only when supplied.
+    resourceType: z.enum(['w2', 'c2c', 'offshore', 'unknown']).optional(),
+    hireDate: z.string().trim().min(1).max(30).optional(),
+    payType: z.enum(['hourly', 'salary', 'contract']).optional(),
+    defaultPayRate: z.number().min(0, 'Default pay rate must be 0 or greater').optional(),
+    employmentStatus: z.string().trim().min(1).max(50).optional(),
+    managerId: z.string().min(1).optional(),
   })
   .refine(
     (value) => Boolean(value.name) || (Boolean(value.firstName) && Boolean(value.lastName)),
@@ -37,6 +45,14 @@ export const updateUserSchema = z.object({
   status: z.enum(['active', 'inactive', 'invited']).optional(),
   supervisorId: z.string().nullish(),
   password: z.string().min(8, 'Password must be at least 8 characters').optional(),
+  // Flow Integration Phase 2: optional Resource enrichment (admin-only via PATCH /users/:id).
+  // Deliberately NOT added to updateMyProfileSchema below (self-service stays restricted).
+  resourceType: z.enum(['w2', 'c2c', 'offshore', 'unknown']).optional(),
+  hireDate: z.string().trim().min(1).max(30).optional(),
+  payType: z.enum(['hourly', 'salary', 'contract']).optional(),
+  defaultPayRate: z.number().min(0, 'Default pay rate must be 0 or greater').optional(),
+  employmentStatus: z.string().trim().min(1).max(50).optional(),
+  managerId: z.string().min(1).nullish(),
 })
 
 // QA M4: self-service profile update. A user can change their own name,

@@ -28,6 +28,7 @@ function createMockCollection() {
     })),
     updateOne: vi.fn(),
     updateMany: vi.fn(),
+    countDocuments: vi.fn(),
     findOneAndUpdate: vi.fn(),
   }
 }

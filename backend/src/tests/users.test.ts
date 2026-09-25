@@ -30,13 +30,13 @@ function createMockCollection(items: Record<string, unknown>[] = []) {
       })),
     })),
     findOne: vi.fn(({ _id }: { _id: ObjectId }) => {
-      const found = storedItems.find((item) => item._id.toString() === _id.toString())
+      const found = storedItems.find((item: Record<string, unknown>) => (item._id as ObjectId).toString() === _id.toString())
       return Promise.resolve(found ?? null)
     }),
-    findOneAndUpdate: vi.fn(({ _id }: { _id: ObjectId }, update: Record<string, unknown>) => {
-      const index = storedItems.findIndex((item) => item._id.toString() === _id.toString())
+    findOneAndUpdate: vi.fn(({ _id }: { _id: ObjectId }, update: { $set?: Record<string, unknown> }) => {
+      const index = storedItems.findIndex((item: Record<string, unknown>) => (item._id as ObjectId).toString() === _id.toString())
       if (index === -1) return Promise.resolve(null)
-      const updated = { ...storedItems[index], ...update.$set }
+      const updated: Record<string, unknown> = { ...storedItems[index], ...update.$set }
       storedItems[index] = updated
       return Promise.resolve(updated)
     }),

@@ -19,9 +19,19 @@ export interface User {
   isSupervisor: boolean
   status: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
+  // Flow Integration Phase 2: optional Resource enrichment (docx §2/§9).
+  // Undefined for legacy users; readers must treat missing as 'unknown'/unset.
+  resourceType?: 'w2' | 'c2c' | 'offshore' | 'unknown'
+  hireDate?: string
+  payType?: 'hourly' | 'salary' | 'contract'
+  defaultPayRate?: number
+  employmentStatus?: string
+  managerId?: string | null
   createdAt: Date
   updatedAt: Date
 }
+
+export type ResourceType = 'w2' | 'c2c' | 'offshore' | 'unknown'
 
 export interface CreateUserInput {
   /** Optional when firstName + lastName are provided — the display name is composed. */
@@ -36,6 +46,13 @@ export interface CreateUserInput {
   status: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
   password: string
+  // Flow Integration Phase 2: all optional, validated only when supplied.
+  resourceType?: ResourceType
+  hireDate?: string
+  payType?: 'hourly' | 'salary' | 'contract'
+  defaultPayRate?: number
+  employmentStatus?: string
+  managerId?: string | null
 }
 
 export interface UpdateUserInput {
@@ -50,6 +67,13 @@ export interface UpdateUserInput {
   status?: 'active' | 'inactive' | 'invited'
   supervisorId?: string | null
   password?: string
+  // Flow Integration Phase 2: all optional.
+  resourceType?: ResourceType
+  hireDate?: string
+  payType?: 'hourly' | 'salary' | 'contract'
+  defaultPayRate?: number
+  employmentStatus?: string
+  managerId?: string | null
 }
 
 /** Display name composed from the profile parts (falls back to existing values). */
@@ -71,6 +95,14 @@ function toUser(doc: Record<string, any>): User {
     isSupervisor: doc.isSupervisor,
     status: doc.status,
     supervisorId: doc.supervisorId?.toString(),
+    // Flow Integration Phase 2: passthrough (?? undefined keeps legacy shape
+    // key-absent when unset, so old clients see no change).
+    resourceType: doc.resourceType ?? undefined,
+    hireDate: doc.hireDate ?? undefined,
+    payType: doc.payType ?? undefined,
+    defaultPayRate: doc.defaultPayRate ?? undefined,
+    employmentStatus: doc.employmentStatus ?? undefined,
+    managerId: doc.managerId?.toString() ?? (doc.managerId === null ? null : undefined),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
@@ -184,7 +216,16 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   const passwordHash = await hashPassword(input.password)
   const firstName = input.firstName?.trim()
   const lastName = input.lastName?.trim()
-  const doc = {
+  // Flow Integration Phase 2: managerId validated only when supplied (must be
+  // an active user); legacy callers omit it and are unaffected.
+  let managerObjectId: ObjectId | null = null
+  if (input.managerId !== undefined && input.managerId !== null) {
+    if (!ObjectId.isValid(input.managerId)) throw new Error('Invalid manager')
+    const manager = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(input.managerId) })
+    if (!manager || manager.status !== 'active') throw new Error('Manager not found or inactive')
+    managerObjectId = manager._id as ObjectId
+  }
+  const doc: Record<string, any> = {
     name: composeName(firstName, lastName, input.name),
     firstName: firstName ?? '',
     lastName: lastName ?? '',
@@ -199,6 +240,14 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     createdAt: now,
     updatedAt: now,
   }
+  // Flow Integration Phase 2: persist enrichment only when supplied (keeps
+  // legacy docs key-absent; readers use ?? defaults).
+  if (input.resourceType !== undefined) doc.resourceType = input.resourceType
+  if (input.hireDate !== undefined) doc.hireDate = input.hireDate
+  if (input.payType !== undefined) doc.payType = input.payType
+  if (input.defaultPayRate !== undefined) doc.defaultPayRate = input.defaultPayRate
+  if (input.employmentStatus !== undefined) doc.employmentStatus = input.employmentStatus
+  if (managerObjectId !== null) doc.managerId = managerObjectId
   const result = await db.collection(COLLECTIONS.USERS).insertOne(doc)
   // Return an explicit field map (never spread `doc`) so the password hash is
   // not leaked in the API response.
@@ -214,6 +263,12 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     isSupervisor: doc.isSupervisor,
     status: doc.status,
     supervisorId: doc.supervisorId?.toString(),
+    resourceType: doc.resourceType,
+    hireDate: doc.hireDate,
+    payType: doc.payType,
+    defaultPayRate: doc.defaultPayRate,
+    employmentStatus: doc.employmentStatus,
+    managerId: doc.managerId?.toString(),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
@@ -250,6 +305,23 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   if (input.status !== undefined) update.status = input.status
   if (input.supervisorId !== undefined) update.supervisorId = input.supervisorId ? new ObjectId(input.supervisorId) : null
   if (input.password) update.passwordHash = await hashPassword(input.password)
+  // Flow Integration Phase 2: enrichment, all optional. managerId validated
+  // only when supplied (must be an active user); null clears it.
+  if (input.resourceType !== undefined) update.resourceType = input.resourceType
+  if (input.hireDate !== undefined) update.hireDate = input.hireDate
+  if (input.payType !== undefined) update.payType = input.payType
+  if (input.defaultPayRate !== undefined) update.defaultPayRate = input.defaultPayRate
+  if (input.employmentStatus !== undefined) update.employmentStatus = input.employmentStatus
+  if (input.managerId !== undefined) {
+    if (input.managerId === null) {
+      update.managerId = null
+    } else {
+      if (!ObjectId.isValid(input.managerId)) throw new Error('Invalid manager')
+      const manager = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(input.managerId) })
+      if (!manager || manager.status !== 'active') throw new Error('Manager not found or inactive')
+      update.managerId = manager._id as ObjectId
+    }
+  }
 
   const result = await db.collection(COLLECTIONS.USERS).findOneAndUpdate(
     { _id: new ObjectId(id) },

@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb'
 import { put, del } from '@vercel/blob'
 import { logger } from '../lib/logger.js'
 import { createActivity } from './activity.service.js'
+import { type DocumentKind } from '../schemas/document.schema.js'
 
 export interface Document {
   id: string
@@ -15,6 +16,10 @@ export interface Document {
   url?: string
   uploadedBy: string
   createdAt: Date
+  /** Phase 8 — subject of the onboarding doc; absent on legacy/project docs. */
+  userId?: string
+  /** Phase 8 — onboarding category (i9|w4|offer|other); absent on legacy docs. */
+  kind?: DocumentKind
 }
 
 export interface CreateDocumentInput {
@@ -25,6 +30,27 @@ export interface CreateDocumentInput {
   storageKey: string
   url?: string
   uploadedBy: string
+  userId?: string
+  kind?: DocumentKind
+}
+
+// Flow Integration Phase 8 (§5, item 1): shared mapper for every read path.
+// `userId`/`kind` are optional onboarding metadata — the keys are only present
+// on documents that carry them, so legacy docs keep their exact response shape.
+function toDocument(d: any): Document {
+  return {
+    id: d._id.toString(),
+    projectId: d.projectId.toString(),
+    name: d.name,
+    size: d.size,
+    mimeType: d.mimeType,
+    storageKey: d.storageKey,
+    url: d.url,
+    uploadedBy: d.uploadedBy.toString(),
+    createdAt: d.createdAt,
+    ...(d.userId !== undefined && d.userId !== null ? { userId: d.userId.toString() } : {}),
+    ...(d.kind !== undefined ? { kind: d.kind } : {}),
+  }
 }
 
 const ALLOWED_MIME_TYPES = [
@@ -56,23 +82,13 @@ export function validateFile(mimeType: string, size: number): string | null {
 export async function getDocumentsByProjectId(projectId: string): Promise<Document[]> {
   const db = await getDb()
   const documents = await db.collection(COLLECTIONS.DOCUMENTS).find({ projectId: new ObjectId(projectId) }).sort({ createdAt: -1 }).toArray()
-  return documents.map((d) => ({
-    id: d._id.toString(),
-    projectId: d.projectId.toString(),
-    name: d.name,
-    size: d.size,
-    mimeType: d.mimeType,
-    storageKey: d.storageKey,
-    url: d.url,
-    uploadedBy: d.uploadedBy.toString(),
-    createdAt: d.createdAt,
-  }))
+  return documents.map(toDocument)
 }
 
 export async function createDocument(input: CreateDocumentInput): Promise<Document> {
   const db = await getDb()
   const now = new Date()
-  const doc = {
+  const doc: Record<string, any> = {
     projectId: new ObjectId(input.projectId),
     name: input.name,
     size: input.size,
@@ -81,19 +97,13 @@ export async function createDocument(input: CreateDocumentInput): Promise<Docume
     url: input.url,
     uploadedBy: new ObjectId(input.uploadedBy),
     createdAt: now,
+    // Flow Integration Phase 8 (§5, item 1): only written when supplied —
+    // legacy uploads store no extra keys, keeping stored docs byte-identical.
+    ...(input.userId ? { userId: new ObjectId(input.userId) } : {}),
+    ...(input.kind ? { kind: input.kind } : {}),
   }
   const result = await db.collection(COLLECTIONS.DOCUMENTS).insertOne(doc)
-  const created = {
-    id: result.insertedId.toString(),
-    projectId: input.projectId,
-    name: doc.name,
-    size: doc.size,
-    mimeType: doc.mimeType,
-    storageKey: doc.storageKey,
-    url: doc.url,
-    uploadedBy: input.uploadedBy,
-    createdAt: doc.createdAt,
-  }
+  const created = toDocument({ ...doc, _id: result.insertedId })
 
   await createActivity({
     userId: input.uploadedBy,
@@ -130,17 +140,7 @@ export async function getDocumentById(id: string): Promise<Document | null> {
   const db = await getDb()
   const document = await db.collection(COLLECTIONS.DOCUMENTS).findOne({ _id: new ObjectId(id) })
   if (!document) return null
-  return {
-    id: document._id.toString(),
-    projectId: document.projectId.toString(),
-    name: document.name,
-    size: document.size,
-    mimeType: document.mimeType,
-    storageKey: document.storageKey,
-    url: document.url,
-    uploadedBy: document.uploadedBy.toString(),
-    createdAt: document.createdAt,
-  }
+  return toDocument(document)
 }
 
 // Store-level listing (QA C2): the app's document store needs one fetch that
@@ -150,17 +150,7 @@ export async function getDocumentById(id: string): Promise<Document | null> {
 export async function getAllDocuments(): Promise<Document[]> {
   const db = await getDb()
   const documents = await db.collection(COLLECTIONS.DOCUMENTS).find({}).sort({ createdAt: -1 }).toArray()
-  return documents.map((d) => ({
-    id: d._id.toString(),
-    projectId: d.projectId.toString(),
-    name: d.name,
-    size: d.size,
-    mimeType: d.mimeType,
-    storageKey: d.storageKey,
-    url: d.url,
-    uploadedBy: d.uploadedBy.toString(),
-    createdAt: d.createdAt,
-  }))
+  return documents.map(toDocument)
 }
 
 export async function getDocumentsByProjectIds(projectIds: string[]): Promise<Document[]> {
@@ -171,15 +161,17 @@ export async function getDocumentsByProjectIds(projectIds: string[]): Promise<Do
     .find({ projectId: { $in: projectIds.map((id) => new ObjectId(id)) } })
     .sort({ createdAt: -1 })
     .toArray()
-  return documents.map((d) => ({
-    id: d._id.toString(),
-    projectId: d.projectId.toString(),
-    name: d.name,
-    size: d.size,
-    mimeType: d.mimeType,
-    storageKey: d.storageKey,
-    url: d.url,
-    uploadedBy: d.uploadedBy.toString(),
-    createdAt: d.createdAt,
-  }))
+  return documents.map(toDocument)
+}
+
+// Flow Integration Phase 8 (§5, item 1) — onboarding checklist listing: all
+// documents tagged with a subject `userId`, newest first, optionally narrowed
+// to one kind. Backed by the additive `documents.userId` index (ensureIndexes);
+// untagged legacy docs simply never match, which keeps old responses unchanged.
+export async function getDocumentsByUserId(userId: string, kind?: DocumentKind): Promise<Document[]> {
+  const db = await getDb()
+  const query: Record<string, unknown> = { userId: new ObjectId(userId) }
+  if (kind) query.kind = kind
+  const documents = await db.collection(COLLECTIONS.DOCUMENTS).find(query).sort({ createdAt: -1 }).toArray()
+  return documents.map(toDocument)
 }

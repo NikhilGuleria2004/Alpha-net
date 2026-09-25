@@ -18,6 +18,32 @@ import { getInvoices as fetchInvoices, createInvoice as createInvoiceService, up
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
+// QA C1 sub-item: the initial load is keyed by section NAME. The previous
+// positional version read documents from the activities slot and notifications
+// from the documents slot (the real notifications result was never consumed at
+// all), and it counted failures out of a hardcoded 6 while seven sections were
+// actually being loaded.
+type WorkspaceSectionKey = 'projects' | 'users' | 'timesheets' | 'invoices' | 'activities' | 'documents' | 'notifications'
+
+interface WorkspaceSection {
+  key: WorkspaceSectionKey
+  /** Human label used when reporting partial loads. */
+  label: string
+  run: () => Promise<unknown>
+}
+
+// apiClient throws plain Errors that carry the backend's error code as
+// "[CODE] message" (see services/apiClient.ts). A 403 is a permission decision,
+// not a load failure: GET /invoices is admin-or-project-scoped, so every plain
+// employee legitimately gets [FORBIDDEN] there. Reporting that as a failure
+// produced an alarming "try refreshing the page" toast that no refresh could
+// ever fix.
+const PERMISSION_DENIED = /^\[FORBIDDEN\]/
+
+function isPermissionDenial(reason: unknown): boolean {
+  return reason instanceof Error && PERMISSION_DENIED.test(reason.message)
+}
+
 interface AppDataContextValue {
   projects: Project[]
   users: User[]
@@ -96,30 +122,58 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // fetch must never discard the entire app's data. Previously the
         // admin-only user directory rejected the whole load for every
         // non-admin, leaving all dashboards silently empty.
-        const results = await Promise.allSettled([
-          fetchProjects(),
-          fetchUsers(),
-          fetchTimesheets(),
-          fetchInvoices(),
-          fetchActivities(),
-          fetchDocuments(),
-          fetchNotifications(),
-        ])
+        const sections: WorkspaceSection[] = [
+          { key: 'projects', label: 'projects', run: () => fetchProjects() },
+          { key: 'users', label: 'users', run: () => fetchUsers() },
+          { key: 'timesheets', label: 'timesheets', run: () => fetchTimesheets() },
+          { key: 'invoices', label: 'invoices', run: () => fetchInvoices() },
+          { key: 'activities', label: 'activities', run: () => fetchActivities() },
+          { key: 'documents', label: 'documents', run: () => fetchDocuments() },
+          { key: 'notifications', label: 'notifications', run: () => fetchNotifications() },
+        ]
+        const settled = await Promise.allSettled(sections.map((section) => section.run()))
+
+        // Look each result up by key, so a settled value can never be written
+        // into another section's state (QA C1 sub-item).
+        const byKey = new Map<WorkspaceSectionKey, PromiseSettledResult<unknown>>()
+        sections.forEach((section, index) => byKey.set(section.key, settled[index]))
+        const value = <T,>(key: WorkspaceSectionKey, fallback: T): T => {
+          const result = byKey.get(key)
+          return result?.status === 'fulfilled' ? (result.value as T) : fallback
+        }
+
         if (!cancelled) {
-          const value = <T,>(index: number, fallback: T): T =>
-            results[index].status === 'fulfilled' ? (results[index] as PromiseFulfilledResult<T>).value : fallback
-          setProjects(value(0, [] as Project[]))
-          setUsers(value(1, [] as User[]))
-          setTimesheets(value(2, [] as Timesheet[]))
-          setInvoices(value(3, [] as Invoice[]))
-          setActivities(value(4, [] as Activity[]))
-          setDocuments(value(4, [] as Document[]))
-          setNotifications(value(5, [] as Notification[]))
+          setProjects(value('projects', [] as Project[]))
+          setUsers(value('users', [] as User[]))
+          setTimesheets(value('timesheets', [] as Timesheet[]))
+          setInvoices(value('invoices', [] as Invoice[]))
+          setActivities(value('activities', [] as Activity[]))
+          setDocuments(value('documents', [] as Document[]))
+          setNotifications(value('notifications', [] as Notification[]))
+
           // Surface partial-load failures (QA C1 sub-item): a rejected fetch
-          // must be visible, not silently swallowed into empty dashboards.
-          const failedCount = results.filter((r) => r.status === 'rejected').length
-          if (failedCount > 0) {
-            addToast('error', `Some workspace data failed to load (${failedCount} of 6). Try refreshing the page.`)
+          // must be visible, not silently swallowed into empty dashboards —
+          // and the count now covers every section instead of a hardcoded 6,
+          // naming the sections so the message is actionable.
+          const failures: Array<{ label: string; reason: unknown }> = []
+          settled.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              failures.push({ label: sections[index].label, reason: result.reason })
+            }
+          })
+          if (failures.length > 0) {
+            const denied = failures.filter((failure) => isPermissionDenial(failure.reason))
+            const labels = failures.map((failure) => failure.label).join(', ')
+            if (denied.length === failures.length) {
+              // Every rejection was a 403: this role simply cannot read those
+              // sections. Say so plainly; there is nothing to retry.
+              addToast('info', `Not available for your role: ${labels}.`)
+            } else {
+              addToast(
+                'error',
+                `Some workspace data failed to load (${failures.length} of ${sections.length}: ${labels}). Try refreshing the page.`,
+              )
+            }
           }
         }
       } finally {

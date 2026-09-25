@@ -21,11 +21,18 @@ const timesheetEntrySchema = z.object({
   hours: hoursSchema,
 })
 
+// Flow Integration Phase 4 (see /flowIntegration.md §5): `projectId` becomes
+// optional ONLY because it can be inferred from `assignmentId`; when neither is
+// sent the service still answers "Project ID is required" (same 400 as before).
+// `assignmentId`/`adjustmentOf` are new optional keys — legacy payloads parse
+// exactly as before.
 export const createTimesheetSchema = z.object({
-  projectId: z.string().min(1, 'Project ID is required'),
+  projectId: z.string().min(1, 'Project ID is required').optional(),
   weekStart: z.string().min(1, 'Week start is required'),
   entries: z.array(timesheetEntrySchema).min(1, 'At least one entry is required'),
   notes: z.string().optional(),
+  assignmentId: z.string().min(1, 'Assignment ID is required').optional(),
+  adjustmentOf: z.string().min(1, 'Adjustment reference is required').optional(),
 })
 
 export const updateTimesheetSchema = z.object({
@@ -33,6 +40,9 @@ export const updateTimesheetSchema = z.object({
   weekStart: z.string().min(1, 'Week start is required').optional(),
   entries: z.array(timesheetEntrySchema).min(1, 'At least one entry is required').optional(),
   notes: z.string().optional(),
+  // Accepted for validation only: the service rejects any change to it
+  // (assignmentId is immutable after create, like weekStart).
+  assignmentId: z.string().min(1, 'Assignment ID is required').optional(),
 })
 
 export const submitTimesheetSchema = z.object({})

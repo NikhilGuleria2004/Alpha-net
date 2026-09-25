@@ -14,6 +14,9 @@ export interface Project {
   name: string
   sowNumber: string
   client: string
+  // Flow Integration Phase 1: optional FK to the normalized clients collection.
+  // Undefined for legacy projects until the Phase 1 backfill runs.
+  clientId?: string
   description: string
   startDate: string
   endDate: string
@@ -23,6 +26,10 @@ export interface Project {
   supervisorId: string
   teamMemberIds: string[]
   hourlyRate: number | null
+  // Flow Integration Phase 8 (§5, item 2): optional PO/SOW cap input. Only the
+  // cap is stored — poConsumed/poRemaining are computed per request from live
+  // invoice totals (never persisted), so the balance cannot drift.
+  poCap: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -31,6 +38,8 @@ export interface CreateProjectInput {
   name: string
   sowNumber: string
   client: string
+  // Flow Integration Phase 1: optional FK; resolved from `client` when omitted.
+  clientId?: string
   description: string
   startDate: string
   endDate: string
@@ -40,12 +49,15 @@ export interface CreateProjectInput {
   supervisorId: string
   teamMemberIds: string[]
   hourlyRate: number | null
+  poCap?: number
 }
 
 export interface UpdateProjectInput {
   name?: string
   sowNumber?: string
   client?: string
+  // Flow Integration Phase 1: optional FK to the normalized clients collection.
+  clientId?: string
   description?: string
   startDate?: string
   endDate?: string
@@ -55,6 +67,7 @@ export interface UpdateProjectInput {
   supervisorId?: string
   teamMemberIds?: string[]
   hourlyRate?: number | null
+  poCap?: number
 }
 
 function toProject(doc: any): Project {
@@ -63,6 +76,8 @@ function toProject(doc: any): Project {
     name: doc.name,
     sowNumber: doc.sowNumber,
     client: doc.client,
+    // Flow Integration Phase 1: undefined for legacy docs until backfilled.
+    clientId: doc.clientId?.toString(),
     description: doc.description,
     startDate: doc.startDate,
     endDate: doc.endDate,
@@ -72,9 +87,49 @@ function toProject(doc: any): Project {
     supervisorId: doc.supervisorId?.toString(),
     teamMemberIds: doc.teamMemberIds?.map((id: any) => id.toString()) ?? [],
     hourlyRate: doc.hourlyRate ?? null,
+    poCap: doc.poCap ?? null,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   }
+}
+
+// Flow Integration Phase 1: resolve the normalized clientId for a project.
+// Priority: explicit clientId (validated) → existing doc clientId (kept) →
+// upsert from the legacy `client` string. Never throws for legacy callers:
+// when resolution fails, returns undefined and logs a warning instead.
+async function resolveProjectClientId(
+  db: Awaited<ReturnType<typeof getDb>>,
+  opts: { explicitClientId?: string; existingClientId?: unknown; clientName?: string },
+): Promise<ObjectId | undefined> {
+  if (opts.explicitClientId !== undefined) {
+    if (!ObjectId.isValid(opts.explicitClientId)) {
+      logger.warn({ explicitClientId: opts.explicitClientId }, 'invalid clientId supplied; ignoring')
+      return undefined
+    }
+    const client = await db.collection(COLLECTIONS.CLIENTS).findOne({ _id: new ObjectId(opts.explicitClientId) })
+    if (client) return client._id as ObjectId
+    logger.warn({ explicitClientId: opts.explicitClientId }, 'unknown clientId supplied; falling back to client name')
+  }
+  if (opts.existingClientId) {
+    try {
+      return opts.existingClientId instanceof ObjectId
+        ? opts.existingClientId
+        : new ObjectId(String(opts.existingClientId))
+    } catch {
+      // Fall through to name-based resolution.
+    }
+  }
+  if (opts.clientName && opts.clientName.trim()) {
+    try {
+      const { findOrCreateClient } = await import('./client.service.js')
+      const client = await findOrCreateClient({ name: opts.clientName.trim() })
+      return new ObjectId(client.id)
+    } catch (err) {
+      logger.warn({ err }, 'client auto-resolution failed; leaving clientId unset')
+      return undefined
+    }
+  }
+  return undefined
 }
 
 export async function getProjects(filters?: { status?: ProjectStatus; managerId?: string; supervisorId?: string; search?: string }): Promise<Project[]> {
@@ -108,10 +163,36 @@ export async function getProjectById(id: string): Promise<Project | null> {
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const db = await getDb()
   const now = new Date()
-  const doc = {
+  // Flow Integration Phase 1: resolve clientId (explicit → upsert from name).
+  // Legacy callers omit clientId; resolution fills it without rejecting them.
+  // If `client` was omitted but a valid `clientId` given, sync the legacy
+  // string from the client record. Both given + mismatch → keep explicit
+  // `client` (legacy contract wins) and warn.
+  let clientName = input.client
+  // Flow Integration Phase 1: look up the explicit client when one is given.
+  // Invalid ObjectIds are treated as unknown (fall back to name resolution).
+  let explicitClient: any = null
+  if (input.clientId) {
+    try {
+      explicitClient = input.clientId && ObjectId.isValid(input.clientId)
+        ? await db.collection(COLLECTIONS.CLIENTS).findOne({ _id: new ObjectId(input.clientId) })
+        : null
+    } catch {
+      explicitClient = null
+    }
+  }
+  if (explicitClient && (!clientName || clientName !== explicitClient.name)) {
+    if (!clientName) clientName = explicitClient.name as string
+    else logger.warn({ clientName, clientId: input.clientId }, 'project client/clientId mismatch; keeping explicit client string')
+  }
+  const clientId = await resolveProjectClientId(db, {
+    explicitClientId: input.clientId,
+    clientName,
+  })
+  const doc: Record<string, any> = {
     name: input.name,
     sowNumber: input.sowNumber,
-    client: input.client,
+    client: clientName,
     description: input.description,
     startDate: input.startDate,
     endDate: input.endDate,
@@ -124,6 +205,8 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     createdAt: now,
     updatedAt: now,
   }
+  if (clientId) doc.clientId = clientId
+  if (input.poCap !== undefined) doc.poCap = input.poCap
   const result = await db.collection(COLLECTIONS.PROJECTS).insertOne(doc)
   const project = toProject({ ...doc, _id: result.insertedId })
 
@@ -142,6 +225,19 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
   if (input.name !== undefined) update.name = input.name
   if (input.sowNumber !== undefined) update.sowNumber = input.sowNumber
   if (input.client !== undefined) update.client = input.client
+  // Flow Integration Phase 1: clientId handling. Explicit valid clientId wins;
+  // a client rename without explicit clientId resolves via the new name while
+  // preserving the old doc's clientId only when the name is unchanged.
+  if (input.clientId !== undefined || input.client !== undefined) {
+    const existing = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(id) })
+    if (!existing) return null
+    const resolved = await resolveProjectClientId(db, {
+      explicitClientId: input.clientId,
+      existingClientId: input.client === undefined ? existing.clientId : undefined,
+      clientName: input.client ?? existing.client,
+    })
+    if (resolved) update.clientId = resolved
+  }
   if (input.description !== undefined) update.description = input.description
   if (input.startDate !== undefined) update.startDate = input.startDate
   if (input.endDate !== undefined) update.endDate = input.endDate
@@ -150,6 +246,7 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
   if (input.managerId !== undefined) update.managerId = new ObjectId(input.managerId)
   if (input.supervisorId !== undefined) update.supervisorId = new ObjectId(input.supervisorId)
   if (input.hourlyRate !== undefined) update.hourlyRate = input.hourlyRate
+  if (input.poCap !== undefined) update.poCap = input.poCap
   if (input.teamMemberIds !== undefined) update.teamMemberIds = input.teamMemberIds.map((id) => new ObjectId(id))
 
   const result = await db.collection(COLLECTIONS.PROJECTS).findOneAndUpdate(

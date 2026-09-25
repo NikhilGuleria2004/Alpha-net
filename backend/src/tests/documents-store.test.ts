@@ -12,14 +12,22 @@ vi.mock("../lib/jwt.js")
 vi.mock("@vercel/blob")
 vi.mock("../services/project.service.js", () => ({ getProjectsForUser: vi.fn() }))
 import { getProjectsForUser } from "../services/project.service.js"
+import type { Project } from "../services/project.service.js"
 
-function createMockCollection(docs = []) {
+type MockDocument = Record<string, any> & { _id: ObjectId }
+type UserRole = 'user' | 'supervisor' | 'admin'
+
+function seedItems<T>(seed: T[]): T[] { return [...seed] }
+
+function createMockCollection<T extends Record<string, any>>(seed: T[] = []) {
+  const docs = seedItems(seed)
   return {
-    find: vi.fn((filter: any) => {
-      let filtered = docs
+    docs,
+    find: vi.fn((filter: Record<string, any> = {}) => {
+      let filtered: T[] = docs
       if (filter?.projectId?.$in) {
-        const ids = filter.projectId.$in.map((id: any) => id.toString())
-        filtered = docs.filter((d: any) => ids.includes(d.projectId.toString()))
+        const ids = (filter.projectId.$in as unknown[]).map((id) => String(id))
+        filtered = docs.filter((d) => ids.includes(String(d.projectId)))
       }
       const chain = {
         sort: vi.fn(() => chain),
@@ -27,20 +35,26 @@ function createMockCollection(docs = []) {
       }
       return chain
     }),
-    findOne: vi.fn(), insertOne: vi.fn(), deleteOne: vi.fn(),
+    findOne: vi.fn(),
+    insertOne: vi.fn(),
+    deleteOne: vi.fn(),
   }
 }
 
-let mockDb, usersCollection, projectsCollection, documentsCollection
-function setupMocks(docs = []) {
+type MockCollection = ReturnType<typeof createMockCollection>
+type DocumentResponse = { name: string }
+let usersCollection: MockCollection
+let projectsCollection: MockCollection
+let documentsCollection: ReturnType<typeof createMockCollection<MockDocument>>
+function setupMocks(docs: MockDocument[] = []) {
   vi.mocked(getDb).mockReset(); vi.mocked(verifyAccessToken).mockReset(); vi.mocked(getProjectsForUser).mockReset()
   usersCollection = createMockCollection(); projectsCollection = createMockCollection(); documentsCollection = createMockCollection(docs)
-  mockDb = { collection: vi.fn((name) => { if (name === COLLECTIONS.USERS) return usersCollection; if (name === COLLECTIONS.PROJECTS) return projectsCollection; if (name === COLLECTIONS.DOCUMENTS) return documentsCollection; return createMockCollection() }) }
-  vi.mocked(getDb).mockResolvedValue(mockDb)
+  const db = { collection: vi.fn((name: string) => { if (name === COLLECTIONS.USERS) return usersCollection; if (name === COLLECTIONS.PROJECTS) return projectsCollection; if (name === COLLECTIONS.DOCUMENTS) return documentsCollection; return createMockCollection() }) }
+  vi.mocked(getDb).mockResolvedValue(db as never)
 }
 
-function mockUser(userId, role, isSupervisor) {
-  vi.mocked(verifyAccessToken).mockResolvedValue({ userId, role, isSupervisor, exp: 9999999999 })
+function mockUser(userId: string, role: UserRole, isSupervisor: boolean) {
+  vi.mocked(verifyAccessToken).mockResolvedValue({ userId, role, isSupervisor, exp: 9999999999 } as never)
   vi.mocked(usersCollection.findOne).mockResolvedValue({ _id: new ObjectId(userId), email: `u@e.com`, name: `U`, employeeId: `E`, department: "Eng", role, isSupervisor, status: "active" })
 }
 
@@ -60,7 +74,7 @@ describe('Documents store listing (QA C2)', () => {
     const res = await request(createApp()).get('/api/v1/documents').set('Authorization', 'Bearer admin-token')
     expect(res.status).toBe(200)
     expect(res.body.documents).toHaveLength(2)
-    expect(res.body.documents.map((d) => d.name).sort()).toEqual(['archive.zip', 'org-wide.pdf'])
+    expect((res.body.documents as DocumentResponse[]).map((d) => d.name).sort()).toEqual(['archive.zip', 'org-wide.pdf'])
   })
 
   it('non-admin sees only documents for projects they can access', async () => {
@@ -76,15 +90,15 @@ describe('Documents store listing (QA C2)', () => {
     ]
     setupMocks(docs)
     vi.mocked(getProjectsForUser).mockResolvedValue([
-      { id: projA, name: 'Alpha', managerId: 'm1', supervisorId: 's1', teamMemberIds: [userId] },
-      { id: projB, name: 'Beta', managerId: 'm2', supervisorId: 's2', teamMemberIds: [userId] },
+      { id: projA, name: 'Alpha', managerId: 'm1', supervisorId: 's1', teamMemberIds: [userId] } as Project,
+      { id: projB, name: 'Beta', managerId: 'm2', supervisorId: 's2', teamMemberIds: [userId] } as Project,
     ])
     mockUser(userId, 'user', false)
     const res = await request(createApp()).get('/api/v1/documents').set('Authorization', 'Bearer user-token')
     expect(res.status).toBe(200)
     expect(res.body.documents).toHaveLength(3)
-    expect(res.body.documents.map((d) => d.name).sort()).toEqual(['alpha-budget.xlsx', 'alpha-plan.pdf', 'beta-plan.pdf'])
-    expect(res.body.documents.find((d) => d.name === 'private-plan.pdf')).toBeUndefined()
+    expect((res.body.documents as DocumentResponse[]).map((d) => d.name).sort()).toEqual(['alpha-budget.xlsx', 'alpha-plan.pdf', 'beta-plan.pdf'])
+    expect((res.body.documents as DocumentResponse[]).find((d) => d.name === 'private-plan.pdf')).toBeUndefined()
   })
 
   it('returns an empty list when the requester has no accessible projects', async () => {

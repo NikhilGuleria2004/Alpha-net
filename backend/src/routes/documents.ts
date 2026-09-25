@@ -23,9 +23,10 @@ export function documentsRoutes() {
 }
 
 /**
- * Top-level store listing (QA C2): GET /api/v1/documents returns every document
- * visible to the requester. Separate from the nested per-project router above
- * (which requires a :projectId param and per-project access checks).
+ * Top-level store listing (QA C2 + Phase 8): GET /api/v1/documents returns every
+ * document visible to the requester, optionally narrowed by `?userId=` (onboarding
+ * subject) and `?kind=` (i9|w4|offer|other). Separate from the nested per-project
+ * router above (which requires a :projectId param and per-project access checks).
  */
 export function myDocumentsRoutes() {
   const router = Router()

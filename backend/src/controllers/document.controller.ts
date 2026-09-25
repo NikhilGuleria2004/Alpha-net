@@ -1,5 +1,6 @@
 import { type Request, type Response } from 'express'
-import { getDocumentsByProjectId, createDocument, deleteDocument, validateFile, getDocumentById, getAllDocuments, getDocumentsByProjectIds } from '../services/document.service.js'
+import { getDocumentsByProjectId, createDocument, deleteDocument, validateFile, getDocumentById, getAllDocuments, getDocumentsByProjectIds, getDocumentsByUserId, type Document } from '../services/document.service.js'
+import { documentListQuerySchema, uploadDocumentMetaSchema, type DocumentListQuery, type DocumentKind } from '../schemas/document.schema.js'
 import { getProjectsForUser } from '../services/project.service.js'
 import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 import { requireProjectAccess } from '../middleware/access.js'
@@ -16,19 +17,39 @@ export async function listDocuments(req: AuthenticatedRequest, res: Response) {
 }
 
 /**
- * Store-level listing (QA C2): one fetch that returns every document the
- * requester can see — admins get all, everyone else gets documents for the
- * projects already visible to them (same visibility the /projects endpoint
- * uses). This is what populates the app's document store on login.
+ * Store-level listing (QA C2 + Phase 8 §5 item 1): one fetch that returns every
+ * document the requester can see — admins get all, everyone else gets documents
+ * for the projects already visible to them (same visibility the /projects
+ * endpoint uses). This is what populates the app's document store on login.
+ *
+ * Flow Integration Phase 8 adds optional narrowing filters for the onboarding
+ * checklist: `?userId=` (documents tagged to that subject) and `?kind=`
+ * (i9|w4|offer|other). Filters never widen access — for non-admins the userId
+ * filter intersects with (rather than replaces) project visibility.
  */
 export async function listMyDocuments(req: AuthenticatedRequest, res: Response) {
+  let query: DocumentListQuery
+  try {
+    query = documentListQuerySchema.parse(req.query)
+  } catch (err) {
+    // Bad filter input is a client error (400), not a server failure.
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: err instanceof Error ? err.message : 'Invalid query' },
+    })
+  }
   try {
     const { userId, role, isSupervisor } = req.user!
+    let documents: Document[]
     if (role === 'admin') {
-      return res.json({ documents: await getAllDocuments() })
+      // ?userId= narrows via the Phase 8 documents.userId index; without it the
+      // legacy org-wide listing (getAllDocuments) is byte-identical to before.
+      documents = query.userId ? await getDocumentsByUserId(query.userId) : await getAllDocuments()
+    } else {
+      const projects = await getProjectsForUser(userId, role, isSupervisor)
+      documents = await getDocumentsByProjectIds(projects.map((p) => p.id))
+      if (query.userId) documents = documents.filter((doc) => doc.userId === query.userId)
     }
-    const projects = await getProjectsForUser(userId, role, isSupervisor)
-    const documents = await getDocumentsByProjectIds(projects.map((p) => p.id))
+    if (query.kind) documents = documents.filter((doc) => doc.kind === query.kind)
     return res.json({ documents })
   } catch (err) {
     logger.error({ err }, 'failed to list accessible documents')
@@ -53,6 +74,22 @@ export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Project not found' } })
     }
 
+    // Flow Integration Phase 8 (§5, item 1): optional multipart metadata for
+    // the onboarding checklist — `kind` (i9|w4|offer|other) and `userId`
+    // (whose onboarding this document belongs to). Both are omitted by legacy
+    // form posts (absent/empty → undefined), which therefore still store a
+    // byte-identical document; invalid values → 400 before any blob write.
+    let meta: { kind?: DocumentKind; userId?: string }
+    try {
+      meta = uploadDocumentMetaSchema.parse({
+        kind: typeof req.body?.kind === 'string' && req.body.kind !== '' ? req.body.kind : undefined,
+        userId: typeof req.body?.userId === 'string' && req.body.userId !== '' ? req.body.userId : undefined,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid upload metadata'
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+    }
+
     const timestamp = Date.now()
     const sanitized = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
     const storageKey = `documents/${req.params.projectId}/${timestamp}-${sanitized}`
@@ -70,6 +107,8 @@ export async function uploadDocument(req: AuthenticatedRequest, res: Response) {
       storageKey: blob.pathname,
       url: blob.url,
       uploadedBy: req.user!.userId,
+      kind: meta.kind,
+      userId: meta.userId,
     })
 
     await createActivity({

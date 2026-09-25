@@ -18,7 +18,7 @@ describe('prove getDb mock identity with createApp', () => {
     vi.mocked(projectsCol.find).mockReset()
     vi.mocked(activitiesCol.find).mockReset()
     vi.mocked(db.collection).mockClear()
-    vi.mocked(getDb).mockResolvedValue(db)
+    vi.mocked(getDb).mockResolvedValue(db as never)
   })
   it('getDb mock returns db in test AND in controller via createApp', async () => {
     vi.mocked(verifyAccessToken).mockResolvedValue({ userId: 'u1', role: 'user', isSupervisor: false, exp: 9999999999 })

@@ -136,11 +136,13 @@ function generateOtp(): string {
   return crypto.randomInt(0, max).toString().padStart(OTP_LENGTH, '0')
 }
 
-function buildAuthTokens(user: { _id: ObjectId; role: string; isSupervisor: boolean }) {
+function buildAuthTokens(user: { _id: ObjectId; role?: unknown; isSupervisor?: unknown }) {
   return {
     userId: user._id.toString(),
-    role: user.role,
-    isSupervisor: user.isSupervisor,
+    // The OTP path hands us a raw Mongo document (WithId<Document>); the
+    // casts keep the token contract identical — values pass through as-is.
+    role: user.role as string,
+    isSupervisor: user.isSupervisor as boolean,
   }
 }
 

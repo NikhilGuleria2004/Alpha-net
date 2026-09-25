@@ -12,3 +12,8 @@ export { settingsRoutes } from './settings.js'
 export { aiRoutes } from './ai.js'
 export { invoicesRoutes } from './invoices.js'
 export { invitesRoutes } from './invites.js'
+export { clientsRoutes } from './clients.js'
+// Flow Integration Phase 3 — assignments domain.
+export { assignmentsRoutes } from './assignments.js'
+// Flow Integration Phase 6 — payroll domain.
+export { payrollsRoutes } from './payrolls.js'

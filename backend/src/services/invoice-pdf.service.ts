@@ -392,6 +392,97 @@ export function buildInvoicePdf(
     }
 
     ty = totalRow('Professional services', usd.format(invoice.fixedCost), ty)
+
+    // ─── Phase 5: per-timesheet lines (rendered ONLY when the invoice has
+    // them — legacy invoices keep the exact pre-Phase-5 layout). Rows are
+    // capped so a large invoice can never push totals/certification off the
+    // page; the full lineage always lives in invoice.lines on the API. ─────
+    if (invoice.lines && invoice.lines.length > 0) {
+      const MAX_LINE_ROWS = 30
+      const shown = invoice.lines.slice(0, MAX_LINE_ROWS)
+      const hidden = invoice.lines.length - shown.length
+
+      let ly = ty + 14
+      doc.fillColor(FAINT).font(monoBold).fontSize(6.5)
+      doc.text(
+        `${invoice.lines.length} TIMESHEET LINE${invoice.lines.length === 1 ? '' : 'S'}`,
+        M,
+        ly,
+        { characterSpacing: 0.8, lineBreak: false },
+      )
+      ly += 12
+
+      const amountW = 72
+      const rateW = 62
+      const hoursW = 52
+      const weekW = 74
+      const resourceX = tableLeft + weekW + 6
+      const resourceW = tableRight - resourceX - amountW - rateW - hoursW - 18
+      const hoursX = resourceX + resourceW + 6
+      const rateX = hoursX + hoursW + 6
+      const amountX = tableRight - amountW
+      const rowH = 13
+
+      // Header row
+      doc.rect(tableLeft, ly, tableRight - tableLeft, rowH).fill(HEADER_BG)
+      doc.fillColor(INK).font(monoBold).fontSize(6.5)
+      doc.text('WEEK', tableLeft + 5, ly + 3.5, { width: weekW - 5, lineBreak: false })
+      doc.text('RESOURCE', resourceX, ly + 3.5, { width: resourceW, lineBreak: false })
+      doc.text('HOURS', hoursX, ly + 3.5, { width: hoursW, align: 'right', lineBreak: false })
+      doc.text('RATE', rateX, ly + 3.5, { width: rateW, align: 'right', lineBreak: false })
+      doc.text('AMOUNT', amountX, ly + 3.5, { width: amountW, align: 'right', lineBreak: false })
+      ly += rowH
+
+      shown.forEach((line, i) => {
+        if (i % 2 === 1) {
+          doc.rect(tableLeft, ly, tableRight - tableLeft, rowH).fill(ZEBRA)
+        }
+        doc.fillColor(INK).font(mono).fontSize(6.5)
+        doc.text(line.weekStart, tableLeft + 5, ly + 3.5, { width: weekW - 5, lineBreak: false })
+        const label = fitText(
+          doc,
+          line.resourceName ?? line.resourceId ?? `TS-${line.timesheetId.slice(-6)}`,
+          resourceW,
+        )
+        doc.text(label, resourceX, ly + 3.5, { width: resourceW, lineBreak: false })
+        doc.text(formatHours(line.hours), hoursX, ly + 3.5, {
+          width: hoursW,
+          align: 'right',
+          lineBreak: false,
+        })
+        doc.text(usd.format(line.rate), rateX, ly + 3.5, {
+          width: rateW,
+          align: 'right',
+          lineBreak: false,
+        })
+        doc.text(usd.format(line.amount), amountX, ly + 3.5, {
+          width: amountW,
+          align: 'right',
+          lineBreak: false,
+        })
+        ly += rowH
+      })
+
+      if (hidden > 0) {
+        doc.fillColor(FAINT).font(mono).fontSize(6.5)
+        doc.text(
+          `… ${hidden} additional line${hidden === 1 ? '' : 's'} — full lineage available via the invoice record`,
+          tableLeft + 5,
+          ly + 3.5,
+          { lineBreak: false },
+        )
+        ly += rowH
+      }
+
+      doc
+        .lineWidth(0.5)
+        .strokeColor(FAINT)
+        .moveTo(tableLeft, ly)
+        .lineTo(tableRight, ly)
+        .stroke()
+      ty = ly + 6
+    }
+
     if (invoice.variableCosts.length > 0) {
       ty = totalRow('Variable costs', usd.format(invoice.variableCostTotal), ty)
     }
@@ -458,6 +549,48 @@ export function buildInvoicePdf(
           .font(monoBold)
           .fontSize(44)
           .text('DRAFT — NOT FOR PAYMENT', W / 2 - 260, H / 2 - 20, {
+            width: 520,
+            align: 'center',
+            lineBreak: false,
+          })
+        doc.restore()
+      } else if (invoice.status === 'void') {
+        // Phase 5: a voided invoice is dead paper — stamp it unmistakably.
+        doc
+          .save()
+          .rotate(35, { origin: [W / 2, H / 2] })
+          .lineWidth(3)
+          .strokeColor(INK)
+          .strokeOpacity(0.14)
+          .rect(W / 2 - 200, H / 2 - 46, 400, 92)
+          .stroke()
+        doc
+          .fillColor(INK)
+          .fillOpacity(0.12)
+          .font(monoBold)
+          .fontSize(52)
+          .text('VOID', W / 2 - 260, H / 2 - 32, {
+            width: 520,
+            align: 'center',
+            lineBreak: false,
+          })
+        doc.restore()
+      } else if (invoice.status === 'paid') {
+        // Phase 5: payment received — a light PAID stamp, no alarm.
+        doc
+          .save()
+          .rotate(35, { origin: [W / 2, H / 2] })
+          .lineWidth(2.5)
+          .strokeColor(INK)
+          .strokeOpacity(0.1)
+          .rect(W / 2 - 170, H / 2 - 40, 340, 80)
+          .stroke()
+        doc
+          .fillColor(INK)
+          .fillOpacity(0.09)
+          .font(monoBold)
+          .fontSize(44)
+          .text('PAID', W / 2 - 260, H / 2 - 20, {
             width: 520,
             align: 'center',
             lineBreak: false,

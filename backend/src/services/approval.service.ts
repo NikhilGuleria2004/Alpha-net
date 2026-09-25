@@ -1,7 +1,7 @@
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
-import { getTimesheetById } from './timesheet.service.js'
+import { getTimesheetById, timesheetFlowKeys } from './timesheet.service.js'
 import { getUserById } from './user.service.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
@@ -45,6 +45,7 @@ export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet
       status: t.status,
       submittedAt: t.submittedAt,
       review: t.review,
+      ...timesheetFlowKeys(t),
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
     }))
@@ -63,6 +64,7 @@ export async function getApprovals(filters?: ApprovalFilters): Promise<Timesheet
     status: t.status,
     submittedAt: t.submittedAt,
     review: t.review,
+    ...timesheetFlowKeys(t),
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   }))
@@ -93,7 +95,9 @@ export async function approveTimesheet(timesheetId: string, reviewerId: string):
 
   const result = await db.collection(COLLECTIONS.TIMESHEETS).findOneAndUpdate(
     { _id: new ObjectId(timesheetId) },
-    { $set: { status: 'approved', review, updatedAt: now } },
+    // Phase 4: approval locks the timesheet in the SAME atomic update, so a
+    // timesheet can never be approved-but-editable.
+    { $set: { status: 'approved', review, isLocked: true, lockedAt: now, updatedAt: now } },
     { returnDocument: 'after' }
   )
   if (!result) return null
@@ -131,6 +135,7 @@ export async function approveTimesheet(timesheetId: string, reviewerId: string):
     status: updated.status,
     submittedAt: updated.submittedAt,
     review: updated.review,
+    ...timesheetFlowKeys(updated),
     createdAt: updated.createdAt,
     updatedAt: updated.updatedAt,
   }
@@ -202,6 +207,7 @@ export async function declineTimesheet(timesheetId: string, reviewerId: string, 
     status: updated.status,
     submittedAt: updated.submittedAt,
     review: updated.review,
+    ...timesheetFlowKeys(updated),
     createdAt: updated.createdAt,
     updatedAt: updated.updatedAt,
   }

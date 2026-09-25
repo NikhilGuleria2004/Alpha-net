@@ -44,14 +44,14 @@ function createMockCollection(items: Record<string, unknown>[] = []) {
       })),
     })),
     findOne: vi.fn(({ _id }: { _id: ObjectId }) => {
-      const found = storedItems.find((item) => item._id.toString() === _id.toString())
+      const found = storedItems.find((item: Record<string, unknown>) => (item._id as ObjectId).toString() === _id.toString())
       return Promise.resolve(found ?? null)
     }),
-    findOneAndUpdate: vi.fn(({ _id }: { _id: ObjectId }, update: Record<string, unknown>) => {
-      const index = storedItems.findIndex((item) => item._id.toString() === _id.toString())
+    findOneAndUpdate: vi.fn(({ _id }: { _id: ObjectId }, update: { $set?: Record<string, unknown> }) => {
+      const index = storedItems.findIndex((item: Record<string, unknown>) => (item._id as ObjectId).toString() === _id.toString())
       if (index === -1) return Promise.resolve(null)
-      const existing = storedItems[index]
-      const updated = { ...existing, ...update.$set }
+      const existing = storedItems[index] as Record<string, any>
+      const updated: Record<string, any> = { ...existing, ...update.$set }
       // Preserve ObjectId types for fields that should be ObjectIds
       if (existing.managerId instanceof ObjectId) updated.managerId = existing.managerId
       if (existing.supervisorId instanceof ObjectId) updated.supervisorId = existing.supervisorId
@@ -137,6 +137,8 @@ describe('project.service', () => {
         managerId: new ObjectId().toString(),
         supervisorId: new ObjectId().toString(),
         teamMemberIds: [new ObjectId().toString()],
+        status: 'draft',
+        hourlyRate: null,
       })
 
       expect(result.name).toBe('New Project')

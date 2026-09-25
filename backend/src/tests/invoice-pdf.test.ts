@@ -71,7 +71,10 @@ describe('invoice PDF builder', () => {
 
     const text = decodePdfText(pdf)
     expect(text).toContain('ENIAC INC.')
-    expect(text).toContain('INVOICE')
+    // The drawn title is "STATEMENT OF SERVICES" (invoice identity continues
+    // with "Invoice No. …" below). The stale all-caps "INVOICE" assertion was
+    // the documented pre-Phase-9 failure — fixed at cutover (checklist 9.5).
+    expect(text).toContain('STATEMENT OF SERVICES')
     expect(text).toContain('INV-2026-0001')
     expect(text).toContain('Acme Corporation')
     expect(text).toContain('Apollo Platform Rebuild')

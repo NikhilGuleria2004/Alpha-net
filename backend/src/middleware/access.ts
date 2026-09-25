@@ -4,15 +4,40 @@ import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
 
+// Flow Integration Phase 3: an active assignment makes the resource a member
+// of the project in every practical sense (they log time against it), so the
+// project READ check gains an OR with the assignment layer. This can only
+// WIDEN access — the legacy team-member/supervisor rules still decide first —
+// and it is a no-op for every deployment that has no assignments backfilled
+// yet. Failures are swallowed (deny-by-default) so a missing collection or a
+// malformed id can never open a hole.
+async function hasActiveAssignment(userId: string, projectId: string): Promise<boolean> {
+  try {
+    if (!ObjectId.isValid(userId) || !ObjectId.isValid(projectId)) return false
+    const db = await getDb()
+    const assignment = await db.collection(COLLECTIONS.ASSIGNMENTS).findOne({
+      resourceId: new ObjectId(userId),
+      projectId: new ObjectId(projectId),
+      status: 'active',
+    })
+    return Boolean(assignment)
+  } catch {
+    return false
+  }
+}
+
 export async function canAccessProject(userId: string, role: string, isSupervisor: boolean, projectId: string): Promise<boolean> {
   if (role === 'admin') return true
   const db = await getDb()
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(projectId) })
   if (!project) return false
-  if (project.teamMemberIds.some((id: any) => id.toString() === userId)) return true
-  if (isSupervisor && project.supervisorId.toString() === userId) return true
+  if (project.teamMemberIds?.some((id: any) => id.toString() === userId)) return true
+  if (isSupervisor && project.supervisorId?.toString() === userId) return true
+  // Phase 3: assignment-based access (additive, never narrower).
+  if (await hasActiveAssignment(userId, projectId)) return true
   return false
 }
+
 
 export async function canEditProject(userId: string, role: string, isSupervisor: boolean, projectId: string): Promise<boolean> {
   if (role === 'admin') return true
@@ -136,6 +161,47 @@ export async function requireTimesheetReview(req: AuthenticatedRequest, res: Res
   const canReview = await canReviewTimesheet(req.user!.userId, req.user!.role, req.user!.isSupervisor, timesheetId)
   if (!canReview) {
     return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Review access denied to this timesheet' } })
+  }
+  next()
+}
+
+// Flow Integration Phase 3 — assignment access (see /flowIntegration.md §5
+// Phase 3): admins always; the assigned resource (owner) always; the
+// assignment's approver; and the supervising user of the assignment's project.
+// Deny-by-default on any lookup failure.
+export async function canAccessAssignment(
+  userId: string,
+  role: string,
+  isSupervisor: boolean,
+  assignmentId: string,
+): Promise<boolean> {
+  if (role === 'admin') return true
+  if (!ObjectId.isValid(assignmentId)) return false
+  const db = await getDb()
+  const assignment = await db.collection(COLLECTIONS.ASSIGNMENTS).findOne({ _id: new ObjectId(assignmentId) })
+  if (!assignment) return false
+  if (assignment.resourceId?.toString() === userId) return true
+  if (assignment.approverId?.toString() === userId) return true
+  if (isSupervisor && assignment.projectId) {
+    const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(assignment.projectId) })
+    if (project && project.supervisorId?.toString() === userId) return true
+  }
+  return false
+}
+
+export async function requireAssignmentAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const assignmentId = (req.params.id ?? req.params.assignmentId) as string
+  if (!assignmentId) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Assignment ID is required' } })
+  }
+  const hasAccess = await canAccessAssignment(
+    req.user!.userId,
+    req.user!.role,
+    req.user!.isSupervisor,
+    assignmentId,
+  )
+  if (!hasAccess) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Access denied to this assignment' } })
   }
   next()
 }

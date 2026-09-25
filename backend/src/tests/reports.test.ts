@@ -165,11 +165,12 @@ describe('report userId/department filter interaction', () => {
       .set('Authorization', 'Bearer valid-token')
       .query({ userId: '507f1f77bcf86cd799439012', department: 'Engineering' })
 
-    const pipeline = aggregateMock.mock.calls[0][0]
+    const pipeline = aggregateMock.mock.calls[0][0] as unknown as Record<string, Record<string, unknown>>
     // Both conditions must be present and AND-ed; a single $in would mean
     // department overwrote userId.
-    expect(pipeline[0].$match.$and).toBeDefined()
-    expect(pipeline[0].$match.$and).toEqual([
+    expect(pipeline[0].$match).toBeDefined()
+    expect((pipeline[0].$match as Record<string, unknown>).$and).toBeDefined()
+    expect((pipeline[0].$match as Record<string, unknown>).$and).toEqual([
       { userId: new ObjectId('507f1f77bcf86cd799439012') },
       expect.objectContaining({ userId: expect.any(Object) }),
     ])

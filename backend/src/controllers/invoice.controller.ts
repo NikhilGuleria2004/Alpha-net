@@ -8,6 +8,7 @@ import {
   updateInvoiceSchema,
   invoiceListQuerySchema,
   sendInvoiceSchema,
+  voidInvoiceSchema,
 } from '../schemas/invoice.schema.js'
 import type { AuthenticatedRequest } from '../middleware/auth.js'
 import { canAccessProject } from '../middleware/access.js'
@@ -19,6 +20,8 @@ import {
   removeVariableCosts,
   updateInvoiceRate,
   sendInvoice,
+  markInvoicePaid,
+  invoiceVoid,
 } from '../services/invoice.service.js'
 import { buildInvoicePdf } from '../services/invoice-pdf.service.js'
 import { getProjectById } from '../services/project.service.js'
@@ -60,6 +63,13 @@ export async function createInvoiceHandler(req: AuthenticatedRequest, res: Respo
       projectId: body.projectId,
       weekStart: body.weekStart,
       hourlyRate: body.hourlyRate,
+      // Phase 5: optional billing scope + approved-only override. The service
+      // resolves the flag default when approvedOnly is undefined; explicit
+      // `false` forces the legacy path (cutover rollback without a deploy).
+      assignmentId: body.assignmentId,
+      timesheetIds: body.timesheetIds,
+      approvedOnly: body.approvedOnly,
+      // Never trusted from the body — always the authenticated admin.
       adminUserId: req.user!.userId,
       adminUserName: user.name,
     })
@@ -149,6 +159,37 @@ export async function sendInvoiceHandler(req: AuthenticatedRequest, res: Respons
     res.json({ invoice })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send invoice'
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
+}
+
+/**
+ * Flow Integration Phase 5 — POST /invoices/:id/pay (admin).
+ * Marks a sent invoice paid (terminal). Payment terms are out of scope here;
+ * this records that money was received.
+ */
+export async function payInvoiceHandler(req: AuthenticatedRequest, res: Response) {
+  try {
+    const invoice = await markInvoicePaid(req.params.id as string, req.user!.userId)
+    res.json({ invoice })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to mark invoice paid'
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+  }
+}
+
+/**
+ * Flow Integration Phase 5 — POST /invoices/:id/void (admin).
+ * Voids a draft/sent invoice and RELEASES its reserved timesheets so they can
+ * be billed again. The optional reason is stored verbatim for the audit trail.
+ */
+export async function voidInvoiceHandler(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { reason } = voidInvoiceSchema.parse(req.body ?? {})
+    const invoice = await invoiceVoid(req.params.id as string, req.user!.userId, reason)
+    res.json({ invoice })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to void invoice'
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
   }
 }

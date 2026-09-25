@@ -53,7 +53,7 @@ async function getDepartmentUserIds(department: string): Promise<string[]> {
   return users.map((u) => u._id.toString())
 }
 
-function buildMatchStage(filters: ReportFilters, userIdsInDepartment?: string[]): Record<string, unknown> {
+export function buildMatchStage(filters: ReportFilters, userIdsInDepartment?: string[]): Record<string, unknown> {
   const match: Record<string, unknown> = {}
 
   if (filters.startDate || filters.endDate) {

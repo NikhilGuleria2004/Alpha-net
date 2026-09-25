@@ -106,7 +106,7 @@ describe("GET /activities collection scoping (QA C4 regression)", () => {
     const theirs = { _id: new ObjectId(), userId: new ObjectId(userId), projectId: new ObjectId(foreignProjectId), description: "foreign act", createdAt: new Date("2025-01-02") }
     vi.mocked(verifyAccessToken).mockResolvedValue({ userId, role: "user", isSupervisor: false, exp: 9999999999 })
     vi.mocked(usersCol.findOne).mockResolvedValue(userDoc(userId, "user", false))
-    vi.mocked(projectsCol.find).mockImplementation((filter: any) => {
+    vi.mocked(projectsCol.find).mockImplementation((filter?: any) => {
       let docs: any[] = [
         { _id: new ObjectId(myProjectId), teamMemberIds: [new ObjectId(userId)] },
         { _id: new ObjectId(foreignProjectId), teamMemberIds: [] },
@@ -123,7 +123,7 @@ describe("GET /activities collection scoping (QA C4 regression)", () => {
         toArray: vi.fn().mockResolvedValue(docs),
       }
     })
-    vi.mocked(activitiesCol.find).mockImplementation((filter: any) => {
+    vi.mocked(activitiesCol.find).mockImplementation((filter?: any) => {
       let docs = [mine, theirs]
       if (filter?.projectId?.$in) {
         const ids = filter.projectId.$in.map((id: any) => id.toString())

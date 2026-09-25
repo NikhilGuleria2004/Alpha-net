@@ -100,7 +100,7 @@ describe('invite guard tests', () => {
         invitedBy: ADMIN_ID,
       })
 
-      expect((result as Record<string, unknown>).id).toBe(existingInvite._id.toString())
+      expect(result.id).toBe((existingInvite._id as ObjectId).toString())
       expect(result.email).toBe('user@example.com')
       expect(users.insertOne).not.toHaveBeenCalled()
     })
@@ -269,6 +269,40 @@ describe('invite guard tests', () => {
       expect(userDoc.status).toBe('invited')
     })
 
+    it('keeps a copy of the onboarding profile on the invite itself', async () => {
+      const invites = createCollectionMock()
+      invites.findOne.mockResolvedValue(null)
+      const users = createCollectionMock()
+
+      const db = {
+        collection: vi.fn((name: string) => {
+          if (name === COLLECTIONS.INVITES) return invites
+          if (name === COLLECTIONS.USERS) return users
+          return createCollectionMock()
+        }),
+      }
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { createInvite } = await import('../services/invite.service.js')
+      await createInvite({
+        email: 'Ada@Example.com',
+        role: 'user',
+        invitedBy: ADMIN_ID,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        employeeId: 'EMP-0042',
+        department: 'Engineering',
+      })
+
+      expect(invites.insertOne).toHaveBeenCalledTimes(1)
+      const invite = invites.insertOne.mock.calls[0][0] as Record<string, unknown>
+      expect(invite.email).toBe('ada@example.com')
+      expect(invite.firstName).toBe('Ada')
+      expect(invite.lastName).toBe('Lovelace')
+      expect(invite.employeeId).toBe('EMP-0042')
+      expect(invite.department).toBe('Engineering')
+    })
+
     it('applies profile enrichment and composes the name on redeem', async () => {
       const validToken = 'valid-token-789'
       const userId = new ObjectId()
@@ -363,6 +397,161 @@ describe('invite guard tests', () => {
       const [filter, update] = projects.updateOne.mock.calls[0] as [Record<string, unknown>, Record<string, unknown>]
       expect(filter._id).toEqual(projectId)
       expect((update.$addToSet as Record<string, unknown>).teamMemberIds).toEqual(userId)
+    })
+  })
+
+  // Activation used to 400 whenever the invite's `userId` did not line up with a
+  // live user row: legacy invites stored it as a string, and an invited row can
+  // be deleted out from under a still-pending invite. redeemInvite now coerces
+  // the id, falls back to an email match, and finally re-creates the row.
+  describe('(f) redeem tolerates legacy string ids and a missing invited row', () => {
+    function dbFor(opts: {
+      invite: Record<string, unknown>
+      users: ReturnType<typeof createCollectionMock>
+      projects?: ReturnType<typeof createCollectionMock>
+    }) {
+      const invites = createCollectionMock([opts.invite])
+      invites.findOne.mockImplementation(async (query: any) => (query.token ? opts.invite : null))
+      invites.updateOne.mockResolvedValue({ modifiedCount: 1 })
+      const projects = opts.projects ?? createCollectionMock()
+      return {
+        users: opts.users,
+        projects,
+        db: {
+          collection: vi.fn((name: string) => {
+            if (name === COLLECTIONS.INVITES) return invites
+            if (name === COLLECTIONS.USERS) return opts.users
+            if (name === COLLECTIONS.PROJECTS) return projects
+            return createCollectionMock()
+          }),
+        },
+      }
+    }
+
+    it('redeems when userId/projectId are legacy strings', async () => {
+      const validToken = 'legacy-string-token'
+      const userId = new ObjectId()
+      const projectId = new ObjectId()
+      const invite = inviteDoc(INVITE_ID, 'legacy@example.com', validToken)
+      invite.userId = userId.toString()
+      invite.projectId = projectId.toString()
+
+      const user = userDoc('legacy@example.com', 'invited')
+      user._id = userId
+
+      const users = createCollectionMock([user])
+      users.findOne.mockImplementation(async (query: any) =>
+        query._id && query._id.toString() === userId.toString() ? user : null,
+      )
+      users.updateOne.mockResolvedValue({ modifiedCount: 1 })
+
+      const projects = createCollectionMock()
+      projects.findOne.mockResolvedValue({ _id: projectId, name: 'Legacy' })
+      projects.updateOne.mockResolvedValue({ modifiedCount: 1 })
+
+      const { db } = dbFor({ invite, users, projects })
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { redeemInvite } = await import('../services/invite.service.js')
+      const result = await redeemInvite({ token: validToken, password: 'Password123' })
+
+      expect(result.user).not.toBeNull()
+      expect(result.user?.email).toBe('legacy@example.com')
+      expect(users.findOne.mock.calls[0][0]._id).toEqual(userId)
+      expect(users.updateOne.mock.calls[0][0]).toEqual({ _id: userId })
+      const [projectFilter, projectUpdate] = projects.updateOne.mock.calls[0] as [Record<string, unknown>, Record<string, unknown>]
+      expect(projectFilter._id).toEqual(projectId)
+      expect((projectUpdate.$addToSet as Record<string, unknown>).teamMemberIds).toEqual(userId)
+    })
+
+    it('re-creates the invited row when the invite outlived its user', async () => {
+      const validToken = 'orphaned-invite-token'
+      const missingUserId = new ObjectId()
+      const invite = inviteDoc(INVITE_ID, 'orphan@example.com', validToken)
+      // Legacy string *and* dangling: the referenced row no longer exists.
+      invite.userId = missingUserId.toString()
+
+      const users = createCollectionMock([])
+      users.findOne.mockResolvedValue(null)
+      users.updateOne.mockResolvedValue({ modifiedCount: 1 })
+
+      const { db } = dbFor({ invite, users })
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { redeemInvite } = await import('../services/invite.service.js')
+      const result = await redeemInvite({ token: validToken, password: 'Password123' })
+
+      expect(users.insertOne).toHaveBeenCalledTimes(1)
+      const recreated = users.insertOne.mock.calls[0][0] as Record<string, unknown>
+      // Re-uses the id the invite points at, so the reference is repaired.
+      expect(recreated._id).toEqual(missingUserId)
+      expect(recreated.email).toBe('orphan@example.com')
+      expect(recreated.status).toBe('invited')
+      expect(recreated.role).toBe('user')
+
+      expect(result.user).not.toBeNull()
+      expect(result.user?.id).toBe(missingUserId.toString())
+      expect(result.user?.status).toBe('active')
+      expect(result.invite).not.toBeNull()
+      expect(users.updateOne.mock.calls[0][0]).toEqual({ _id: missingUserId })
+    })
+
+    it('restores the invite profile when the invited row had to be re-created', async () => {
+      const validToken = 'orphaned-profile-token'
+      const missingUserId = new ObjectId()
+      const invite = inviteDoc(INVITE_ID, 'orphan@example.com', validToken)
+      invite.userId = missingUserId.toString()
+      // The profile the admin captured at invite time now lives on the invite,
+      // which is all that is left once the pre-created row is gone.
+      invite.firstName = 'Ada'
+      invite.lastName = 'Lovelace'
+      invite.employeeId = 'EMP-0042'
+      invite.department = 'Engineering'
+
+      const users = createCollectionMock([])
+      users.findOne.mockResolvedValue(null)
+      users.updateOne.mockResolvedValue({ modifiedCount: 1 })
+
+      const { db } = dbFor({ invite, users })
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { redeemInvite } = await import('../services/invite.service.js')
+      const result = await redeemInvite({ token: validToken, password: 'Password123' })
+
+      // Never the "User <email>" placeholder: the invite's profile wins.
+      expect(result.user?.name).toBe('Ada Lovelace')
+      const update = users.updateOne.mock.calls[0][1] as { $set: Record<string, unknown> }
+      expect(update.$set.name).toBe('Ada Lovelace')
+      expect(update.$set.firstName).toBe('Ada')
+      expect(update.$set.lastName).toBe('Lovelace')
+      expect(update.$set.employeeId).toBe('EMP-0042')
+      expect(update.$set.department).toBe('Engineering')
+    })
+
+    it('adopts an existing row matched by email instead of duplicating it', async () => {
+      const validToken = 'dangling-id-token'
+      const danglingId = new ObjectId()
+      const invite = inviteDoc(INVITE_ID, 'moved@example.com', validToken)
+      invite.userId = danglingId.toString()
+
+      const existing = userDoc('moved@example.com', 'invited')
+      const users = createCollectionMock([existing])
+      users.findOne.mockImplementation(async (query: any) => {
+        if (query._id) return null // the referenced id is gone
+        if (query.email === 'moved@example.com') return existing
+        return null
+      })
+      users.updateOne.mockResolvedValue({ modifiedCount: 1 })
+
+      const { db } = dbFor({ invite, users })
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { redeemInvite } = await import('../services/invite.service.js')
+      const result = await redeemInvite({ token: validToken, password: 'Password123' })
+
+      expect(users.insertOne).not.toHaveBeenCalled()
+      expect(result.user?.id).toBe((existing._id as ObjectId).toString())
+      expect(users.updateOne.mock.calls[0][0]).toEqual({ _id: existing._id })
     })
   })
 })

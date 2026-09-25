@@ -14,7 +14,7 @@ vi.mock('../lib/mongodb.js')
 vi.mock('../lib/jwt.js')
 vi.mock('bcryptjs', () => ({
   default: {
-    compare: vi.fn<[string, string], Promise<boolean>>(),
+    compare: vi.fn<(a: string, b: string) => Promise<boolean>>(),
   },
 }))
 

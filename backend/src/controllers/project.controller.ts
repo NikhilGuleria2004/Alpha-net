@@ -1,5 +1,7 @@
 import { type Request, type Response } from 'express'
 import { getProjects, getProjectById, createProject, updateProject, deleteProject, addTeamMember, removeTeamMember, assignSupervisor as assignProjectSupervisor, canAccessProject, getProjectsForUser } from '../services/project.service.js'
+import { getProjectPoBalance } from '../services/invoice.service.js'
+import { logger } from '../lib/logger.js'
 import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js'
 import { requireProjectAccess, requireProjectEdit } from '../middleware/access.js'
 import { getUserById } from '../services/user.service.js'
@@ -19,15 +21,26 @@ export async function listProjects(req: AuthenticatedRequest, res: Response) {
 }
 
 export async function getProject(req: AuthenticatedRequest, res: Response) {
-  const hasAccess = await canAccessProject(req.user!.userId, req.user!.role, req.user!.isSupervisor, req.params.id as string)
-  if (!hasAccess) {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Access denied to this project' } })
+  // Flow Integration Phase 8 (§5, item 2): detail responses now also carry the
+  // live PO/SOW balance (poConsumed/poRemaining, computed from invoice totals —
+  // never persisted). The WHOLE handler is one try/catch so any failure
+  // (access check, fetch, PO computation) yields exactly one response — no
+  // second send after a partial failure (single-send contract, Phase 0).
+  try {
+    const hasAccess = await canAccessProject(req.user!.userId, req.user!.role, req.user!.isSupervisor, req.params.id as string)
+    if (!hasAccess) {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Access denied to this project' } })
+    }
+    const project = await getProjectById(req.params.id as string)
+    if (!project) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Project not found' } })
+    }
+    const poBalance = await getProjectPoBalance(project.id, project.poCap)
+    return res.json({ project: { ...project, ...poBalance } })
+  } catch (err) {
+    logger.error({ err }, 'failed to get project with PO balance')
+    return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get project' } })
   }
-  const project = await getProjectById(req.params.id as string)
-  if (!project) {
-    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Project not found' } })
-  }
-  res.json({ project })
 }
 
 export async function create(req: AuthenticatedRequest, res: Response) {
