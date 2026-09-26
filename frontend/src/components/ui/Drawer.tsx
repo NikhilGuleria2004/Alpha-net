@@ -70,7 +70,7 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby={title ? 'drawer-title' : undefined}>
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={drawerRef}
         tabIndex={-1}

@@ -11,7 +11,7 @@ export function AIMessageBubble({ role, content }: AIMessageBubbleProps) {
       <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
         role === 'user'
           ? 'rounded-br-md bg-accent text-white'
-          : 'rounded-bl-md border border-border bg-white text-foreground'
+          : 'rounded-bl-md border border-border bg-card text-foreground'
       }`}>
         {role === 'model' && (
           <div className="mb-1 flex items-center gap-2">

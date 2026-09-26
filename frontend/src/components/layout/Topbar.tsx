@@ -7,6 +7,7 @@ import { useNotifications } from '../../contexts/NotificationContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Avatar } from '../ui/Avatar'
 import { EmptyState } from '../ui/EmptyState'
+import { ThemeToggle } from '../ui/ThemeToggle'
 import { resolveNotificationRoute } from '../../utils/notificationRoutes'
 
 interface TopbarProps {
@@ -234,6 +235,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">
+        <ThemeToggle />
         <div className="relative" ref={notificationsRef}>
           <button
             type="button"

@@ -27,7 +27,7 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>

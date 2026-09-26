@@ -28,6 +28,8 @@ import { Settings as AdminSettings } from './pages/admin/Settings'
 import { Invoices } from './pages/admin/Invoices'
 import { InvoiceForm } from './pages/admin/InvoiceForm'
 import { InvoiceDetail } from './pages/admin/InvoiceDetail'
+import { Clients } from './pages/admin/Clients'
+import { ClientDetails } from './pages/admin/ClientDetails'
 import { UserDashboard } from './pages/user/Dashboard'
 import { Projects as UserProjects } from './pages/user/Projects'
 import { ProjectDetails as UserProjectDetails } from './pages/user/ProjectDetails'
@@ -124,6 +126,8 @@ const router = createBrowserRouter([
       { path: 'invoices/new', element: <InvoiceForm />, handle: { title: 'Admin · New Invoice' } },
       { path: 'invoices/:invoiceId', element: <InvoiceDetail />, handle: { title: 'Admin · Invoice' } },
       { path: 'invoices/:invoiceId/form', element: <InvoiceForm />, handle: { title: 'Admin · Edit Invoice' } },
+      { path: 'clients', element: <Clients />, handle: { title: 'Admin · Clients' } },
+      { path: 'clients/:clientId', element: <ClientDetails />, handle: { title: 'Admin · Client Details' } },
     ],
   },
   {

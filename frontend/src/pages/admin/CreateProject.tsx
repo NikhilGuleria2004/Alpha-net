@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Save, ArrowLeft } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useAuth } from '../../contexts/AuthContext'
@@ -45,9 +45,33 @@ export function CreateProject() {
 
   const [documents, setDocuments] = useState<SelectedDocument[]>([])
 
+  // Deep link from Admin → User Details → Add to Project → "Create a new
+  // project": /admin/projects/new?addUserId=<id> pre-selects that user as a team
+  // member so the new project actually completes the assignment the button
+  // promised. The chip stays removable and behaviour is unchanged when the
+  // param is absent. The users section loads asynchronously, so this re-runs
+  // once it arrives (the ref keeps it from fighting a manual × removal).
+  const [searchParams] = useSearchParams()
+  const addUserId = searchParams.get('addUserId')
+  const prefillAppliedRef = useRef(false)
+
+  useEffect(() => {
+    if (!addUserId || prefillAppliedRef.current) return
+    const candidate = users.find((u) => u.id === addUserId && u.status === 'active')
+    if (!candidate) return
+    prefillAppliedRef.current = true
+    setForm((prev) =>
+      prev.teamMemberIds.includes(candidate.id) ? prev : { ...prev, teamMemberIds: [...prev.teamMemberIds, candidate.id] },
+    )
+  }, [addUserId, users])
+
   const availableUsers = users.filter((u) => u.status === 'active' && !form.teamMemberIds.includes(u.id))
   const filteredAvailableUsers = availableUsers.filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase()))
   const supervisorOptions = users.filter((u) => u.isSupervisor && u.status === 'active')
+  // Surfaced only once the prefill has actually landed, so the hint never claims
+  // a membership the form doesn't have.
+  const prefillUser =
+    addUserId && form.teamMemberIds.includes(addUserId) ? users.find((u) => u.id === addUserId) : undefined
 
   const updateField = (field: keyof CreateProjectInput, value: string | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -179,6 +203,11 @@ export function CreateProject() {
                   )
                 })}
               </div>
+            )}
+            {prefillUser && (
+              <p className="text-xs text-muted-foreground">
+                {prefillUser.name} was pre-selected from their user profile — use × to drop them from this project.
+              </p>
             )}
             <Button type="button" variant="secondary" onClick={() => setIsAddUserOpen(true)}>Add Users</Button>
           </div>

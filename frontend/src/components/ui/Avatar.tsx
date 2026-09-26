@@ -58,7 +58,7 @@ export function Avatar({ name = '', src, alt, size = 'md', status, className = '
       )}
       {status && (
         <span
-          className={`absolute bottom-0 right-0 rounded-full border-2 border-white ${
+          className={`absolute bottom-0 right-0 rounded-full border-2 border-card ${
             status === 'online'
               ? 'bg-success'
                 : status === 'away'

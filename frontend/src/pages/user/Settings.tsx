@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Bell, User, Lock } from 'lucide-react'
+import { Bell, User, Lock, Moon } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card } from '../../components/ui/Card'
 import { Switch } from '../../components/ui/Switch'
+import { ThemeToggle } from '../../components/ui/ThemeToggle'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { useToast } from '../../contexts/ToastContext'
@@ -236,6 +237,21 @@ export function Settings() {
           <Switch label="Deadline Reminders" description="Send reminders before project deadlines" checked={deadlineReminders} onChange={setDeadlineReminders} />
           <Switch label="Approval Notifications" description="Notify when timesheets are approved or declined" checked={approvalNotifications} onChange={setApprovalNotifications} />
           <p className="text-xs text-muted-foreground">Notification preferences are saved to your account and sync across devices.</p>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Moon className="h-5 w-5 text-accent" />
+            <h2 className="text-lg font-semibold text-foreground">Appearance</h2>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <ThemeToggle showLabel />
+          <p className="text-xs text-muted-foreground">
+            Cycles light → night (blue slate) → true dark (pure black) → light.
+          </p>
         </div>
       </Card>
     </div>

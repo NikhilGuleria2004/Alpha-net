@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Building2, Clock3, Bell } from 'lucide-react'
+import { Building2, Clock3, Bell, Moon } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
@@ -7,6 +7,7 @@ import { Switch } from '../../components/ui/Switch'
 import { Checkbox } from '../../components/ui/Checkbox'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../contexts/ToastContext'
+import { ThemeToggle } from '../../components/ui/ThemeToggle'
 import { getOrgSettings, putOrgSettings } from '../../services/settingsService'
 import type { DayKey } from '../../types/project'
 
@@ -96,7 +97,7 @@ export function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+      <div className="rounded-lg border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-foreground">
         <strong>Note:</strong> These settings are saved to the organization database and affect backend validation (e.g. the weekly hours target used in the timesheet editor).
       </div>
 
@@ -202,6 +203,21 @@ export function Settings() {
           <Switch label="Submission Notifications" description="Notify supervisors when timesheets are submitted" checked={submissionNotifications} onChange={setSubmissionNotifications} />
           <Switch label="Deadline Reminders" description="Send reminders before project deadlines" checked={deadlineReminders} onChange={setDeadlineReminders} />
           <Switch label="Approval Notifications" description="Notify employees when timesheets are approved or declined" checked={approvalNotifications} onChange={setApprovalNotifications} />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Moon className="h-5 w-5 text-accent" />
+            <h2 className="text-lg font-semibold text-foreground">Appearance</h2>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <ThemeToggle showLabel />
+          <p className="text-xs text-muted-foreground">
+            Cycles light → night (blue slate) → true dark (pure black) → light.
+          </p>
         </div>
       </Card>
     </div>

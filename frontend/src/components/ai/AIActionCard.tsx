@@ -80,7 +80,7 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
             type="button"
             disabled={busy}
             onClick={handleEdit}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
             <Pencil className="h-4 w-4" />
             Edit
@@ -89,7 +89,7 @@ export function AIActionCard({ messageId, action }: AIActionCardProps) {
             type="button"
             disabled={busy}
             onClick={() => cancelAction(messageId)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-white px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-error-soft disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-error-soft disabled:opacity-50"
           >
             <X className="h-4 w-4" />
             Cancel

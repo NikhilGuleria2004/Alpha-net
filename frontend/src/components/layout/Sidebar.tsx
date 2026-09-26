@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { LayoutDashboard, FolderKanban, Users, UserCheck, Clock3, ClipboardCheck, FileText, Bell, Settings, ChevronLeft, ChevronRight, ChevronDown, LogOut, X, Receipt, UserPlus } from 'lucide-react'
+import { LayoutDashboard, FolderKanban, Users, UserCheck, Clock3, ClipboardCheck, FileText, Bell, Settings, ChevronLeft, ChevronRight, LogOut, X, Receipt, UserPlus, Building2 } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 type SectionKey = 'workspace' | 'time' | 'insights' | 'system' | 'work' | 'supervisor'
 
@@ -28,6 +29,7 @@ const adminNavItems: NavItem[] = [
   { to: '/admin/approvals', label: 'Approvals', icon: <ClipboardCheck className="h-5 w-5" />, section: 'time' },
   { to: '/admin/invoices', label: 'Invoices', icon: <Receipt className="h-5 w-5" />, section: 'insights' },
   { to: '/admin/reports', label: 'Reports', icon: <FileText className="h-5 w-5" />, section: 'insights' },
+  { to: '/admin/clients', label: 'Clients', icon: <Building2 className="h-5 w-5" />, section: 'insights' },
   { to: '/admin/notifications', label: 'Notifications', icon: <Bell className="h-5 w-5" />, section: 'system' },
   { to: '/admin/settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, section: 'system' },
 ]
@@ -78,9 +80,9 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}
+        className={`relative z-40 hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}
       >
-        <div className="relative border-b border-border px-3 py-4">
+        <div className="relative overflow-visible border-b border-border px-3 py-4">
           {!isCollapsed ? (
             <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-white">
@@ -90,7 +92,6 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
                 <p className="truncate text-sm font-semibold text-foreground">Eniac</p>
                 <p className="truncate text-[11px] text-muted-foreground">Workspace</p>
               </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             </div>
           ) : (
             <div className="flex justify-center">
@@ -102,7 +103,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+            className="absolute -right-3 top-1/2 z-40 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md hover:bg-muted hover:text-foreground"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
@@ -166,7 +167,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
       </aside>
 
       <div
-        className={`fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm transition-opacity md:hidden ${isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity md:hidden ${isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={onMobileClose}
         aria-hidden="true"
       />
@@ -220,6 +221,9 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           ))}
         </nav>
         <div className="border-t border-border p-4">
+          <div className="mb-3">
+            <ThemeToggle showLabel />
+          </div>
           <div className="flex items-center gap-3">
             <Avatar name={user?.name || ''} size="sm" />
             <div className="min-w-0 flex-1">

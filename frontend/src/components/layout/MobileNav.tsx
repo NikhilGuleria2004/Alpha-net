@@ -15,7 +15,7 @@ export function MobileNav({ isOpen, onClose, children }: MobileNavProps) {
       role="dialog"
       aria-modal="true"
     >
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">

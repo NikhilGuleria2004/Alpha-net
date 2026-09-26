@@ -192,11 +192,20 @@ export function Reports() {
                 <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={hoursByProject} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e8eaf0" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                       <XAxis dataKey="projectName" tick={{ fontSize: 12, fill: '#94a3b8' }} />
                       <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                      <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(value) => [`${Number(value).toFixed(1)}h`, 'Hours']} />
-                      <Bar dataKey="totalHours" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                      <Tooltip
+                        cursor={{ fill: 'var(--color-muted)', opacity: 0.5 }}
+                        contentStyle={{
+                          backgroundColor: 'var(--color-card)',
+                          borderColor: 'var(--color-border)',
+                          borderRadius: '0.75rem',
+                          color: 'var(--color-foreground)',
+                        }}
+                        formatter={(value) => [`${Number(value).toFixed(1)}h`, 'Hours']}
+                      />
+                      <Bar dataKey="totalHours" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

@@ -8,6 +8,7 @@ import type { Notification } from '../types/notification'
 import type { Activity } from '../types/activity'
 import type { Document } from '../types/document'
 import type { Invoice } from '../types/invoice'
+import type { Client, CreateClientInput, UpdateClientInput } from '../types/client'
 import { getProjects as fetchProjects, createProject as createProjectService, updateProject as updateProjectService, deleteProject as deleteProjectService, addTeamMember as addTeamMemberService, removeTeamMember as removeTeamMemberService, assignSupervisor as assignSupervisorService } from '../services/projectService'
 import { getUsers as fetchUsers, createUser as createUserService, updateUser as updateUserService, deactivateUser as deactivateUserService } from '../services/userService'
 import { getTimesheets as fetchTimesheets, saveDraft as saveDraftService, submitTimesheet as submitTimesheetService, withdrawTimesheet as withdrawTimesheetService, approveTimesheet as approveTimesheetService, declineTimesheet as declineTimesheetService, createTimesheet as createTimesheetService } from '../services/timesheetService'
@@ -15,6 +16,7 @@ import { getNotifications as fetchNotifications, markAsRead as markAsReadService
 import { getActivities as fetchActivities } from '../services/activityService'
 import { getDocuments as fetchDocuments, uploadProjectDocument as uploadDocumentService, deleteDocument as deleteDocumentService } from '../services/documentService'
 import { getInvoices as fetchInvoices, createInvoice as createInvoiceService, updateInvoice as updateInvoiceService, sendInvoice as sendInvoiceService } from '../services/invoiceService'
+import { getClients as fetchClients, createClient as createClientService, updateClient as updateClientService } from '../services/clientService'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 
@@ -23,7 +25,7 @@ import { useToast } from './ToastContext'
 // from the documents slot (the real notifications result was never consumed at
 // all), and it counted failures out of a hardcoded 6 while seven sections were
 // actually being loaded.
-type WorkspaceSectionKey = 'projects' | 'users' | 'timesheets' | 'invoices' | 'activities' | 'documents' | 'notifications'
+type WorkspaceSectionKey = 'projects' | 'users' | 'timesheets' | 'invoices' | 'clients' | 'activities' | 'documents' | 'notifications'
 
 interface WorkspaceSection {
   key: WorkspaceSectionKey
@@ -49,6 +51,7 @@ interface AppDataContextValue {
   users: User[]
   timesheets: Timesheet[]
   invoices: Invoice[]
+  clients: Client[]
   notifications: Notification[]
   activities: Activity[]
   documents: Document[]
@@ -57,6 +60,7 @@ interface AppDataContextValue {
   refreshUsers: () => Promise<void>
   refreshTimesheets: () => Promise<void>
   refreshInvoices: () => Promise<void>
+  refreshClients: () => Promise<void>
   refreshNotifications: () => Promise<void>
   refreshActivities: () => Promise<void>
   refreshDocuments: () => Promise<Document[]>
@@ -85,6 +89,8 @@ interface AppDataContextValue {
   createInvoice: (data: { projectId: string; hourlyRate?: number }) => Promise<Invoice>
   updateInvoice: (id: string, data: { hourlyRate?: number; addVariableCosts?: { amount: number; reason: string }[]; removeVariableCostIds?: string[] }) => Promise<Invoice | undefined>
   sendInvoice: (id: string) => Promise<Invoice | undefined>
+  createClient: (data: CreateClientInput) => Promise<Client>
+  updateClient: (id: string, data: UpdateClientInput) => Promise<Client | undefined>
   markNotificationAsRead: (id: string) => Promise<void>
   markAllNotificationsAsRead: () => Promise<void>
   uploadDocument: (projectId: string, file: File) => Promise<Document>
@@ -100,6 +106,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
   const [timesheets, setTimesheets] = useState<Timesheet[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
@@ -127,6 +134,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           { key: 'users', label: 'users', run: () => fetchUsers() },
           { key: 'timesheets', label: 'timesheets', run: () => fetchTimesheets() },
           { key: 'invoices', label: 'invoices', run: () => fetchInvoices() },
+          { key: 'clients', label: 'clients', run: () => fetchClients() },
           { key: 'activities', label: 'activities', run: () => fetchActivities() },
           { key: 'documents', label: 'documents', run: () => fetchDocuments() },
           { key: 'notifications', label: 'notifications', run: () => fetchNotifications() },
@@ -147,6 +155,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setUsers(value('users', [] as User[]))
           setTimesheets(value('timesheets', [] as Timesheet[]))
           setInvoices(value('invoices', [] as Invoice[]))
+          setClients(value('clients', [] as Client[]))
           setActivities(value('activities', [] as Activity[]))
           setDocuments(value('documents', [] as Document[]))
           setNotifications(value('notifications', [] as Notification[]))
@@ -210,6 +219,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const refreshInvoices = async () => {
     const data = await fetchInvoices()
     setInvoices(data)
+  }
+
+  const refreshClients = async () => {
+    const data = await fetchClients()
+    setClients(data)
   }
 
   // Stable identity (useCallback) so consumers can safely use these in effect dependency arrays.
@@ -431,6 +445,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return sent
   }
 
+  // Every client mutation keeps the directory sorted by name — the order the
+  // backend's GET /clients returns — so the list page never shows a new or
+  // renamed row in the wrong place.
+  const upsertClient = (client: Client) => {
+    setClients((prev) => {
+      const exists = prev.some((c) => c.id === client.id)
+      const next = exists ? prev.map((c) => (c.id === client.id ? client : c)) : [...prev, client]
+      return next.sort((a, b) => a.name.localeCompare(b.name))
+    })
+  }
+
+  const handleCreateClient = async (data: CreateClientInput) => {
+    // POST /clients is an upsert by normalized name (findOrCreateClient), so a
+    // "new" client may come back as an existing row — upsertClient replaces it
+    // instead of appending a duplicate.
+    const client = await createClientService(data)
+    upsertClient(client)
+    return client
+  }
+
+  const handleUpdateClient = async (id: string, data: UpdateClientInput) => {
+    const updated = await updateClientService(id, data)
+    if (updated) upsertClient(updated)
+    return updated
+  }
+
   return (
     <AppDataContext.Provider
       value={{
@@ -438,6 +478,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         users,
         timesheets,
         invoices,
+        clients,
         notifications,
         activities,
         documents,
@@ -446,6 +487,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         refreshUsers,
         refreshTimesheets,
         refreshInvoices,
+        refreshClients,
         refreshNotifications,
         refreshActivities,
         createProject: handleCreateProject,
@@ -466,6 +508,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         createInvoice: handleCreateInvoice,
         updateInvoice: handleUpdateInvoice,
         sendInvoice: handleSendInvoice,
+        createClient: handleCreateClient,
+        updateClient: handleUpdateClient,
 markNotificationAsRead: handleMarkNotificationAsRead,
         markAllNotificationsAsRead: handleMarkAllNotificationsAsRead,
         uploadDocument: handleUploadDocument,

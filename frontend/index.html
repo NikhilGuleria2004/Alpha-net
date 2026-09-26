@@ -9,6 +9,22 @@
     <!-- The mono font is the app's only family and renders above-the-fold text —
          preload it so first paint doesn't wait on the CSS → @font-face chain. -->
     <link rel="preload" href="/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('eniac_theme') || localStorage.getItem('theme');
+          var isBlack = stored === 'black';
+          var isDark = isBlack || stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            if (isBlack) document.documentElement.classList.add('black');
+            document.documentElement.style.colorScheme = 'dark';
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', isBlack ? '#000000' : '#090d16');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>Eniac</title>
   </head>
   <body>

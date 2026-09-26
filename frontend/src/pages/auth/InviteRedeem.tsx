@@ -128,7 +128,7 @@ export function InviteRedeem() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden bg-foreground lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:p-12">
+      <div className="hidden bg-slate-900 lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-white">
             <span className="text-3xl font-bold">A</span>

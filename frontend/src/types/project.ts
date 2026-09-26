@@ -7,6 +7,9 @@ export interface Project {
   name: string
   sowNumber: string
   client: string
+  // Flow Integration Phase 1: optional FK to the normalized clients collection.
+  // Undefined for legacy projects until the Phase 1 backfill runs.
+  clientId?: string
   description: string
   startDate: string
   endDate: string
