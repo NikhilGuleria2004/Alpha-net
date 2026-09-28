@@ -16,7 +16,7 @@ import type { Timesheet } from '../../types/timesheet'
 import type { Activity } from '../../types/activity'
 import type { Project } from '../../types/project'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string }) {
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -25,8 +25,8 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel || 'Confirm'}</Button>
         </div>
       </div>
     </div>
@@ -48,6 +48,7 @@ export function SupervisorDetails() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const user = users.find((u) => u.id === userId)
 
@@ -77,10 +78,16 @@ export function SupervisorDetails() {
 
   const handleDeactivate = async () => {
     if (!user) return
-    await deactivateUser(user.id)
-    addToast('success', 'Supervisor deactivated successfully')
-    refreshUsers()
-    navigate('/admin/supervisors')
+    setIsProcessing(true)
+    try {
+      await deactivateUser(user.id)
+      addToast('success', 'Supervisor deactivated successfully')
+      refreshUsers()
+      navigate('/admin/supervisors')
+    } finally {
+      setIsProcessing(false)
+      setIsDeleteOpen(false)
+    }
   }
 
   if (!user) {
@@ -130,7 +137,7 @@ export function SupervisorDetails() {
       </div>
 
       <Tabs tabs={tabs} defaultValue="overview" />
-      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDeactivate} title="Deactivate Supervisor" description={`Are you sure you want to deactivate "${user.name}"? This action cannot be undone.`} confirmLabel="Deactivate" />
+      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDeactivate} loading={isProcessing} title="Deactivate Supervisor" description={`Are you sure you want to deactivate "${user.name}"? This action cannot be undone.`} confirmLabel="Deactivate" />
     </div>
   )
 }

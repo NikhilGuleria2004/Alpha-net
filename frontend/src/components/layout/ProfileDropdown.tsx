@@ -16,6 +16,7 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [isLogoutOpen, setIsLogoutOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,11 +38,16 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
   }, [isOpen])
 
   const handleLogout = async () => {
-    await logout()
-    addToast('success', 'Signed out successfully')
-    navigate('/adminlog')
-    setIsLogoutOpen(false)
-    setIsOpen(false)
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      addToast('success', 'Signed out successfully')
+      navigate('/adminlog')
+      setIsLogoutOpen(false)
+      setIsOpen(false)
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -113,7 +119,7 @@ export function ProfileDropdown({ trigger }: ProfileDropdownProps) {
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setIsLogoutOpen(false)}>Cancel</Button>
-          <Button variant="danger" onClick={handleLogout}>Sign out</Button>
+          <Button variant="danger" onClick={handleLogout} loading={isLoggingOut} disabled={isLoggingOut}>Sign out</Button>
         </div>
       }
     >

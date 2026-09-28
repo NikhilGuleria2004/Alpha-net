@@ -10,7 +10,7 @@ import type { Timesheet } from '../../types/timesheet'
 import type { Project } from '../../types/project'
 import { DeclineModal } from './DeclineModal'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string }) {
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -19,8 +19,8 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm} loading={loading} disabled={loading}>{confirmLabel || 'Confirm'}</Button>
         </div>
       </div>
     </div>
@@ -115,8 +115,8 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
 
   return (
     <>
-      <Drawer isOpen={isOpen} onClose={onClose} title={`Review Timesheet`} size="lg">
-        <div className="space-y-6">
+      <Drawer isOpen={isOpen} onClose={onClose} title={`Review Timesheet`} size="lg" resizable defaultWidth={640}>
+        <div className="space-y-6 pb-20">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Employee</p>
@@ -204,9 +204,11 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
           )}
 
           {timesheet.status === 'pending' && canReview && (
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-              <Button variant="secondary" onClick={() => setIsDeclineOpen(true)} disabled={isProcessing}>Decline</Button>
-              <Button onClick={() => setIsApproveOpen(true)} disabled={isProcessing}>Approve</Button>
+            <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-card border-t border-border">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <Button variant="secondary" onClick={() => setIsDeclineOpen(true)} disabled={isProcessing}>Decline</Button>
+                <Button onClick={() => setIsApproveOpen(true)} disabled={isProcessing}>Approve</Button>
+              </div>
             </div>
           )}
         </div>
@@ -219,6 +221,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         title="Approve Timesheet?"
         description={`Are you sure you want to approve this timesheet for ${employee?.name || 'the employee'}?`}
         confirmLabel="Approve"
+        loading={isProcessing}
       />
 
       <DeclineModal
@@ -227,6 +230,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         onConfirm={handleDecline}
         reason={declineReason}
         onReasonChange={setDeclineReason}
+        loading={isProcessing}
       />
     </>
   )

@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
@@ -12,6 +12,8 @@ interface DrawerProps {
   children: ReactNode
   footer?: ReactNode
   closeLabel?: string
+  resizable?: boolean
+  defaultWidth?: number
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -20,13 +22,39 @@ const sizeClasses: Record<Size, string> = {
   lg: 'max-w-2xl',
 }
 
-export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, closeLabel = 'Close' }: DrawerProps) {
+export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, closeLabel = 'Close', resizable = false, defaultWidth = 640 }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(defaultWidth)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const storageKey = `drawer-width-${title ?? 'default'}`
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey)
+    if (saved) setWidth(Number(saved))
+  }, [storageKey])
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(width))
+  }, [width, storageKey])
+
+  useEffect(() => {
+    if (!isResizing) return
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX
+      setWidth(Math.min(Math.max(newWidth, 320), 1400))
+    }
+    const handleMouseUp = () => setIsResizing(false)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
 
   useEffect(() => {
     if (!isOpen) return
-    // Guideline 1.3 (checklist item 2.3): move focus into the drawer on open
-    // and restore it to the trigger on close — mirrors Modal's focus effect.
     const previousActive = document.activeElement as HTMLElement | null
     const focusTarget = drawerRef.current?.querySelector<HTMLElement>(
       'input, select, textarea, [autofocus]',
@@ -74,8 +102,20 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
       <div
         ref={drawerRef}
         tabIndex={-1}
-        className={`relative h-full w-full ${sizeClasses[size]} border-l border-border bg-card shadow-xl transition-transform focus:outline-none`}
+        className={`relative h-screen border-l border-border bg-card shadow-xl transition-transform focus:outline-none
+          ${resizable ? '' : `w-full ${sizeClasses[size]}`}`}
+        style={resizable ? { width: `${width}px`, minWidth: '320px', maxWidth: '90vw' } : undefined}
       >
+        {resizable && (
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
+            className={`absolute left-0 top-0 h-full w-[3px] cursor-col-resize opacity-30 hover:opacity-60`}
+            aria-label="Drag to resize"
+          />
+        )}
         {title && (
           <div className="border-b border-border px-6 py-4">
             <h2 id="drawer-title" className="text-lg font-semibold text-foreground">

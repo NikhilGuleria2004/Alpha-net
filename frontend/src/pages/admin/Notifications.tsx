@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -41,10 +41,16 @@ export function Notifications() {
   }, [userNotifications, todayStr])
 
   const unreadCount = userNotifications.filter((n) => !n.read).length
+  const [isMarkingAll, setIsMarkingAll] = useState(false)
 
   const handleMarkAllAsRead = async () => {
     if (!user) return
-    await markAllNotificationsAsRead()
+    setIsMarkingAll(true)
+    try {
+      await markAllNotificationsAsRead()
+    } finally {
+      setIsMarkingAll(false)
+    }
   }
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -87,7 +93,7 @@ export function Notifications() {
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="secondary" onClick={handleMarkAllAsRead} leftIcon={<CheckCheck className="h-4 w-4" />}>
+          <Button variant="secondary" loading={isMarkingAll} onClick={handleMarkAllAsRead} leftIcon={<CheckCheck className="h-4 w-4" />}>
             Mark all as read
           </Button>
         )}

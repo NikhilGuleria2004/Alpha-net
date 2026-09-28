@@ -59,6 +59,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const navItems = user?.role === 'admin' ? adminNavItems : userNavItems
   const filteredNavItems = user?.role === 'user' && !user.isSupervisor
@@ -72,9 +73,14 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   }, {} as Record<SectionKey, NavItem[]>)
 
   const handleLogout = async () => {
-    await logout()
-    onMobileClose?.()
-    navigate('/adminlog')
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      onMobileClose?.()
+      navigate('/adminlog')
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -153,14 +159,28 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
               </div>
             )}
           </div>
-          {!isCollapsed && (
+          {!isCollapsed && !isLoggingOut && (
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              disabled={isLoggingOut}
+              className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
               <LogOut className="h-4 w-4" />
               Sign out
+            </button>
+          )}
+          {!isCollapsed && isLoggingOut && (
+            <button
+              type="button"
+              disabled
+              className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
+            >
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              Signing out…
             </button>
           )}
         </div>
@@ -234,10 +254,18 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            disabled={isLoggingOut}
+            className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
-            <LogOut className="h-4 w-4" />
-            Sign out
+            {isLoggingOut ? (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+            {isLoggingOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
       </aside>

@@ -33,6 +33,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
@@ -139,9 +140,14 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   }
 
   const handleLogout = async () => {
-    await logout()
-    addToast('success', 'Signed out successfully')
-    navigate('/adminlog')
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      addToast('success', 'Signed out successfully')
+      navigate('/adminlog')
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   const recentNotifications = notifications.slice(0, 5)
@@ -346,10 +352,18 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-error-soft"
+                disabled={isLoggingOut}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-error-soft disabled:opacity-50"
               >
-                <LogOut className="h-4 w-4" />
-                Sign out
+                {isLoggingOut ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                {isLoggingOut ? 'Signing out…' : 'Sign out'}
               </button>
             </div>
           )}

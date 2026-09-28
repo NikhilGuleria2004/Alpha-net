@@ -9,9 +9,10 @@ interface DeclineModalProps {
   onConfirm: () => void
   reason: string
   onReasonChange: (reason: string) => void
+  loading?: boolean
 }
 
-export function DeclineModal({ isOpen, onClose, onConfirm, reason, onReasonChange }: DeclineModalProps) {
+export function DeclineModal({ isOpen, onClose, onConfirm, reason, onReasonChange, loading }: DeclineModalProps) {
   const [error, setError] = useState('')
 
   const handleSubmit = () => {
@@ -36,7 +37,7 @@ export function DeclineModal({ isOpen, onClose, onConfirm, reason, onReasonChang
         />
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => { onReasonChange(''); setError(''); onClose() }}>Cancel</Button>
-          <Button variant="danger" onClick={handleSubmit}>Decline Timesheet</Button>
+          <Button variant="danger" onClick={handleSubmit} loading={loading} disabled={loading}>Decline Timesheet</Button>
         </div>
       </div>
     </Modal>

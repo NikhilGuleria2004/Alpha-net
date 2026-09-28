@@ -23,7 +23,7 @@ import type { Timesheet } from '../../types/timesheet'
 import type { User } from '../../types/auth'
 import type { Document } from '../../types/document'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string }) {
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -32,8 +32,8 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm}>{confirmLabel || 'Confirm'}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel || 'Confirm'}</Button>
         </div>
       </div>
     </div>
@@ -55,6 +55,7 @@ export function ProjectDetails() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const project = projects.find((p) => p.id === projectId)
   const projectUsers = users.filter((u) => project?.teamMemberIds.includes(u.id))
@@ -87,9 +88,15 @@ export function ProjectDetails() {
   ]
 
   const handleDelete = async () => {
-    await deleteProject(project.id)
-    addToast('success', 'Project deleted successfully')
-    navigate('/admin/projects')
+    setIsDeleting(true)
+    try {
+      await deleteProject(project.id)
+      addToast('success', 'Project deleted successfully')
+      navigate('/admin/projects')
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteOpen(false)
+    }
   }
 
   return (
@@ -118,7 +125,7 @@ export function ProjectDetails() {
       </div>
 
       <Tabs tabs={tabs} defaultValue="overview" />
-      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDelete} title="Delete Project" description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`} confirmLabel="Delete" />
+      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDelete} loading={isDeleting} title="Delete Project" description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`} confirmLabel="Delete" />
     </div>
   )
 }
@@ -192,13 +199,19 @@ function OverviewTab({ project, manager, supervisor }: { project: Project; manag
 function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: { project: Project; teamMembers: User[]; supervisor?: { id: string; name: string } | undefined; users: User[]; onRemove: (userId: string) => void | Promise<void>; onAdd: (userId: string) => void | Promise<void> }) {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [addingUserId, setAddingUserId] = useState<string | null>(null)
   const availableUsers = users.filter((u) => u.status === 'active' && !project.teamMemberIds.includes(u.id))
   const filteredAvailable = availableUsers.filter((u) => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
 
   const handleAdd = async (userId: string) => {
-    await onAdd(userId)
-    setIsAddOpen(false)
-    setSearch('')
+    setAddingUserId(userId)
+    try {
+      await onAdd(userId)
+      setIsAddOpen(false)
+      setSearch('')
+    } finally {
+      setAddingUserId(null)
+    }
   }
 
   return (
@@ -244,7 +257,7 @@ function TeamTab({ project, teamMembers, supervisor, users, onRemove, onAdd }: {
                     <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => handleAdd(u.id)}>Add</Button>
+                <Button size="sm" loading={addingUserId === u.id} disabled={addingUserId !== null} onClick={() => handleAdd(u.id)}>Add</Button>
               </div>
             ))}
             {filteredAvailable.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No available users found.</p>}

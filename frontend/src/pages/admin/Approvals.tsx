@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useAppData } from '../../contexts/AppDataContext'
+import { useToast } from '../../contexts/ToastContext'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
+import { Checkbox } from '../../components/ui/Checkbox'
 import { ReviewPanel } from '../../components/approvals/ReviewPanel'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
@@ -12,13 +14,14 @@ import type { Timesheet } from '../../types/timesheet'
 type TabId = 'pending' | 'approved' | 'declined' | 'withdrawn'
 
 export function Approvals() {
-  const { timesheets, users, projects } = useAppData()
-  // Guideline 1.11/1.23 (checklist item 1.4): the active approval tab is URL
-  // state (?tab=pending) so a refreshed or shared page reopens the same tab.
+  const { timesheets, users, projects, approveTimesheet } = useAppData()
+  const { addToast } = useToast()
   const [tab, setTab] = useQueryParamState('tab', 'pending', 'push')
   const activeTab = tab as TabId
   const setActiveTab = (id: TabId): void => setTab(id)
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null)
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
 
   const pendingCount = timesheets.filter((t) => t.status === 'pending').length
 
@@ -36,6 +39,37 @@ export function Approvals() {
       .filter((t) => t.status === activeTab)
       .sort((a, b) => new Date(b.submittedAt ?? b.updatedAt).getTime() - new Date(a.submittedAt ?? a.updatedAt).getTime())
   , [accessibleTimesheets, activeTab])
+
+  const handleQuickApprove = async (timesheet: Timesheet) => {
+    setApprovingIds((prev) => new Set([...prev, timesheet.id]))
+    try {
+      const updated = await approveTimesheet(timesheet.id)
+      if (updated) {
+        addToast('success', 'Timesheet approved')
+      } else {
+        addToast('error', 'Failed to approve timesheet')
+        setCheckedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(timesheet.id)
+          return next
+        })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to approve timesheet'
+      addToast('error', message)
+      setCheckedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(timesheet.id)
+        return next
+      })
+    } finally {
+      setApprovingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(timesheet.id)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -93,8 +127,14 @@ export function Approvals() {
                   {filteredTimesheets.map((timesheet) => {
                     const employee = users.find((u) => u.id === timesheet.userId)
                     const project = projects.find((p) => p.id === timesheet.projectId)
+                    const isApproving = approvingIds.has(timesheet.id)
+                    const canQuickApprove = timesheet.status === 'pending'
                     return (
-                      <tr key={timesheet.id} className="hover:bg-muted">
+                      <tr
+                        key={timesheet.id}
+                        className="cursor-pointer hover:bg-muted"
+                        onClick={() => setSelectedTimesheet(timesheet)}
+                      >
                         <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
@@ -107,9 +147,27 @@ export function Approvals() {
                         <td className="px-4 py-3">
                           <StatusBadge status={timesheet.status} size="sm" />
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedTimesheet(timesheet)}>Review</Button>
-                        </td>
+                          <td className="px-4 py-3 text-right">
+                            {canQuickApprove && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-block"
+                              >
+                                <Checkbox
+                                  checked={checkedIds.has(timesheet.id)}
+                                  onChange={(checked) => {
+                                    if (checked && !isApproving) {
+                                      setCheckedIds((prev) => new Set([...prev, timesheet.id]))
+                                      handleQuickApprove(timesheet)
+                                    }
+                                  }}
+                                  label="A"
+                                  disabled={isApproving}
+                                />
+                              </div>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedTimesheet(timesheet) }}>Review</Button>
+                          </td>
                       </tr>
                     )
                   })}
