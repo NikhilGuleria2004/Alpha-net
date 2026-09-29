@@ -216,7 +216,7 @@ export function Settings() {
         <div className="p-5 space-y-4">
           <ThemeToggle showLabel />
           <p className="text-xs text-muted-foreground">
-            Cycles light → night (blue slate) → true dark (pure black) → light.
+            Toggles between light and dark theme. Light is default.
           </p>
         </div>
       </Card>

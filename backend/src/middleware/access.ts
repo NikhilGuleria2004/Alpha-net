@@ -213,3 +213,86 @@ export async function requireUserManage(req: AuthenticatedRequest, res: Response
   }
   next()
 }
+
+// --- Daily timesheets (ts.md Phase 4) --------------------------------------
+// Daily entries are the child rows of a weekly timesheet (Phase 2/3). Access
+// mirrors the weekly rules — admin, owner, or a supervisor with a relationship
+// to the entry — with one deliberate asymmetry: a supervisor's *read* scope
+// never becomes *write* scope, so only the owner (or an admin) can mutate a
+// daily entry. That keeps daily edits from by-stepping the weekly
+// submit/review flow that approvals depend on.
+
+/**
+ * True when `userId` is recorded as the direct supervisor of `targetUserId`
+ * (`users.supervisorId`). Mirrors the scoping query used by
+ * timesheet.controller.ts#listTimesheets, with deny-by-default on malformed
+ * ids and on a missing USERS collection.
+ */
+export async function canSuperviseUser(userId: string, isSupervisor: boolean, targetUserId: string): Promise<boolean> {
+  if (!isSupervisor) return false
+  if (!ObjectId.isValid(userId) || !ObjectId.isValid(targetUserId)) return false
+  try {
+    const db = await getDb()
+    const subordinate = await db.collection(COLLECTIONS.USERS).findOne({
+      _id: new ObjectId(targetUserId),
+      supervisorId: new ObjectId(userId),
+    })
+    return Boolean(subordinate)
+  } catch {
+    return false
+  }
+}
+
+export async function canAccessDailyTimesheet(userId: string, role: string, isSupervisor: boolean, entryId: string): Promise<boolean> {
+  if (role === 'admin') return true
+  if (!ObjectId.isValid(entryId)) return false
+  const db = await getDb()
+  const entry = await db.collection(COLLECTIONS.DAILY_TIMESHEETS).findOne({ _id: new ObjectId(entryId) })
+  if (!entry) return false
+  if (entry.userId.toString() === userId) return true
+  if (isSupervisor) {
+    // Direct report (users.supervisorId) — the same scope the weekly list uses.
+    if (await canSuperviseUser(userId, true, entry.userId.toString())) return true
+    // Or the supervisor of the project the time was logged against.
+    const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: entry.projectId })
+    if (project && project.supervisorId?.toString() === userId) return true
+  }
+  return false
+}
+
+export async function canEditDailyTimesheet(userId: string, role: string, isSupervisor: boolean, entryId: string): Promise<boolean> {
+  // `isSupervisor` is accepted for signature parity with the other canEdit*
+  // helpers but intentionally unused: editing someone else's day is an admin
+  // action (the owner changes their own rows before submitting the week).
+  void isSupervisor
+  if (role === 'admin') return true
+  if (!ObjectId.isValid(entryId)) return false
+  const db = await getDb()
+  const entry = await db.collection(COLLECTIONS.DAILY_TIMESHEETS).findOne({ _id: new ObjectId(entryId) })
+  if (!entry) return false
+  return entry.userId.toString() === userId
+}
+
+export async function requireDailyTimesheetAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const entryId = (req.params.id ?? req.params.entryId) as string
+  if (!entryId) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Daily timesheet entry ID is required' } })
+  }
+  const hasAccess = await canAccessDailyTimesheet(req.user!.userId, req.user!.role, req.user!.isSupervisor, entryId)
+  if (!hasAccess) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Access denied to this daily timesheet entry' } })
+  }
+  next()
+}
+
+export async function requireDailyTimesheetEdit(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const entryId = (req.params.id ?? req.params.entryId) as string
+  if (!entryId) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Daily timesheet entry ID is required' } })
+  }
+  const canEdit = await canEditDailyTimesheet(req.user!.userId, req.user!.role, req.user!.isSupervisor, entryId)
+  if (!canEdit) {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Edit access denied to this daily timesheet entry' } })
+  }
+  next()
+}

@@ -6,6 +6,10 @@ import { getUserById } from './user.service.js'
 import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 import { canReviewTimesheet } from '../middleware/access.js'
+import {
+  lockDailyEntriesForWeeklyTimesheet,
+  unlockDailyEntriesForWeeklyTimesheet,
+} from './daily-timesheet-lock.service.js'
 import type { Timesheet } from './timesheet.service.js'
 
 export interface ApprovalFilters {
@@ -103,6 +107,10 @@ export async function approveTimesheet(timesheetId: string, reviewerId: string):
   if (!result) return null
   const updated = result
 
+  // ts.md 5.2 — the approval above froze the week, so its compiled days freeze
+  // with it: from here on only the parent tells the truth about mutability.
+  await lockDailyEntriesForWeeklyTimesheet(timesheetId)
+
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
   const projectName = project?.name || 'a project'
   const reviewerName = reviewer.name
@@ -174,6 +182,11 @@ export async function declineTimesheet(timesheetId: string, reviewerId: string, 
   )
   if (!result) return null
   const updated = result
+
+  // ts.md 5.3 — a declined week goes back to the employee, so its days are
+  // released for correction. They stay linked to this parent, so re-compiling
+  // refreshes the same weekly row instead of forking a new one.
+  await unlockDailyEntriesForWeeklyTimesheet(timesheetId)
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(timesheet.projectId) })
   const projectName = project?.name || 'a project'

@@ -23,6 +23,7 @@ export const COLLECTIONS = {
   CLIENTS: 'clients',
   ASSIGNMENTS: 'assignments',
   PAYROLLS: 'payrolls',
+  DAILY_TIMESHEETS: 'daily_timesheets',
 } as const
 
 // ── Flow Integration Phase 9 (CUTOVER) — LEGACY RETENTION POLICY ────────────
@@ -205,3 +206,16 @@ export async function ensureFlowIntegrationIndexes(): Promise<void> {
 
   logger.info('ensured flow-integration indexes')
 }
+
+// Daily-to-Weekly Timesheets Phase 0: daily_timesheets indexes.
+// Kept separate from ensureIndexes() so the frozen Phase 0 baseline test stays valid.
+export async function ensureDailyTimesheetIndexes(): Promise<void> {
+  const db = await getDb()
+  const daily = db.collection(COLLECTIONS.DAILY_TIMESHEETS)
+  await daily.createIndex({ userId: 1, projectId: 1, date: 1, entryType: 1 }, { unique: true })
+  await daily.createIndex({ weeklyTimesheetId: 1 })
+  await daily.createIndex({ userId: 1, date: 1 })
+  await daily.createIndex({ assignmentId: 1 })
+  logger.info('ensured daily timesheet indexes')
+}
+

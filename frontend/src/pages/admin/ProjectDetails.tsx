@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit3, MoreHorizontal, UserPlus, Trash2, Download } from 'lucide-react'
+import { ArrowLeft, Edit3, MoreHorizontal, UserPlus, Trash2, Download, FileText } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
@@ -114,6 +114,7 @@ export function ProjectDetails() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => navigate(`/admin/projects/${project.id}/edit`)} leftIcon={<Edit3 className="h-4 w-4" />}>Edit Project</Button>
+          <Button onClick={() => navigate(`/admin/invoices/new?projectId=${project.id}`)} leftIcon={<FileText className="h-4 w-4" />}>Create Invoice</Button>
           <Dropdown
             trigger={
               <Button variant="secondary" rightIcon={<MoreHorizontal className="h-4 w-4" />} />

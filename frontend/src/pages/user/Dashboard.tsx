@@ -4,13 +4,14 @@ import { FolderKanban, Clock3, ClipboardCheck, CalendarDays } from 'lucide-react
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
 import { StatCard } from '../../components/dashboard/StatCard'
+import { DailyEntryCard } from '../../components/timesheets/DailyEntryCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { toLocalDateString, formatWeekRange } from '../../utils/date'
 
 export function UserDashboard() {
   const { user } = useAuth()
-  const { projects: appProjects, timesheets } = useAppData()
+  const { projects: appProjects, timesheets, refreshTimesheets } = useAppData()
   const navigate = useNavigate()
 
   const myProjects = useMemo(() => {
@@ -123,6 +124,13 @@ export function UserDashboard() {
           onClick={() => navigate('/user/projects')}
         />
       </div>
+
+      {/* ts.md 6.4 — quick-log widget. Placed directly under the stat cards so
+          logging a day takes seconds: pick the date (today by default), the
+          project, the hours and a one-line description. Logging re-runs the
+          backend's weekly auto-compile, so onLogged refreshes the weekly totals
+          the cards above show. */}
+      <DailyEntryCard onLogged={refreshTimesheets} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

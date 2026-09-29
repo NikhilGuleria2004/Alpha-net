@@ -1,23 +1,30 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Save, Send, Edit3 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Plus, Trash2, Save, Send, Edit3, RefreshCw, AlertTriangle, Lock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
+import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { addWeeks, formatWeekRange, parseLocalDate, toLocalDateString } from '../../utils/date'
+import { addWeeks, formatWeekRange, getWeekDates, parseLocalDate, toLocalDateString } from '../../utils/date'
 import { createEntryId } from '../../utils/id'
+import { formatHours } from '../../utils/format'
 import { getOrgSettings } from '../../services/settingsService'
-import type { Timesheet, TimesheetEntry } from '../../types/timesheet'
+import { compileWeeklyTimesheet, getDailyEntriesForWeek } from '../../services/timesheetService'
+import type { DailyTimesheet, Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
 
 const DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+// Stable empty array so `dailyEntries ?? EMPTY_DAILY_ROWS` keeps referential
+// identity across renders (the daily-row useMemo below depends on it).
+const EMPTY_DAILY_ROWS: DailyTimesheet[] = []
 
 // Mirror the backend day-of-week rules (backend/src/services/timesheet.service.ts:84-116):
 // regular entries are Mon–Fri only, overtime entries are Sat–Sun only, max 24h/day.
@@ -25,7 +32,7 @@ const REGULAR_DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri']
 const OVERTIME_DAYS: DayKey[] = ['sat', 'sun']
 const MAX_DAILY_HOURS = 24
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, isLoading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; isLoading?: boolean }) {
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, isLoading, warnings }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; isLoading?: boolean; warnings?: string[] }) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -33,6 +40,13 @@ function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirm
       <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+        {warnings && warnings.length > 0 && (
+          <ul className="mt-3 space-y-1 rounded-lg bg-warning-soft px-3 py-2">
+            {warnings.map((warning) => (
+              <li key={warning} className="text-xs leading-relaxed text-warning">{warning}</li>
+            ))}
+          </ul>
+        )}
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>Cancel</Button>
           <Button onClick={onConfirm} loading={isLoading}>{confirmLabel || 'Confirm'}</Button>
@@ -75,6 +89,15 @@ export function TimesheetEditor() {
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [weeklyTarget, setWeeklyTarget] = useState(40)
+  // ts.md Phase 7.1/7.2 — daily logs for the open week (read-only here;
+  // editing/deleting happens in the Daily Work Logger on the dashboard).
+  const [dailyEntries, setDailyEntries] = useState<DailyTimesheet[] | null>(null)
+  const [trayOverrides, setTrayOverrides] = useState<Partial<Record<DayKey, boolean>>>({})
+  const [isCompiling, setIsCompiling] = useState(false)
+  const [isCompileConfirmOpen, setIsCompileConfirmOpen] = useState(false)
+  // Bumped after a compile to re-fetch the daily rows (their linkage/status
+  // changes server-side when the parent is rebuilt).
+  const [dailyTick, setDailyTick] = useState(0)
 
   // Guideline 5.15 (checklist item 1.2): the editor is dirty when the working
   // copy differs from the last saved state. The hook covers tab close/refresh
@@ -91,7 +114,23 @@ export function TimesheetEditor() {
       notes: existingTimesheet?.notes ?? '',
     }),
   )
-  const rebaseSavedSnapshot = () => setSavedSnapshot(JSON.stringify({ entries, notes }))
+  // ts.md 7.3 — the guard compares the working copy against the last-known
+  // saved snapshot. A full save (draft/submit/withdraw) re-bases both halves;
+  // a compile persists only the rows server-side, so rebaseSavedRows() re-bases
+  // the rows half alone — rows modified by a compile then never trip the
+  // blocker, while notes edited locally stay flagged as dirty.
+  const rebaseSavedSnapshot = (nextEntries: TimesheetEntry[] = entries, nextNotes: string = notes) =>
+    setSavedSnapshot(JSON.stringify({ entries: nextEntries, notes: nextNotes }))
+  const rebaseSavedRows = (nextEntries: TimesheetEntry[]) =>
+    setSavedSnapshot((prev) => {
+      try {
+        const parsed = JSON.parse(prev) as { entries: TimesheetEntry[] | null; notes: string }
+        return JSON.stringify({ entries: nextEntries, notes: parsed.notes ?? '' })
+      } catch {
+        // Fail toward false-dirty (block navigation) rather than falsely-clean.
+        return JSON.stringify({ entries: nextEntries, notes: '' })
+      }
+    })
   const currentSnapshot = JSON.stringify({ entries, notes })
   // isReadOnly is declared below (derived from status); inline the same check
   // here to avoid a use-before-declaration error.
@@ -112,12 +151,32 @@ export function TimesheetEditor() {
     return () => { cancelled = true }
   }, [])
 
-  const getValidationErrors = () => {
+  // ts.md 7.1 — fetch this week's daily rows; re-runs when the week or project
+  // changes and after a compile (dailyTick) to pick up fresh linkage/status.
+  const projectId = existingTimesheet?.projectId ?? null
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+    getDailyEntriesForWeek(weekStart, projectId)
+      .then((rows) => {
+        if (!cancelled) setDailyEntries(rows)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          addToast('error', err instanceof Error ? err.message : 'Failed to load daily logs')
+        }
+      })
+    return () => { cancelled = true }
+  }, [weekStart, projectId, dailyTick, addToast])
+
+  // ts.md 7.2: parameterized so the submit flow can validate the *compiled*
+  // rows (post-compile) rather than the possibly-stale pre-compile grid.
+  const getValidationErrors = (rows: TimesheetEntry[] = entries) => {
     const errors: string[] = []
-    if (entries.length === 0) {
+    if (rows.length === 0) {
       errors.push('Add at least one work item.')
     }
-    entries.forEach((entry) => {
+    rows.forEach((entry) => {
       // H2 (QA.md): mirror backend validateEntries — regular = Mon–Fri only,
       // overtime = Sat–Sun only — so the editor catches day-rule violations
       // inline instead of relying on the backend to reject the save.
@@ -150,7 +209,17 @@ export function TimesheetEditor() {
         errors.push('Work items with hours require a description.')
       }
     })
-    if (totals.totalHours <= 0) {
+    // Mirror totals' day rules (regular = Mon–Fri, overtime = Sat–Sun) so the
+    // "at least one day" check sees the same hours the summary card shows.
+    let validatedTotal = 0
+    for (const entry of rows) {
+      if (entry.entryType === 'regular') {
+        validatedTotal += entry.hours.mon + entry.hours.tue + entry.hours.wed + entry.hours.thu + entry.hours.fri
+      } else {
+        validatedTotal += entry.hours.sat + entry.hours.sun
+      }
+    }
+    if (validatedTotal <= 0) {
       errors.push('Enter hours for at least one day.')
     }
     return errors
@@ -254,6 +323,97 @@ export function TimesheetEditor() {
   const progressPercent = Math.min(100, Math.max(0, (totals.totalHours / weeklyTarget) * 100))
   const isAboveTarget = totals.totalHours > weeklyTarget
 
+  // --- ts.md Phase 7.1 — daily rows grouped under each day column ---------
+  const dailyRows = dailyEntries ?? EMPTY_DAILY_ROWS
+  const dailyByDay = useMemo(() => {
+    const byDay = new Map<DayKey, DailyTimesheet[]>()
+    for (const day of DAYS) byDay.set(day, [])
+    for (const row of dailyRows) {
+      byDay.get(row.dayOfWeek)?.push(row)
+    }
+    return byDay
+  }, [dailyRows])
+  const dayLabels = useMemo(() => {
+    const labels = new Map<DayKey, string>()
+    for (const { dayKey, label } of getWeekDates(weekStart)) {
+      labels.set(dayKey as DayKey, label)
+    }
+    return labels
+  }, [weekStart])
+  const dailyTotalHours = useMemo(
+    () => dailyRows.reduce((sum, row) => sum + row.hours, 0),
+    [dailyRows],
+  )
+  // Auto-sync banner: daily logs are the source of truth (Phase 3 compiles on
+  // every save), so a drift from the parent grid means this editor's working
+  // copy is stale and should be re-compiled before submission.
+  const isOutOfSync = dailyRows.length > 0 && Math.abs(dailyTotalHours - totals.totalHours) > 0.01
+  const hasLockedDailyRows = dailyRows.some((row) => row.status === 'locked')
+  // compileWeeklyTimesheet only accepts draft/declined/withdrawn parents (the
+  // backend rejects pending/approved with a status error), so gate the CTA to
+  // exactly the statuses where the user can also submit.
+  const canCompile = status === 'draft' || status === 'withdrawn' || status === 'declined'
+
+  const toggleTray = (day: DayKey) => {
+    const hasEntries = (dailyByDay.get(day)?.length ?? 0) > 0
+    // Default: expanded when the day has rows; the override flips that.
+    const currentlyOpen = trayOverrides[day] ?? hasEntries
+    setTrayOverrides((prev) => ({ ...prev, [day]: !currentlyOpen }))
+  }
+
+  // ts.md 7.2 — explicit end-of-week CTA: re-aggregate daily logs into the
+  // parent (POST /timesheets/daily/compile), then refresh local copies.
+  const handleCompile = async () => {
+    if (!existingTimesheet || !project || isCompiling) return
+    setIsCompiling(true)
+    try {
+      const compiled = await compileWeeklyTimesheet(project.id, existingTimesheet.weekStart)
+      if (!compiled) {
+        addToast('error', 'Failed to compile daily logs. Please try again.')
+        return
+      }
+      // The compiled rows are now the saved server state for the rows half —
+      // re-base only that half so unsaved notes remain guarded (ts.md 7.3).
+      const compiledEntries = compiled.entries.map((e) => ({ ...e, hours: { ...e.hours } }))
+      setEntries(compiledEntries)
+      rebaseSavedRows(compiledEntries)
+      await refreshTimesheets()
+      setDailyTick((tick) => tick + 1)
+      setIsCompileConfirmOpen(false)
+      addToast('success', `Compiled daily logs — weekly total ${compiled.totalHours.toFixed(1)}h.`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to compile daily logs'
+      addToast('error', message)
+    } finally {
+      setIsCompiling(false)
+    }
+  }
+
+  // ts.md 7.2 — pre-submission warnings (non-blocking): weekdays with no
+  // hours, missing descriptions, and uncompiled/stale daily logs.
+  const getSubmissionWarnings = (): string[] => {
+    const warnings: string[] = []
+    for (const day of REGULAR_DAYS) {
+      const dayTotal = entries.reduce((sum, entry) => sum + entry.hours[day], 0)
+      if (dayTotal <= 0) {
+        const label = day.charAt(0).toUpperCase() + day.slice(1)
+        warnings.push(`${label} has no hours recorded this week.`)
+      }
+    }
+    const missingDesc = entries.filter((entry) => calcEntryTotal(entry) > 0 && !entry.description.trim()).length
+    if (missingDesc > 0) {
+      warnings.push(`${missingDesc} work ${missingDesc === 1 ? 'item is' : 'items are'} missing a description.`)
+    }
+    const missingDailyDesc = dailyRows.filter((row) => !row.description.trim()).length
+    if (missingDailyDesc > 0) {
+      warnings.push(`${missingDailyDesc} daily ${missingDailyDesc === 1 ? 'entry is' : 'entries are'} missing a description.`)
+    }
+    if (isOutOfSync) {
+      warnings.push(`Daily logs (${dailyTotalHours.toFixed(1)}h) and this grid (${totals.totalHours.toFixed(1)}h) are out of sync — they will be compiled before submitting.`)
+    }
+    return warnings
+  }
+
   const handleSaveDraft = async () => {
     if (!existingTimesheet || !user || !project) return
     const errors = getValidationErrors()
@@ -294,19 +454,37 @@ export function TimesheetEditor() {
 
   const handleSubmit = async () => {
     if (!existingTimesheet || !user || !project) return
-    const errors = getValidationErrors()
-    setValidationErrors(errors)
-    if (errors.length > 0) {
-      addToast('error', 'Please fix validation errors before submitting.')
-      return
-    }
     setIsProcessing(true)
     try {
+      // ts.md 7.2 — compile this week's daily logs into the parent first so
+      // the submitted totals always reflect the daily source of truth. Skipped
+      // when the week has no daily rows (legacy manual timesheets). Validation
+      // runs *after* the compile so it judges the rows actually submitted.
+      let workingEntries = entries
+      if (dailyRows.length > 0) {
+        const compiled = await compileWeeklyTimesheet(project.id, existingTimesheet.weekStart)
+        if (!compiled) {
+          addToast('error', 'Failed to compile daily logs before submitting. Please try again.')
+          return
+        }
+        workingEntries = compiled.entries.map((e) => ({ ...e, hours: { ...e.hours } }))
+        setEntries(workingEntries)
+        await refreshTimesheets()
+        setDailyTick((tick) => tick + 1)
+      }
+
+      const errors = getValidationErrors(workingEntries)
+      setValidationErrors(errors)
+      if (errors.length > 0) {
+        addToast('error', 'Please fix validation errors before submitting.')
+        return
+      }
+
       const data = {
         userId: user.id,
         projectId: project.id,
         weekStart,
-        entries,
+        entries: workingEntries,
         notes,
       }
 
@@ -332,7 +510,7 @@ export function TimesheetEditor() {
       setIsSubmitOpen(false)
       // Checklist item 1.2: re-base before the programmatic navigate so the
       // blocker lets the intended post-submit navigation through.
-      rebaseSavedSnapshot()
+      rebaseSavedSnapshot(workingEntries, notes)
       await refreshTimesheets()
       navigate('/user/timesheets')
     } catch (err) {
@@ -398,6 +576,106 @@ export function TimesheetEditor() {
           <StatusBadge status={status} />
         </div>
       </div>
+
+      {/* ts.md 7.1 — daily entry cards grouped under each day column, with a
+          collapsible detail tray holding each day's individual descriptors.
+          Read-only: daily rows are edited via the Daily Work Logger. */}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Daily Logs</h2>
+            <span className="text-sm text-muted-foreground">
+              {dailyEntries === null
+                ? 'Loading…'
+                : dailyRows.length === 0
+                  ? 'No daily entries this week'
+                  : `${dailyRows.length} ${dailyRows.length === 1 ? 'entry' : 'entries'} · ${dailyTotalHours.toFixed(1)}h`}
+            </span>
+            {hasLockedDailyRows && (
+              <Badge variant="warning" size="sm" leftIcon={<Lock className="h-3 w-3" />}>Locked</Badge>
+            )}
+          </div>
+          {!isReadOnly && canCompile && dailyRows.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsCompileConfirmOpen(true)}
+              loading={isCompiling}
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+            >
+              Compile from Daily Logs
+            </Button>
+          )}
+        </div>
+        {canCompile && isOutOfSync && (
+          <div className="flex items-start gap-2 border-b border-border bg-warning-soft px-5 py-3" role="status">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <p className="text-sm text-warning">
+              Daily logs ({dailyTotalHours.toFixed(1)}h) and this week's grid ({totals.totalHours.toFixed(1)}h) are out
+              of sync. The grid will be rebuilt from your daily logs before submission.
+            </p>
+          </div>
+        )}
+        <div className="p-5">
+          {dailyEntries === null ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+              {DAYS.map((day) => {
+                const dayRows = dailyByDay.get(day) ?? []
+                const dayTotal = dayRows.reduce((sum, row) => sum + row.hours, 0)
+                const isOpen = trayOverrides[day] ?? dayRows.length > 0
+                return (
+                  <div key={day} className="overflow-hidden rounded-lg border border-border bg-muted/40">
+                    <button
+                      type="button"
+                      onClick={() => toggleTray(day)}
+                      aria-expanded={isOpen}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {dayLabels.get(day) ?? day}
+                        </span>
+                        <span className="block text-sm font-semibold text-foreground">{dayTotal.toFixed(1)}h</span>
+                      </span>
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="space-y-2 border-t border-border px-3 py-2">
+                        {dayRows.length === 0 ? (
+                          <p className="py-1 text-xs text-muted-foreground">No hours logged.</p>
+                        ) : (
+                          dayRows.map((row) => (
+                            <div key={row.id} className="rounded-lg border border-border bg-card p-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-foreground">{formatHours(row.hours)}</span>
+                                <span className="flex items-center gap-1">
+                                  <Badge variant={row.entryType === 'overtime' ? 'warning' : 'default'} size="sm">
+                                    {row.entryType === 'overtime' ? 'OT' : 'Regular'}
+                                  </Badge>
+                                  {row.status === 'locked' && (
+                                    <Badge variant="danger" size="sm" leftIcon={<Lock className="h-3 w-3" />}>Locked</Badge>
+                                  )}
+                                </span>
+                              </div>
+                              <p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
+                                {row.description || <span className="italic">No description</span>}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <div className="border-b border-border px-5 py-4">
@@ -543,9 +821,21 @@ export function TimesheetEditor() {
         onClose={() => setIsSubmitOpen(false)}
         onConfirm={handleSubmit}
         title="Submit Timesheet?"
-        description={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatWeekRange(weekStart) : ''}. Total hours: ${totals.totalHours.toFixed(1)}h.`}
+        description={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatWeekRange(weekStart) : ''}. Total hours: ${totals.totalHours.toFixed(1)}h.${dailyRows.length > 0 ? ' Your daily logs will be compiled into this timesheet first.' : ''}`}
+        warnings={getSubmissionWarnings()}
         confirmLabel="Submit"
         isLoading={isProcessing}
+      />
+
+      {/* ts.md 7.2 — explicit "Compile from Daily Logs" CTA confirmation. */}
+      <ConfirmDialog
+        isOpen={isCompileConfirmOpen}
+        onClose={() => setIsCompileConfirmOpen(false)}
+        onConfirm={handleCompile}
+        title="Compile from Daily Logs?"
+        description={`Rebuild this week's entries from your ${dailyRows.length} daily ${dailyRows.length === 1 ? 'log' : 'logs'} (${dailyTotalHours.toFixed(1)}h)? Unsaved edits to the grid below will be replaced. Notes are kept.`}
+        confirmLabel="Compile"
+        isLoading={isCompiling}
       />
 
       <WithdrawModal
@@ -557,14 +847,15 @@ export function TimesheetEditor() {
         isLoading={isProcessing}
       />
 
-      {/* Guideline 5.15 (checklist item 1.2): in-app navigation with unsaved
-          hours is intercepted by useBlocker — confirm to discard, or stay. */}
+      {/* Guideline 5.15 (checklist item 1.2 + ts.md 7.3): in-app navigation
+          with unsaved rows/notes is intercepted by useBlocker — the snapshot is
+          re-based after saves and compiles so only genuine local edits block. */}
       <ConfirmDialog
         isOpen={unsavedBlocker.state === 'blocked'}
         onClose={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.reset()}
         onConfirm={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.proceed()}
         title="Discard unsaved changes?"
-        description="You have unsaved hours or notes in this timesheet. Leaving now will lose them."
+        description="You have unsaved edits to this timesheet's entries or notes. Leaving now will lose them."
         confirmLabel="Discard changes"
       />
     </div>

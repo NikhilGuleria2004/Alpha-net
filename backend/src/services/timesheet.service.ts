@@ -7,6 +7,10 @@ import { createNotification } from './notification.service.js'
 import { createActivity } from './activity.service.js'
 import { getActiveAssignment, resolveAssignmentForTimesheet, type Assignment } from './assignment.service.js'
 import { isFlowPhaseEnabled } from '../lib/env.js'
+import {
+  lockDailyEntriesForWeeklyTimesheet,
+  unlockDailyEntriesForWeeklyTimesheet,
+} from './daily-timesheet-lock.service.js'
 export type TimesheetStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'withdrawn'
 
 // Flow Integration Phase 8 (§5, item 4) — how the docx submission workflow
@@ -518,6 +522,12 @@ export async function submitTimesheet(id: string, authenticatedUserId: string): 
   if (!result) return null
   const updated = toTimesheet(result)
 
+  // ts.md Phase 5 — the week is under review now, so its compiled days freeze
+  // until the review resolves (decline/withdraw release them again). Child writes
+  // additionally re-check the parent status, so this cascade is a fast path, not
+  // the enforcement point.
+  await lockDailyEntriesForWeeklyTimesheet(id)
+
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(updated.projectId) })
   const projectName = project?.name || 'a project'
   const owner = await db.collection(COLLECTIONS.USERS).findOne({ _id: new ObjectId(updated.userId) })
@@ -587,6 +597,10 @@ export async function withdrawTimesheet(id: string, authenticatedUserId: string,
   )
   if (!result) return null
   const updated = toTimesheet(result)
+
+  // ts.md 5.4 — recalling a pending week hands its days back to the owner, so the
+  // entries can be corrected and the week re-submitted.
+  await unlockDailyEntriesForWeeklyTimesheet(id)
 
   const project = await db.collection(COLLECTIONS.PROJECTS).findOne({ _id: new ObjectId(updated.projectId) })
   const projectName = project?.name || 'a project'
@@ -745,5 +759,205 @@ export async function createWeeklyDrafts(weekStart?: string): Promise<CreateWeek
     'weekly draft timesheets created',
   )
   return result
+}
+
+
+/**
+ * Phase 3 — Compiles daily timesheet entries into the aggregated weekly timesheet.
+ * Groups by entryType, formats descriptions, syncs the parent draft timesheet,
+ * and sets `weeklyTimesheetId` on all aggregated daily entries.
+ */
+export async function compileWeeklyTimesheet(
+  userId: string,
+  projectId: string,
+  weekStart: string
+): Promise<Timesheet> {
+  const db = await getDb()
+
+  if (!ObjectId.isValid(userId) || !ObjectId.isValid(projectId)) {
+    throw new Error('Invalid user or project ID')
+  }
+
+  const normalizedWeekStart = normalizeToMonday(weekStart)
+  const mondayDate = new Date(`${normalizedWeekStart}T00:00:00.000Z`)
+  const sundayDate = new Date(mondayDate)
+  sundayDate.setUTCDate(sundayDate.getUTCDate() + 6)
+  const weekEnd = sundayDate.toISOString().slice(0, 10)
+
+  // 1. Fetch all daily entries for this user, project, and week range
+  const dailyEntries = await db
+    .collection(COLLECTIONS.DAILY_TIMESHEETS)
+    .find({
+      userId: new ObjectId(userId),
+      projectId: new ObjectId(projectId),
+      date: { $gte: normalizedWeekStart, $lte: weekEnd },
+    })
+    .sort({ date: 1, createdAt: 1 })
+    .toArray()
+
+  // 2. Group daily entries by entryType
+  const regularDaily = dailyEntries.filter((d: any) => d.entryType === 'regular')
+  const overtimeDaily = dailyEntries.filter((d: any) => d.entryType === 'overtime')
+
+  const dayAbbr: Record<string, string> = {
+    mon: 'Mon',
+    tue: 'Tue',
+    wed: 'Wed',
+    thu: 'Thu',
+    fri: 'Fri',
+    sat: 'Sat',
+    sun: 'Sun',
+  }
+
+  const entries: TimesheetEntry[] = []
+
+  // Helper to compile a group into a TimesheetEntry
+  const compileGroup = (
+    groupDaily: any[],
+    type: 'regular' | 'overtime',
+    existingEntry?: TimesheetEntry
+  ): TimesheetEntry => {
+    const hours: Record<string, number> = {
+      mon: 0,
+      tue: 0,
+      wed: 0,
+      thu: 0,
+      fri: 0,
+      sat: 0,
+      sun: 0,
+    }
+
+    const descParts: string[] = []
+
+    for (const d of groupDaily) {
+      const day = d.dayOfWeek as keyof typeof hours
+      if (day in hours) {
+        hours[day] = (hours[day] || 0) + (d.hours || 0)
+      }
+      const label = dayAbbr[d.dayOfWeek] || d.dayOfWeek
+      const text = d.description ? d.description.trim() : ''
+      if (text) {
+        descParts.push(`[${label}] ${text}`)
+      }
+    }
+
+    const description =
+      descParts.length > 0
+        ? descParts.join('; ')
+        : existingEntry?.description || (type === 'regular' ? 'Regular hours' : 'Overtime hours')
+
+    return {
+      id: existingEntry?.id || randomUUID(),
+      description,
+      entryType: type,
+      hours,
+    }
+  }
+
+  // Find existing weekly draft if any
+  const existingTimesheet = await db.collection(COLLECTIONS.TIMESHEETS).findOne({
+    userId: new ObjectId(userId),
+    projectId: new ObjectId(projectId),
+    weekStart: normalizedWeekStart,
+  })
+
+  if (existingTimesheet && existingTimesheet.isLocked) {
+    throw new Error('Cannot compile daily entries into a locked timesheet')
+  }
+
+  if (
+    existingTimesheet &&
+    existingTimesheet.status !== 'draft' &&
+    existingTimesheet.status !== 'declined' &&
+    existingTimesheet.status !== 'withdrawn'
+  ) {
+    throw new Error(`Cannot compile into timesheet in ${existingTimesheet.status} status`)
+  }
+
+  const existingRegularEntry = existingTimesheet?.entries?.find((e: any) => e.entryType === 'regular')
+  const existingOvertimeEntry = existingTimesheet?.entries?.find((e: any) => e.entryType === 'overtime')
+
+  if (regularDaily.length > 0 || !existingTimesheet) {
+    entries.push(compileGroup(regularDaily, 'regular', existingRegularEntry))
+  } else if (existingRegularEntry) {
+    // Keep 0 hours regular entry if it existed
+    entries.push(compileGroup(regularDaily, 'regular', existingRegularEntry))
+  }
+
+  if (overtimeDaily.length > 0) {
+    entries.push(compileGroup(overtimeDaily, 'overtime', existingOvertimeEntry))
+  } else if (existingOvertimeEntry) {
+    // Retain overtime entry with 0 hours
+    entries.push(compileGroup(overtimeDaily, 'overtime', existingOvertimeEntry))
+  }
+
+  if (entries.length === 0) {
+    entries.push({
+      id: randomUUID(),
+      description: 'Regular hours',
+      entryType: 'regular',
+      hours: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
+    })
+  }
+
+  const totals = calcTotals(entries)
+  const now = new Date()
+
+  let weeklyId: ObjectId
+
+  if (existingTimesheet) {
+    weeklyId = existingTimesheet._id
+    await db.collection(COLLECTIONS.TIMESHEETS).updateOne(
+      { _id: existingTimesheet._id },
+      {
+        $set: {
+          entries,
+          regularHours: totals.regularHours,
+          overtimeHours: totals.overtimeHours,
+          totalHours: totals.totalHours,
+          updatedAt: now,
+        },
+      }
+    )
+  } else {
+    // Check assignment link
+    const link = await resolveTimesheetAssignment({
+      userId,
+      projectId,
+      weekStart: normalizedWeekStart,
+    })
+
+    const newDoc: Record<string, any> = {
+      userId: new ObjectId(userId),
+      projectId: new ObjectId(projectId),
+      weekStart: normalizedWeekStart,
+      entries,
+      notes: '',
+      regularHours: totals.regularHours,
+      overtimeHours: totals.overtimeHours,
+      totalHours: totals.totalHours,
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+    }
+    if (link.assignmentId) {
+      newDoc.assignmentId = new ObjectId(link.assignmentId)
+    }
+
+    const insertResult = await db.collection(COLLECTIONS.TIMESHEETS).insertOne(newDoc as any)
+    weeklyId = insertResult.insertedId
+  }
+
+  // 3. Link weeklyTimesheetId to all daily entries in this week
+  if (dailyEntries.length > 0) {
+    const dailyIds = dailyEntries.map((d: any) => d._id)
+    await db.collection(COLLECTIONS.DAILY_TIMESHEETS).updateMany(
+      { _id: { $in: dailyIds } },
+      { $set: { weeklyTimesheetId: weeklyId, updatedAt: now } }
+    )
+  }
+
+  const finalDoc = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: weeklyId })
+  return toTimesheet(finalDoc)
 }
 

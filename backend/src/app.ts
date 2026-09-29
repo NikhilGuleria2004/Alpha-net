@@ -9,7 +9,7 @@ import { notFoundHandler, errorHandler } from './middleware/error.js'
 import { logger } from './lib/logger.js'
 import { getAllowedOrigins } from './lib/origins.js'
 import { getAuthRateLimitConfig } from './lib/env.js'
-import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes, invoicesRoutes, invitesRoutes, clientsRoutes, assignmentsRoutes, payrollsRoutes } from './routes/index.js'
+import { authRoutes, usersRoutes, supervisorsRoutes, projectsRoutes, timesheetsRoutes, approvalsRoutes, notificationsRoutes, activitiesRoutes, documentsRoutes, myDocumentsRoutes, reportsRoutes, settingsRoutes, aiRoutes, invoicesRoutes, invitesRoutes, clientsRoutes, assignmentsRoutes, payrollsRoutes, dailyTimesheetsRoutes } from './routes/index.js'
 
 export function createApp() {
   const app = express()
@@ -89,6 +89,12 @@ export function createApp() {
   app.use('/api/v1/users', usersRoutes())
   app.use('/api/v1/supervisors', supervisorsRoutes())
   app.use('/api/v1/projects', projectsRoutes())
+  // Daily-to-Weekly Timesheets Phase 4: the daily router is mounted BEFORE the
+  // weekly one (both use the /api/v1/timesheets prefix). Express matches mounts
+  // in registration order, so `/api/v1/timesheets/daily` is handled here and
+  // never falls through to the weekly router's `/:id` route, which would treat
+  // "daily" as a timesheet id. The weekly mount below is unchanged.
+  app.use('/api/v1/timesheets/daily', dailyTimesheetsRoutes())
   app.use('/api/v1/timesheets', timesheetsRoutes())
   app.use('/api/v1/approvals', approvalsRoutes())
   app.use('/api/v1/notifications', notificationsRoutes())

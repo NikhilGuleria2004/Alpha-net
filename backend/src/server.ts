@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { createApp } from './app.js'
 import { logger } from './lib/logger.js'
-import { ensureIndexes, ensureAssignmentIndexes, ensurePayrollIndexes } from './lib/collections.js'
+import { ensureIndexes, ensureAssignmentIndexes, ensurePayrollIndexes, ensureDailyTimesheetIndexes } from './lib/collections.js'
 import { validateEnv } from './lib/env.js'
 
 async function main() {
@@ -32,6 +32,14 @@ async function main() {
     await ensurePayrollIndexes()
   } catch (err) {
     logger.error({ err }, 'failed to ensure payroll indexes')
+  }
+
+
+  // Daily-to-Weekly Timesheet Phase 0: daily_timesheets indexes.
+  try {
+    await ensureDailyTimesheetIndexes()
+  } catch (err) {
+    logger.error({ err }, 'failed to ensure daily timesheet indexes')
   }
 
   const app = createApp()

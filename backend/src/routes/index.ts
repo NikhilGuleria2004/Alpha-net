@@ -17,3 +17,5 @@ export { clientsRoutes } from './clients.js'
 export { assignmentsRoutes } from './assignments.js'
 // Flow Integration Phase 6 — payroll domain.
 export { payrollsRoutes } from './payrolls.js'
+// Daily-to-Weekly Timesheets Phase 4 — daily timesheet CRUD + manual compile.
+export { dailyTimesheetsRoutes } from './daily-timesheets.js'
