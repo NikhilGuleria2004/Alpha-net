@@ -2,7 +2,9 @@ import { createContext, useContext, useMemo, useState, useEffect, type ReactNode
 import type { Notification } from '../types/notification'
 import { useAppData } from './AppDataContext'
 import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
 import { getNotificationCount } from '../services/notificationService'
+import { failureMessage } from '../utils/errorMessage'
 
 interface NotificationContextValue {
   notifications: Notification[]
@@ -42,6 +44,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     stopNotificationPoll,
   } = useAppData()
   const { isAuthenticated } = useAuth()
+  const { addToast } = useToast()
 
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -106,24 +109,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [notifications, isAuthenticated])
 
-  // Re-sync the badge after any mutation that flips read state. The endpoint
-  // is the source of truth; the derived count is just the optimistic value
-  // while it resolves.
+  // F-18 — optimistic badge. The unread count is the number users actually
+  // watch, and the endpoint round-trip made it visibly lag, so the badge now
+  // moves the instant they act. The endpoint stays the source of truth: if the
+  // mutation fails we put the previous count back and say so, and the sync
+  // effect above re-reconciles on the next tick.
   const markAsRead = async (id: string) => {
-    await markNotificationAsRead(id)
+    const target = notifications.find((n) => n.id === id)
+    const wasUnread = target ? !target.read : false
+    const previousCount = unreadCount
+    if (wasUnread) setUnreadCount((current) => Math.max(0, current - 1))
     try {
+      await markNotificationAsRead(id)
       setUnreadCount(await getNotificationCount())
-    } catch {
-      // fall back to the derived count
+    } catch (err) {
+      if (wasUnread) setUnreadCount(previousCount)
+      addToast('error', failureMessage(err, { what: 'mark that notification as read', reassurance: 'It is still unread', next: 'try again' }))
     }
   }
 
   const markAllAsRead = async () => {
-    await markAllNotificationsAsRead()
+    const previousCount = unreadCount
+    setUnreadCount(0)
     try {
+      await markAllNotificationsAsRead()
       setUnreadCount(await getNotificationCount())
-    } catch {
-      // fall back to the derived count
+    } catch (err) {
+      setUnreadCount(previousCount)
+      addToast('error', failureMessage(err, { what: 'mark every notification as read', reassurance: 'They are all still unread', next: 'try again' }))
     }
   }
 

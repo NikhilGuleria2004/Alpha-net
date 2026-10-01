@@ -13,32 +13,21 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
 import { formatDate, formatWeekRange } from '../../utils/date'
-import { formatFileSize } from '../../utils/format'
+import { formatFileSize, formatHours } from '../../utils/format'
 import { downloadDocument } from '../../services/documentService'
 import type { Activity } from '../../types/activity'
 import type { Project } from '../../types/project'
 import type { Timesheet } from '../../types/timesheet'
 import type { User } from '../../types/auth'
 import type { Document } from '../../types/document'
+import { failureMessage } from '../../utils/errorMessage'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
-  if (!isOpen) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel || 'Confirm'}</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// F-03: the local ConfirmDialog copy (a bare role="dialog" div with no
+// accessible name and no focus trap) is gone; this file uses the shared one.
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
@@ -54,6 +43,9 @@ export function ProjectDetails() {
   const { projects, users, timesheets, documents, addTeamMember, removeTeamMember, deleteProject, activities } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  // F-17: the active tab lives in the URL, so a refresh or a shared link
+  // restores it and Back walks the tabs the user visited.
+  const [tab, setTab] = useQueryParamState('tab', 'overview', 'push')
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -103,7 +95,7 @@ export function ProjectDetails() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/admin/projects'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
@@ -113,8 +105,8 @@ export function ProjectDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/admin/projects/${project.id}/edit`)} leftIcon={<Edit3 className="h-4 w-4" />}>Edit Project</Button>
-          <Button onClick={() => navigate(`/admin/invoices/new?projectId=${project.id}`)} leftIcon={<FileText className="h-4 w-4" />}>Create Invoice</Button>
+          <Button variant="secondary" to={`/admin/projects/${project.id}/edit`} leftIcon={<Edit3 className="h-4 w-4" />}>Edit Project</Button>
+          <Button to={`/admin/invoices/new?projectId=${project.id}`} leftIcon={<FileText className="h-4 w-4" />}>Create Invoice</Button>
           <Dropdown
             trigger={
               <Button variant="secondary" rightIcon={<MoreHorizontal className="h-4 w-4" />} />
@@ -125,8 +117,10 @@ export function ProjectDetails() {
         </div>
       </div>
 
-      <Tabs tabs={tabs} defaultValue="overview" />
-      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDelete} loading={isDeleting} title="Delete Project" description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`} confirmLabel="Delete" />
+      {/* F-17: the active tab is URL state, so refresh/share/Back all work —
+          the same pattern admin/Approvals already uses. */}
+      <Tabs tabs={tabs} value={tab} onValueChange={setTab} />
+      <ConfirmDialog open={isDeleteOpen} onCancel={() => setIsDeleteOpen(false)} onConfirm={handleDelete} isLoading={isDeleting} title="Delete Project" message={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`} confirmLabel="Delete" variant="danger" />
     </div>
   )
 }
@@ -188,7 +182,7 @@ function OverviewTab({ project, manager, supervisor }: { project: Project; manag
             <span className="font-medium text-foreground">{Math.round(progress)}%</span>
           </div>
           <div className="mt-2 h-2 w-full rounded-full bg-border">
-            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${progress}%` }} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">{elapsedDays} of {totalDays} days elapsed</p>
         </div>
@@ -300,9 +294,9 @@ function TimesheetsTab({ timesheets: projectTimesheets, users }: { timesheets: T
                   <tr key={t.id} className="hover:bg-muted">
                     <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(t.weekStart)}</td>
-                    <td className="px-4 py-3 text-right text-sm text-foreground">{t.regularHours.toFixed(1)}h</td>
-                    <td className="px-4 py-3 text-right text-sm text-foreground">{t.overtimeHours.toFixed(1)}h</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(t.regularHours)}</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(t.overtimeHours)}</td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(t.totalHours)}</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                   </tr>
                 )
@@ -327,7 +321,7 @@ function DocumentsTab({ documents: projectDocuments }: { documents: Document[] }
     try {
       await downloadDocument(doc.id, doc.name)
     } catch (err) {
-      addToast('error', (err as Error)?.message || 'Failed to download document')
+      addToast('error', failureMessage(err, { what: 'download that document', reassurance: 'The file is still on the server', next: 'try again' }))
     } finally {
       setDownloadingId(null)
     }

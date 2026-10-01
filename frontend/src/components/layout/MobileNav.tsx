@@ -1,6 +1,7 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 interface MobileNavProps {
   isOpen: boolean
@@ -9,14 +10,22 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ isOpen, onClose, children }: MobileNavProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // This overlay claims modality, so it owes the same contract as every other
+  // dialog: Escape closes it, Tab stays inside, focus enters on open and goes
+  // back to the hamburger on close (Interactions — "manage focus").
+  useFocusTrap(isOpen, panelRef, { onClose, initialFocus: 'first' })
+
   return (
     <div
       className={`fixed inset-0 z-50 md:hidden ${isOpen ? 'block' : 'hidden'}`}
       role="dialog"
       aria-modal="true"
+      aria-label="Main navigation"
     >
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-card shadow-xl">
+      <div ref={panelRef} tabIndex={-1} className="fixed inset-y-0 right-0 w-full max-w-xs bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
@@ -27,7 +36,7 @@ export function MobileNav({ isOpen, onClose, children }: MobileNavProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />

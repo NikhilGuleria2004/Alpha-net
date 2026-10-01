@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
-import { useNavigate } from 'react-router-dom'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
 import { Search, SlidersHorizontal, CalendarDays } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -12,13 +11,15 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { DeadlineIndicator } from '../../components/projects/DeadlineIndicator'
 import { formatDate, toLocalDateString } from '../../utils/date'
+import { formatHours } from '../../utils/format'
 
 export function Projects() {
   const { user } = useAuth()
   const { projects: appProjects, timesheets } = useAppData()
-  const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): list filters are URL state.
-  const [search, setSearch] = useQueryParamState('q')
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): list filters are URL state.
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
   const [deadlineFilter, setDeadlineFilter] = useQueryParamState('deadline', '', 'push')
 
@@ -113,11 +114,11 @@ export function Projects() {
                         <DeadlineIndicator deadline={project.deadline} />
                       </div>
                       <div className="mt-3 text-xs text-foreground">
-                        <span className="font-medium">This week:</span> {currentWeekHours.toFixed(1)}h logged
+                        <span className="font-medium">This week:</span> {formatHours(currentWeekHours)} logged
                       </div>
                     </div>
                     <div className="mt-4">
-                      <Button size="sm" variant="secondary" className="w-full" onClick={() => navigate(`/user/projects/${project.id}`)}>Open Project</Button>
+                      <Button size="sm" variant="secondary" className="w-full" to={`/user/projects/${project.id}`}>Open Project</Button>
                     </div>
                   </div>
                 )

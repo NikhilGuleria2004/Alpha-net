@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-// Guideline 4.3 (frontend_eval.md §12 item 1.3): the <title> must reflect the
+// Guideline 4.3 → interface_guide.txt:56 ("Accurate page titles"): the <title> must reflect the
 // current context. AppShell derives titles from route `handle`s; pages that
 // render outside the shell (auth screens) call this hook directly. Restoring
 // the previous title on unmount keeps the tab label honest on transitions to

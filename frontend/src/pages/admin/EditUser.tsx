@@ -9,7 +9,9 @@ import { Select } from '../../components/ui/Select'
 import { Card } from '../../components/ui/Card'
 import { validateEmail, validatePassword } from '../../utils/validation'
 import { canDemoteAdmin } from '../../utils/permissions'
+import { focusFirstError } from '../../utils/focusFirstError'
 import type { CreateUserInput } from '../../types/user'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function EditUser() {
   const { userId } = useParams<{ userId: string }>()
@@ -94,7 +96,10 @@ export function EditUser() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(e.currentTarget)
+      return
+    }
     setIsSubmitting(true)
     try {
       // The PATCH contract treats an absent password as "keep current" — an
@@ -105,8 +110,8 @@ export function EditUser() {
       addToast('success', 'User updated successfully')
       refreshUsers()
       navigate(`/admin/users/${user.id}`)
-    } catch {
-      addToast('error', 'Failed to update user')
+    } catch (err) {
+      addToast('error', failureMessage(err, { what: 'save those account changes', reassurance: 'The account is unchanged', next: 'try again in a moment' }))
     } finally {
       setIsSubmitting(false)
     }
@@ -115,22 +120,22 @@ export function EditUser() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate(`/admin/users/${user.id}`)} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={`/admin/users/${user.id}`} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Edit User</h1>
           <p className="mt-1 text-sm text-muted-foreground">Update user details and permissions.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold text-foreground">User Information</h2>
           </div>
           <div className="p-5 space-y-5">
             <Input label="Full Name" value={form.name} onChange={(e) => updateField('name', e.target.value)} error={errors.name} required />
-            <Input label="Email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} error={errors.email} required />
-            <Input label="Employee ID" value={form.employeeId} onChange={(e) => updateField('employeeId', e.target.value)} error={errors.employeeId} required />
+            <Input label="Email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} error={errors.email} required noSpell />
+            <Input label="Employee ID" value={form.employeeId} onChange={(e) => updateField('employeeId', e.target.value)} error={errors.employeeId} required noSpell />
             <Select label="Department" value={form.department} onChange={(e) => updateField('department', e.target.value)} options={[{ value: '', label: 'Select department' }, ...departments.map((d) => ({ value: d, label: d }))]} error={errors.department} required />
 <Select label="Role" value={form.role} onChange={(e) => updateField('role', e.target.value as 'admin' | 'user')} options={[
                 { value: 'user', label: 'User' },
@@ -176,9 +181,13 @@ export function EditUser() {
               <div className="relative">
                 <input
                   id="edit-user-password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="none"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => updateField('password', e.target.value)}
+                  aria-invalid={Boolean(errors.password)}
                   className={`w-full rounded-lg border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${errors.password ? 'border-destructive focus:border-destructive focus-visible:ring-destructive/20' : 'border-border focus:border-accent focus-visible:ring-accent/20'}`}
                   placeholder="••••••••"
                   autoComplete="new-password"
@@ -202,7 +211,7 @@ export function EditUser() {
         </Card>
 
         <div className="flex items-center justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate(`/admin/users/${user.id}`)}>Cancel</Button>
+          <Button variant="secondary" to={`/admin/users/${user.id}`}>Cancel</Button>
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>Save Changes</Button>
         </div>
       </form>

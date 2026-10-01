@@ -22,6 +22,7 @@ import {
 } from '../../services/timesheetService'
 import { formatHours } from '../../utils/format'
 import { formatWeekRange, getWeekDates, normalizeToMonday, toLocalDateString } from '../../utils/date'
+import { focusFirstError } from '../../utils/focusFirstError'
 import type { DailyTimesheet, TimesheetEntryType } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
 
@@ -41,13 +42,14 @@ const WEEKEND_DAYS: DayKey[] = ['sat', 'sun']
 const HOURS_MIN = 0.25
 const HOURS_MAX = 24
 /**
- * The Hours input's `step` must be exactly this. A native number input validates
- * against `min + n × step`, i.e. the legal grid is anchored on `min`: pairing
- * min=0.25 with step=0.5 lands it on 0.25/0.75 and turns every whole and half
- * hour into a stepMismatch ("the two nearest valid values are 7.75 and 8.25"),
- * which the browser reports before validate() below ever runs. Anchoring the grid
- * on the minimum with a quarter step makes the browser accept exactly what
- * validate() accepts: any quarter hour in [0.25, 24].
+ * The Hours input carries no min/max/step: the rules live in validate() below
+ * and the form is `noValidate`, so the app is the only thing that can reject a
+ * value. It used to carry min={0.25} step={0.25}, and a native number input
+ * validates against `min + n × step` — i.e. the legal grid is anchored on
+ * `min`, so pairing min=0.25 with step=0.5 landed it on 0.25/0.75 and turned
+ * every whole and half hour into a stepMismatch ("the two nearest valid values
+ * are 7.75 and 8.25"), which the browser reported before validate() ever ran.
+ * Keep this constant in sync with the quarter-hour check in validate().
  */
 const HOURS_INCREMENT = 0.25
 const DESCRIPTION_MIN = 3
@@ -280,7 +282,7 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
 
     if (Number.isFinite(hours) && trackedHours + hours > HOURS_MAX) {
       found.push(
-        `That would log ${(trackedHours + hours).toFixed(2)}h on ${date}; the daily maximum is ${HOURS_MAX}h across all projects.`,
+        `That would log ${(trackedHours + hours).toFixed(2)}\u00a0h on ${date}; the daily maximum is ${HOURS_MAX}\u00a0h across all projects.`,
       )
     }
     return found
@@ -303,6 +305,10 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
     setProblems(found)
     if (found.length > 0) {
       addToast('error', 'Please fix the highlighted problems before saving.')
+      // This form reports problems as one list rather than per-field
+      // aria-invalid, so point at the hours field — the rule most likely to have
+      // failed, and the one validate() names in most messages.
+      focusFirstError(event.currentTarget, document.getElementById('daily-hours'))
       return
     }
 
@@ -318,7 +324,7 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
         // logging the same day again corrects the existing entry instead of
         // creating a duplicate.
         await saveDailyEntry({ projectId, date, hours, entryType, description: trimmed })
-        addToast('success', `Logged ${hours}h on ${date}`)
+        addToast('success', `Logged ${hours}\u00a0h on ${date}`)
       }
       resetForm()
       reload()
@@ -476,7 +482,7 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
             })}
           </ul>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border p-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border p-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <DatePicker label="Date" value={date} onChange={handleDateChange} />
             <Select
@@ -487,12 +493,10 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
               options={projectOptions}
             />
             <Input
+              id="daily-hours"
               label="Hours"
               type="number"
               inputMode="decimal"
-              min={HOURS_MIN}
-              max={HOURS_MAX}
-              step={HOURS_INCREMENT}
               value={hoursInput}
               onChange={(event) => setHoursInput(event.target.value)}
               placeholder="8"
@@ -534,7 +538,7 @@ export function DailyEntryCard({ className = '', onLogged }: DailyEntryCardProps
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
               {trackedHours > 0
-                ? `${Math.max(0, HOURS_MAX - trackedHours).toFixed(2)}h left today (${HOURS_MAX}h cap across projects).`
+                ? `${Math.max(0, HOURS_MAX - trackedHours).toFixed(2)}\u00a0h left today (${HOURS_MAX}\u00a0h cap across projects).`
                 : 'Quarter-hour increments — 8, 7.5 or 7.25 are all valid.'}
             </p>
             <div className="flex items-center gap-2">

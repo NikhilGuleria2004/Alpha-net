@@ -10,28 +10,17 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Avatar } from '../../components/ui/Avatar'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import type { User } from '../../types/auth'
 import type { Timesheet } from '../../types/timesheet'
 import type { Activity } from '../../types/activity'
 import type { Project } from '../../types/project'
+import { formatHours } from '../../utils/format'
+import { useQueryParamState } from '../../hooks/useQueryParamState'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
-  if (!isOpen) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel || 'Confirm'}</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// F-03: the local ConfirmDialog copy (a bare role="dialog" div with no
+// accessible name and no focus trap) is gone; this file uses the shared one.
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
@@ -47,6 +36,9 @@ export function SupervisorDetails() {
   const { users, deactivateUser, refreshUsers, projects, timesheets, activities } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  // F-17: the active tab lives in the URL, so a refresh or a shared link
+  // restores it and Back walks the tabs the user visited.
+  const [tab, setTab] = useQueryParamState('tab', 'overview', 'push')
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -109,7 +101,7 @@ export function SupervisorDetails() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/supervisors')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/admin/supervisors'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div className="flex items-center gap-4">
             <Avatar name={user.name} size="lg" />
             <div>
@@ -125,7 +117,7 @@ export function SupervisorDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/admin/users/${user.id}/edit`)} leftIcon={<Edit3 className="h-4 w-4" />}>Edit</Button>
+          <Button variant="secondary" to={`/admin/users/${user.id}/edit`} leftIcon={<Edit3 className="h-4 w-4" />}>Edit</Button>
           <Dropdown
             trigger={
               <Button variant="secondary" rightIcon={<Edit3 className="h-4 w-4" />} />
@@ -136,8 +128,10 @@ export function SupervisorDetails() {
         </div>
       </div>
 
-      <Tabs tabs={tabs} defaultValue="overview" />
-      <ConfirmDialog isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} onConfirm={handleDeactivate} loading={isProcessing} title="Deactivate Supervisor" description={`Are you sure you want to deactivate "${user.name}"? This action cannot be undone.`} confirmLabel="Deactivate" />
+      {/* F-17: the active tab is URL state, so refresh/share/Back all work —
+          the same pattern admin/Approvals already uses. */}
+      <Tabs tabs={tabs} value={tab} onValueChange={setTab} />
+      <ConfirmDialog open={isDeleteOpen} onCancel={() => setIsDeleteOpen(false)} onConfirm={handleDeactivate} isLoading={isProcessing} title="Deactivate Supervisor" message={`Are you sure you want to deactivate "${user.name}"? This action cannot be undone.`} confirmLabel="Deactivate" variant="danger" />
     </div>
   )
 }
@@ -253,7 +247,7 @@ function ReviewsTab({ pendingReviews, users, projects }: { pendingReviews: Times
                     <td className="px-4 py-3 text-sm text-foreground">{user?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(t.weekStart)}</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{t.totalHours.toFixed(1)}h</td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(t.totalHours)}</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                   </tr>
                 )

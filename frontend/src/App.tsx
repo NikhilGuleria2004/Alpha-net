@@ -42,7 +42,7 @@ import { Settings as UserSettings } from './pages/user/Settings'
 import { SupervisorTimesheets } from './pages/supervisor/Timesheets'
 import { Approvals as SupervisorApprovals } from './pages/supervisor/Approvals'
 
-// Data router (frontend_eval.md §12 items 1.2/1.3): createBrowserRouter
+// Data router (interface_guide.txt:15 ("URL as state"); interface_guide.txt:27 ("Deep-link everything")): createBrowserRouter
 // replaces the declarative <Routes> tree 1:1 — same paths, elements, and role
 // guards — but enables two guideline features the declarative router can't
 // provide:

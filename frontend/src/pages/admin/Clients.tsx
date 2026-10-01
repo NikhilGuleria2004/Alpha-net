@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
-import { useNavigate } from 'react-router-dom'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, Building2, Eye, Edit3 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -19,6 +19,7 @@ import { formatDate } from '../../utils/date'
 import { getProjectsForClient } from '../../utils/clients'
 import { validateEmail } from '../../utils/validation'
 import type { CreateClientInput } from '../../types/client'
+import { failureMessage } from '../../utils/errorMessage'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -29,7 +30,9 @@ export function Clients() {
   const { clients, projects, createClient, isLoading } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  const [search, setSearch] = useQueryParamState('q')
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [linkedFilter, setLinkedFilter] = useQueryParamState('linked', '', 'push')
   const [sort, setSort] = useQueryParamState('sort', '', 'push')
   const [dir, setDir] = useQueryParamState('dir', 'asc', 'push')
@@ -147,7 +150,7 @@ export function Clients() {
       closeCreateModal()
       navigate(`/admin/clients/${client.id}`)
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to create client')
+      addToast('error', failureMessage(err, { what: 'create that client', reassurance: 'Nothing was saved', next: 'check the details and try again' }))
     } finally {
       setIsSubmitting(false)
     }
@@ -273,7 +276,14 @@ export function Clients() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar name={row.name} size="sm" />
-                        <span className="text-sm font-medium text-foreground">{row.name}</span>
+                        {/* F-05b: real link inside the clickable row (see Users.tsx). */}
+                        <Link
+                          to={`/admin/clients/${row.client.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm font-medium text-foreground hover:text-accent hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          {row.name}
+                        </Link>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{row.contactEmail || '—'}</td>

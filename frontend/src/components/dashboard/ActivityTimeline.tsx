@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { Activity } from 'lucide-react'
+import { formatDateAutoYear } from '../../utils/date'
 
 interface ActivityTimelineProps {
   items: Array<{
@@ -57,5 +58,5 @@ function formatTimeAgo(timestamp: string): string {
   if (diffMins < 60) return `${diffMins} min ago`
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined }).format(date)
+  return formatDateAutoYear(date)
 }

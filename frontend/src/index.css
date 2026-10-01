@@ -67,7 +67,7 @@
 /* Light theme tokens — kept in :root as runtime fallbacks so every
    var(--color-*) reference resolves even outside Tailwind utilities. */
 :root {
-  /* Guideline 7.9: declare the scheme so device UI (scrollbars, form controls,
+  /* Guideline 7.9 → interface_guide.txt:124 ("Set the appropriate color-scheme"): declare the scheme so device UI (scrollbars, form controls,
      forced-colors fallbacks) renders in the light variant this theme expects. */
   color-scheme: light;
   --color-canvas: #f7f8fa;
@@ -248,7 +248,7 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Web Interface Guidelines compliance (frontend_eval.md §12, Phase 0)
+   Web Interface Guidelines compliance (interface_guide.txt, Phase 0)
    --------------------------------------------------------------------------- */
 
 /* 0.2 — Keyboard-only focus indicator.
@@ -281,6 +281,15 @@ input,
 select,
 textarea {
   touch-action: manipulation;
+}
+
+/* 0.4 — Sticky headers must never cover the focused element. The Topbar is
+   `sticky top-0 h-14` (56px), so any in-page target — the skip link's
+   #main-content, a deep-linked card, an anchored heading — has to stop 4rem
+   below the top edge instead of underneath it. Scoped to [id] because every
+   scroll target in the app is an element with an id. */
+[id] {
+  scroll-margin-top: 4.5rem;
 }
 
 /* 0.1 — Honor prefers-reduced-motion: collapse animation/transition to

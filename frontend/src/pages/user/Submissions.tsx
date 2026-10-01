@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate, formatWeekRange } from '../../utils/date'
+import { formatHours } from '../../utils/format'
 
 export function Submissions() {
   const { user } = useAuth()
@@ -51,9 +52,9 @@ export function Submissions() {
                     <tr key={timesheet.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/user/submissions/${timesheet.id}`)}>
                       <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.regularHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.overtimeHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(timesheet.totalHours)}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</td>
                       <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                       <td className="px-4 py-3 text-right">

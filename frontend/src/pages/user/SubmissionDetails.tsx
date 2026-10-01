@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -12,7 +12,6 @@ import { useAppData } from '../../contexts/AppDataContext'
 export function SubmissionDetails() {
   const { submissionId } = useParams<{ submissionId: string }>()
   const { users, projects, timesheets } = useAppData()
-  const navigate = useNavigate()
 
   const timesheet = timesheets.find((t) => t.id === submissionId)
   const project = timesheet ? projects.find((p) => p.id === timesheet.projectId) : null
@@ -47,7 +46,7 @@ export function SubmissionDetails() {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-4">
-        <Button variant="ghost" onClick={() => navigate('/user/submissions')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={'/user/submissions'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Submission Details</h1>
           <p className="mt-1 text-sm text-muted-foreground">{project?.name}</p>

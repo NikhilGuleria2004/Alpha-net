@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { resetPassword } from '../../services/authService'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { focusFirstError } from '../../utils/focusFirstError'
 
 export function ResetPassword() {
   usePageTitle('Reset Password')
@@ -35,7 +36,10 @@ export function ResetPassword() {
       setErrors({ general: 'This reset link is missing its token. Request a new one from the sign-in page.' })
       return
     }
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(event.currentTarget)
+      return
+    }
     setIsLoading(true)
     setErrors({})
     try {
@@ -62,9 +66,9 @@ export function ResetPassword() {
       </div>
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-12">
         <div className="mx-auto w-full max-w-sm">
-          <h2 className="text-2xl font-semibold text-foreground">Reset password</h2>
+          <h2 className="text-2xl font-semibold text-foreground">Reset Password</h2>
           <p className="mt-1 text-sm text-muted-foreground">Enter a new password for your account.</p>
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
               <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}

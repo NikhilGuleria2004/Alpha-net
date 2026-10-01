@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
-import { useNavigate } from 'react-router-dom'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, FolderKanban, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -22,9 +22,11 @@ export function Projects() {
   const { projects, users: appUsers, deleteProject, refreshProjects, isLoading } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): search, filters, and sort are
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): search, filters, and sort are
   // URL state (?q=&status=&manager=&sort=&dir=).
-  const [search, setSearch] = useQueryParamState('q')
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
   const [managerFilter, setManagerFilter] = useQueryParamState('manager', '', 'push')
   const [sort, setSort] = useQueryParamState('sort', '', 'push')
@@ -114,7 +116,7 @@ export function Projects() {
           <h1 className="text-2xl font-semibold text-foreground">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage Eniac projects and statements of work.</p>
         </div>
-        <Button onClick={() => navigate('/admin/projects/new')} leftIcon={<Plus className="h-4 w-4" />}>
+        <Button to={'/admin/projects/new'} leftIcon={<Plus className="h-4 w-4" />}>
           New Project
         </Button>
       </div>
@@ -148,7 +150,7 @@ export function Projects() {
                 icon={<FolderKanban className="h-12 w-12" />}
                 title="No projects found"
                 description="Get started by creating a new project."
-                action={<Button onClick={() => navigate('/admin/projects/new')} leftIcon={<Plus className="h-4 w-4" />}>New Project</Button>}
+                action={<Button to={'/admin/projects/new'} leftIcon={<Plus className="h-4 w-4" />}>New Project</Button>}
               />
             </div>
           ) : (
@@ -183,7 +185,16 @@ export function Projects() {
                   const manager = appUsers.find((u) => u.id === project.managerId)
                   return (
                     <tr key={project.id || project.name} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/admin/projects/${project.id}`)}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{project.name}</td>
+                      {/* F-05b: real link inside the clickable row (see Users.tsx). */}
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        <Link
+                          to={`/admin/projects/${project.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-foreground hover:text-accent hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          {project.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{project.sowNumber}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project.client}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(project.startDate)}</td>

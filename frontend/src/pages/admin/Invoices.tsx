@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -33,7 +33,9 @@ export function Invoices() {
   const { invoices, projects, isLoading } = useAppData()
   const navigate = useNavigate()
 
-  const [search, setSearch] = useQueryParamState('q')
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
 
@@ -66,7 +68,7 @@ export function Invoices() {
           <h1 className="text-2xl font-semibold text-foreground">Invoices</h1>
           <p className="mt-1 text-sm text-muted-foreground">View and manage project invoices.</p>
         </div>
-        <Button onClick={() => navigate('/admin/invoices/new')} leftIcon={<Plus className="h-4 w-4" />}>
+        <Button to={'/admin/invoices/new'} leftIcon={<Plus className="h-4 w-4" />}>
           New Invoice
         </Button>
       </div>
@@ -114,7 +116,7 @@ export function Invoices() {
               <EmptyState
                 title="No invoices found"
                 description="Create a new invoice to get started."
-                action={<Button onClick={() => navigate('/admin/invoices/new')} leftIcon={<Plus className="h-4 w-4" />}>New Invoice</Button>}
+                action={<Button to={'/admin/invoices/new'} leftIcon={<Plus className="h-4 w-4" />}>New Invoice</Button>}
               />
             </div>
           ) : (

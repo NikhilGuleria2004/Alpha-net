@@ -20,6 +20,7 @@ import { formatCurrency } from '../../utils/format'
 import { getProjectsForClient } from '../../utils/clients'
 import { validateEmail } from '../../utils/validation'
 import type { Client } from '../../types/client'
+import { failureMessage } from '../../utils/errorMessage'
 
 interface ClientForm {
   name: string
@@ -138,7 +139,7 @@ export function ClientDetails() {
       setEditParam('')
       addToast('success', 'Client updated successfully')
     } catch (err) {
-      addToast('error', err instanceof Error ? err.message : 'Failed to update client')
+      addToast('error', failureMessage(err, { what: 'save those client changes', reassurance: 'The client is unchanged', next: 'try again in a moment' }))
     } finally {
       setIsSaving(false)
     }
@@ -147,7 +148,7 @@ export function ClientDetails() {
   if (!client) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/admin/clients')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Back to Clients</Button>
+        <Button variant="ghost" to={'/admin/clients'} leftIcon={<ArrowLeft className="h-4 w-4" />}>Back to Clients</Button>
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
@@ -157,7 +158,7 @@ export function ClientDetails() {
             icon={<Building2 className="h-12 w-12" />}
             title="Client not found"
             description="This client may have been removed, or the link is out of date."
-            action={<Button onClick={() => navigate('/admin/clients')}>Back to Clients</Button>}
+            action={<Button to={'/admin/clients'}>Back to Clients</Button>}
           />
         )}
       </div>
@@ -168,7 +169,7 @@ export function ClientDetails() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/clients')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/admin/clients'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div className="flex items-center gap-4">
             <Avatar name={client.name} size="lg" />
             <div>

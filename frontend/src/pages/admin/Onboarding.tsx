@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { FullPageSpinner } from '../../components/ui/FullPageSpinner'
 import type { Invite, CreateInviteInput } from '../../services/inviteService'
 import { validateEmail } from '../../utils/validation'
+import { failureMessage } from '../../utils/errorMessage'
 
 const DEPARTMENTS = ['Engineering', 'Design', 'Marketing', 'Sales', 'QA', 'Finance', 'HR']
 
@@ -219,8 +220,7 @@ export function Onboarding() {
       await handleSubmit(invite)
     } catch (err) {
       setInviteState('idle')
-      const message = err instanceof Error ? err.message : 'Failed to create invite'
-      addToast('error', message)
+      addToast('error', failureMessage(err, { what: 'send that invite', reassurance: 'No email was sent', next: 'check the address and try again' }))
     }
   }, [form, stepValid, handleSubmit, addToast])
 
@@ -235,7 +235,7 @@ export function Onboarding() {
       addToast('success', `Invite resent to ${invite.email}. Link copied to clipboard.`)
     } catch (err) {
       setResendState('idle')
-      addToast('error', err instanceof Error ? err.message : 'Failed to resend invite')
+      addToast('error', failureMessage(err, { what: 'resend that invite', reassurance: 'No new email was sent', next: 'try again in a moment' }))
     } finally {
       setResendConfirm(null)
     }
@@ -250,7 +250,7 @@ export function Onboarding() {
       addToast('success', `Invite for ${revokeConfirm.email} has been revoked.`)
     } catch (err) {
       setRevokeState('idle')
-      addToast('error', err instanceof Error ? err.message : 'Failed to revoke invite')
+      addToast('error', failureMessage(err, { what: 'revoke that invite', reassurance: 'The invite is still active', next: 'try again in a moment' }))
     } finally {
       setRevokeConfirm(null)
       setPendingInvite(null)
@@ -356,6 +356,7 @@ export function Onboarding() {
                 onBlur={() => handleFieldBlur('email')}
               error={fieldErrors.email}
               autoComplete="email"
+              noSpell
               placeholder="ada@example.com"
               leftIcon={<Mail className="h-4 w-4" />}
             />
@@ -366,6 +367,7 @@ export function Onboarding() {
                 onChange={(e) => updateField('employeeId', e.target.value)}
                 onBlur={() => handleFieldBlur('employeeId')}
                 error={fieldErrors.employeeId}
+                noSpell
                 autoComplete="organization"
                 placeholder="EMP-0042"
               />

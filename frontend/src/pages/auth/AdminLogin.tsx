@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { forgotPassword } from '../../services/authService'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { focusFirstError } from '../../utils/focusFirstError'
+import { failureText } from '../../utils/errorMessage'
 
 export function AdminLogin() {
   const [email, setEmail] = useState('')
@@ -42,13 +44,16 @@ export function AdminLogin() {
       addToast('success', 'If that account exists, a reset link is on its way.')
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
-      addToast('error', message || 'Failed to request a password reset')
+      addToast('error', message || failureText({ what: 'request that password reset', reassurance: 'No email was sent', next: 'try again in a moment' }))
     }
   }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(event.currentTarget)
+      return
+    }
     setIsLoading(true)
     setErrors({})
     try {
@@ -92,7 +97,7 @@ export function AdminLogin() {
           <h2 className="text-2xl font-semibold text-foreground">Login</h2>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to continue</p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
               <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}
@@ -106,14 +111,20 @@ export function AdminLogin() {
               error={errors.email}
               placeholder="you@eniac.com"
               autoComplete="email"
+              noSpell
             />
             <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
+              <label htmlFor="admin-login-password" className="mb-1 block text-sm font-medium text-foreground">Password</label>
               <div className="relative">
                 <input
+                  id="admin-login-password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="none"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={Boolean(errors.password)}
                   className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
                   placeholder="••••••••"
                   autoComplete="current-password"
@@ -144,7 +155,7 @@ export function AdminLogin() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
-          <Button type="button" variant="ghost" onClick={() => navigate('/register')} className="mt-4 w-full">
+          <Button variant="ghost" to={'/register'} className="mt-4 w-full">
             Create an account
           </Button>
         </div>

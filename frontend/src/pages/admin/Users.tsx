@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
-import { useNavigate } from 'react-router-dom'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, UserCheck, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -14,6 +14,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Modal } from '../../components/ui/Modal'
 import { createInvite } from '../../services/inviteService'
+import { failureMessage } from '../../utils/errorMessage'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -21,10 +22,12 @@ export function Users() {
   const { users, deactivateUser, refreshUsers } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): search, filters, and table sort
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): search, filters, and table sort
   // live in the URL (?q=&department=&status=&supervisor=&sort=&dir=) so refresh
   // and share restore the exact view; Back/Forward walks filter history.
-  const [search, setSearch] = useQueryParamState('q')
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [departmentFilter, setDepartmentFilter] = useQueryParamState('department', '', 'push')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
   const [supervisorFilter, setSupervisorFilter] = useQueryParamState('supervisor', '', 'push')
@@ -109,8 +112,8 @@ export function Users() {
       setInviteRole('user')
       setInviteErrors({})
       refreshUsers()
-    } catch {
-      addToast('error', 'Failed to create invite')
+    } catch (err) {
+      addToast('error', failureMessage(err, { what: 'send that invite', reassurance: 'No email was sent', next: 'check the address and try again' }))
     } finally {
       setIsInviting(false)
     }
@@ -144,7 +147,7 @@ export function Users() {
           <h1 className="text-2xl font-semibold text-foreground">Users</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage Eniac users and permissions.</p>
         </div>
-        <Button onClick={() => navigate('/admin/users/new')} leftIcon={<Plus className="h-4 w-4" />}>
+        <Button to={'/admin/users/new'} leftIcon={<Plus className="h-4 w-4" />}>
           Create User
         </Button>
       </div>
@@ -178,7 +181,7 @@ export function Users() {
                 icon={<UserCheck className="h-12 w-12" />}
                 title="No users found"
                 description="Get started by creating a new user."
-                action={<Button onClick={() => navigate('/admin/users/new')} leftIcon={<Plus className="h-4 w-4" />}>Create User</Button>}
+                action={<Button to={'/admin/users/new'} leftIcon={<Plus className="h-4 w-4" />}>Create User</Button>}
               />
             </div>
           ) : (
@@ -208,7 +211,16 @@ export function Users() {
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.name} size="sm" />
-                          <span className="font-medium text-foreground">{user.name}</span>
+                          {/* F-05b: the row click is a mouse convenience; this is the
+                              real link, so keyboard/AT users get a link and
+                              Cmd/middle-click open a new tab. */}
+                          <Link
+                            to={`/admin/users/${user.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-foreground hover:text-accent hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            {user.name}
+                          </Link>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{user.employeeId}</td>

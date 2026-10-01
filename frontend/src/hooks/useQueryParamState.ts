@@ -1,7 +1,7 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-// Guideline 1.11/1.23 (frontend_eval.md §12 item 1.4): list control state —
+// Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): list control state —
 // search text, filters, sort, tabs — belongs in the URL so refresh, share, and
 // Back/Forward all work. One hook per query param.
 //
@@ -41,6 +41,44 @@ export function useQueryParamState(
     },
     [key, defaultValue, mode, setSearchParams]
   )
+
+  return [value, setValue]
+}
+
+/**
+ * Text search bound to a query param, debounced.
+ *
+ * Guideline (Performance — "keep input responsive: debounce work that can't keep
+ * up"; Interactions — "URL as state"). Typing straight into the router fires one
+ * navigation per keystroke: a 12-character query re-renders the page shell and
+ * re-filters the whole client-side row set 12 times, and on a mid-range phone
+ * the field itself visibly lags.
+ *
+ * The *field* updates instantly (local state); only the URL is debounced. The
+ * param is re-seeded into local state on Back/Forward, but a write this hook
+ * made itself is not echoed back, so it can never clobber characters typed
+ * while the debounce was still pending.
+ */
+export function useDebouncedQueryParam(key: string, delay = 250): [string, (value: string) => void] {
+  const [param, setParam] = useQueryParamState(key)
+  const [value, setValue] = useState(param)
+  const lastWritten = useRef<string | null>(null)
+
+  // Back/Forward (or any external change to the URL) resyncs the field.
+  useEffect(() => {
+    if (param === lastWritten.current) return
+    lastWritten.current = null
+    setValue(param)
+  }, [param])
+
+  useEffect(() => {
+    if (value === param) return
+    const timer = setTimeout(() => {
+      lastWritten.current = value
+      setParam(value)
+    }, delay)
+    return () => clearTimeout(timer)
+  }, [value, param, delay, setParam])
 
   return [value, setValue]
 }

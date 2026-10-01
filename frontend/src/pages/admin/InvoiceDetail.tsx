@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ArrowLeft, Send, FileDown, Trash2 } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -10,10 +10,11 @@ import { KpiChip } from '../../components/ui/KpiChip'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { getInvoiceById as getInvoiceService, sendInvoice as sendInvoiceService, updateInvoice as updateInvoiceService } from '../../services/invoiceService'
 import type { Invoice, VariableCost } from '../../types/invoice'
+import { failureMessage } from '../../utils/errorMessage'
+import { formatDate } from '../../utils/date'
 
 export function InvoiceDetail() {
   const { invoiceId } = useParams<{ invoiceId: string }>()
-  const navigate = useNavigate()
   const { invoices, refreshInvoices } = useAppData()
   const { addToast } = useToast()
 
@@ -55,7 +56,7 @@ export function InvoiceDetail() {
         addToast('success', trimmed ? `Invoice sent to ${trimmed}` : 'Invoice sent successfully')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to send invoice'
+      const message = failureMessage(err, { what: 'send that invoice', reassurance: 'It is still a draft — nothing was sent', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsSending(false)
@@ -72,7 +73,7 @@ export function InvoiceDetail() {
         addToast('success', 'Variable cost removed')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove cost'
+      const message = failureMessage(err, { what: 'remove that cost', reassurance: 'The cost is still on the invoice', next: 'try again' })
       addToast('error', message)
     }
   }
@@ -110,7 +111,7 @@ export function InvoiceDetail() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/invoices')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/admin/invoices'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Invoice {invoice.invoiceNumber}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{invoice.projectName} · {invoice.periodLabel}</p>
@@ -154,7 +155,7 @@ export function InvoiceDetail() {
           {invoice.sentAt && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Sent At</span>
-              <span className="text-sm font-medium text-foreground">{new Date(invoice.sentAt).toLocaleDateString()}</span>
+              <span className="text-sm font-medium text-foreground">{formatDate(invoice.sentAt)}</span>
             </div>
           )}
         </div>
@@ -198,7 +199,7 @@ export function InvoiceDetail() {
         {canEdit && (
           <Button
             variant="secondary"
-            onClick={() => navigate(`/admin/invoices/${invoice.id}/form`)}
+            to={`/admin/invoices/${invoice.id}/form`}
             leftIcon={<ArrowLeft className="h-4 w-4" />}
           >
             Edit Costs
@@ -227,6 +228,9 @@ export function InvoiceDetail() {
               </label>
               <input
                 id="invoice-recipient-email"
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="none"
                 type="email"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}

@@ -9,7 +9,7 @@ import { AppDataProvider } from './contexts/AppDataContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AIChatProvider } from './contexts/AIContext'
 
-// Guideline 6.11 (preconnect): warm the DNS/TLS handshake to the API origin
+// Guideline 6.11 → interface_guide.txt:109 ("Preconnect to origins"): warm the DNS/TLS handshake to the API origin
 // before the first request. The default deployment is same-origin ('/api/v1'
 // through the Vite dev proxy), where this is a no-op; when VITE_API_BASE_URL
 // points at a cross-origin API, the connection is opened while the bundle boots.

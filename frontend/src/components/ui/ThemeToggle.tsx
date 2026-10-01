@@ -46,14 +46,14 @@ export function ThemeToggle({ className = '', size = 'md', showLabel = false }: 
     <button
       type="button"
       onClick={toggleTheme}
-      className={`relative inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${buttonSize} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${buttonSize} ${className}`}
       aria-label={`${THEME_META[theme].label} — ${nextLabel}`}
       title={`${THEME_META[theme].label} — ${nextLabel}`}
     >
       {THEME_META[theme].icon === 'sun' ? (
-        <Sun className={`${iconSize} text-amber-400 transition-transform duration-300 hover:rotate-45`} />
+        <Sun className={`${iconSize} text-amber-400 transition-transform duration-200 hover:rotate-45`} />
       ) : (
-        <Contrast className={`${iconSize} transition-transform duration-300`} />
+        <Contrast className={`${iconSize} transition-transform duration-200`} />
       )}
     </button>
   )

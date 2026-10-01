@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useRef } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 type ConfirmVariant = 'default' | 'danger'
 
@@ -28,35 +29,10 @@ export function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
-  const previousFocus = useRef<HTMLElement | null>(null)
 
-  useEffect(() => {
-    if (!open) return
-    previousFocus.current = document.activeElement as HTMLElement | null
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    const first = focusable?.[0]
-    const last = focusable?.[focusable.length - 1]
-    const trap = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        if (e.shiftKey) {
-          if (document.activeElement === first) { e.preventDefault(); last?.focus() }
-        } else {
-          if (document.activeElement === last) { e.preventDefault(); first?.focus() }
-        }
-      }
-    }
-    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    first?.focus()
-    document.addEventListener('keydown', trap)
-    document.addEventListener('keydown', escape)
-    return () => {
-      document.removeEventListener('keydown', trap)
-      document.removeEventListener('keydown', escape)
-      previousFocus.current?.focus()
-    }
-  }, [open, onCancel])
+  // Escape cancels, Tab is trapped, focus enters on the first control and
+  // returns to the trigger on close (Interactions — "manage focus").
+  useFocusTrap(open, dialogRef, { onClose: onCancel, initialFocus: 'first' })
 
   if (!open) return null
   return (
@@ -66,6 +42,7 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         className="rounded-xl border border-border bg-card p-6 shadow-xl w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
@@ -84,6 +61,8 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
+            // Guards double submits while the action is in flight, so the three
+            // hand-rolled dialogs this component replaced lose nothing.
             disabled={isLoading}
             className={`rounded-lg px-4 py-2 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${
               variant === 'danger'

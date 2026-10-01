@@ -26,6 +26,47 @@ export function formatDate(date: string | Date): string {
   return format(d, 'MMM d, yyyy')
 }
 
+/**
+ * F-23: the app's single date-formatting path.
+ *
+ * Decision `D-5`: this is an internal tool, so the UI is pinned to one locale
+ * (`APP_LOCALE`) rather than following the browser's. That removes the real
+ * hazard here — a bare `toLocaleDateString` call renders 3/4/2026 in one locale and
+ * 4/3/2026 in another, which is genuinely ambiguous for a date like 4/3.
+ *
+ * Every user-visible date in the app now comes from one of these helpers, so a
+ * format change lands in one place. `date-fns` with explicit English patterns is
+ * the engine (it is locale-deterministic by construction, which is why it is
+ * preferred here over ad-hoc `Intl` constructions in components).
+ */
+export const APP_LOCALE = 'en-US'
+
+/** "Sep 7" — the compact form used in tables, chips and the week strip. */
+export function formatShortDate(date: string | Date): string {
+  const d = typeof date === 'string' ? parseISO(date) : date
+  return format(d, 'MMM d')
+}
+
+/** "Sep 7, 2026" — the same as {@link formatDate}, named for the contrast. */
+export function formatDateWithYear(date: string | Date): string {
+  return formatDate(date)
+}
+
+/**
+ * "Sep 7, 2026" for the current year, "Sep 7" otherwise — used by the activity
+ * timeline, which only shows a year when it differs from now.
+ */
+export function formatDateAutoYear(date: string | Date): string {
+  const d = typeof date === 'string' ? parseISO(date) : date
+  return d.getFullYear() !== new Date().getFullYear() ? formatDate(d) : formatShortDate(d)
+}
+
+/** "Sep 7, 2026, 3:14 PM" — notification timestamps need the time, not just the day. */
+export function formatDateTime(date: string | Date): string {
+  const d = typeof date === 'string' ? parseISO(date) : date
+  return format(d, 'MMM d, yyyy, h:mm a')
+}
+
 // Renders a week's start–end range for display. Parses the weekStart string as
 // *local* midnight (parseLocalDate) and adds days with local math, so a Mon–Fri
 // week stays Mon–Fri for UTC-negative timezones. Bypassing this — e.g. `new

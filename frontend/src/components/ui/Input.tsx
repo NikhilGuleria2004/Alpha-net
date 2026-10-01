@@ -6,9 +6,16 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: string
   leftIcon?: ReactNode
   rightIcon?: ReactNode
+  /**
+   * Guideline (Forms — "spellcheck selectively: disable for emails/codes/usernames").
+   * One flag for the three attributes a machine-read field needs: no browser
+   * spell marks, no autocorrect, and no auto-capitalisation that would silently
+   * change an employee ID or a password. Prose fields must leave it off.
+   */
+  noSpell?: boolean
 }
 
-export function Input({ label, error, helperText, leftIcon, rightIcon, className = '', id, ...props }: InputProps) {
+export function Input({ label, error, helperText, leftIcon, rightIcon, noSpell, className = '', id, ...props }: InputProps) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
   const errorId = `${inputId}-error`
   const helperId = `${inputId}-helper`
@@ -30,6 +37,9 @@ export function Input({ label, error, helperText, leftIcon, rightIcon, className
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
+          spellCheck={noSpell ? false : undefined}
+          autoCorrect={noSpell ? 'off' : undefined}
+          autoCapitalize={noSpell ? 'none' : undefined}
           className={`w-full rounded-lg border ${error ? 'border-destructive focus:border-destructive focus-visible:ring-destructive' : 'border-border focus:border-accent focus-visible:ring-accent'} bg-card px-3 h-9 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
           {...props}
         />

@@ -13,7 +13,9 @@ import { Modal } from '../../components/ui/Modal'
 import { Avatar } from '../../components/ui/Avatar'
 import { validateDateRange, validateDeadlineRange } from '../../utils/validation'
 import { uploadProjectDocument } from '../../services/documentService'
+import { focusFirstError } from '../../utils/focusFirstError'
 import type { CreateProjectInput } from '../../types/project'
+import { failureMessage } from '../../utils/errorMessage'
 
 // Holds the actual File objects (not display metadata) so they can be uploaded
 // to the created project — previously they were discarded on submit (C4).
@@ -111,7 +113,10 @@ export function CreateProject() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(e.currentTarget)
+      return
+    }
     setIsSubmitting(true)
     try {
       const project = await createProject(form)
@@ -132,8 +137,7 @@ export function CreateProject() {
       navigate('/admin/projects')
     } catch (err) {
       console.error('Failed to create project:', err)
-      const message = err instanceof Error ? err.message : 'Failed to create project'
-      addToast('error', message)
+      addToast('error', failureMessage(err, { what: 'create that project', reassurance: 'Nothing was saved', next: 'check the details and try again' }))
     } finally {
       setIsSubmitting(false)
     }
@@ -142,14 +146,14 @@ export function CreateProject() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/admin/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={'/admin/projects'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Create New Project</h1>
           <p className="mt-1 text-sm text-muted-foreground">Set up a new project or statement of work.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
@@ -273,7 +277,7 @@ export function CreateProject() {
         </Card>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate('/admin/projects')}>Cancel</Button>
+          <Button variant="secondary" to={'/admin/projects'}>Cancel</Button>
           <Button type="button" variant="secondary" onClick={() => addToast('success', 'Draft saved')}>Save Draft</Button>
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>Create Project</Button>
         </div>

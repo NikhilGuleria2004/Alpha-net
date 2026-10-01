@@ -9,6 +9,8 @@ import { AlertCircle } from 'lucide-react'
 import { getInviteByToken, redeemInvite } from '../../services/inviteService'
 import { dashboardPathFor } from '../../routes/HomeRedirect'
 import { FullPageSpinner } from '../../components/ui/FullPageSpinner'
+import { focusFirstError } from '../../utils/focusFirstError'
+import { failureText } from '../../utils/errorMessage'
 
 export function InviteRedeem() {
   usePageTitle('Accept Invite')
@@ -85,7 +87,10 @@ export function InviteRedeem() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(e.currentTarget)
+      return
+    }
     setIsSubmitting(true)
     setErrors({})
     try {
@@ -98,7 +103,7 @@ export function InviteRedeem() {
       addToast('success', 'Account activated successfully')
       navigate(dashboardPathFor(result.user.role), { replace: true })
     } catch {
-      setErrors({ general: 'Failed to activate account. Please try again.' })
+      setErrors({ general: failureText({ what: 'activate that account', reassurance: 'Nothing was changed', next: 'request a fresh invite link and try again' }) })
       addToast('error', 'Account activation failed')
     } finally {
       setIsSubmitting(false)
@@ -120,7 +125,7 @@ export function InviteRedeem() {
           </div>
           <h1 className="text-2xl font-semibold text-foreground">Invalid Invitation</h1>
           <p className="mt-2 text-sm text-muted-foreground">{verifyError || 'This invitation link is invalid or has expired.'}</p>
-          <Button variant="secondary" onClick={() => navigate('/adminlog')} className="mt-6">Go to Sign In</Button>
+          <Button variant="secondary" to={'/adminlog'} className="mt-6">Go to Sign In</Button>
         </div>
       </div>
     )
@@ -150,7 +155,7 @@ export function InviteRedeem() {
           <h1 className="text-2xl font-semibold text-foreground">Set Your Password</h1>
           <p className="mt-1 text-sm text-muted-foreground">Accept the invitation for <strong className="text-foreground">{inviteEmail}</strong></p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-5">
             {errors.general && (
               <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}
@@ -164,6 +169,7 @@ export function InviteRedeem() {
               error={errors.password}
               placeholder="••••••••"
               autoComplete="new-password"
+              noSpell
             />
             <div>
               <label className="mb-1 block text-sm font-medium text-foreground">Confirm Password</label>
@@ -174,6 +180,9 @@ export function InviteRedeem() {
                   onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' })) }}
                   className="w-full rounded-lg border border-border px-3 py-2 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
                   placeholder="Repeat your password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="none"
                   autoComplete="new-password"
                   aria-invalid={Boolean(errors.confirmPassword)}
                 />

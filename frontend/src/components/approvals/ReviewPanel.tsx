@@ -9,23 +9,14 @@ import { formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
 import type { Project } from '../../types/project'
 import { DeclineModal } from './DeclineModal'
+import { ConfirmDialog } from '../ConfirmDialog'
+import { formatHours } from '../../utils/format'
+import { failureMessage } from '../../utils/errorMessage'
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, loading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; loading?: boolean }) {
-  if (!isOpen) return null
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm} loading={loading} disabled={loading}>{confirmLabel || 'Confirm'}</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// F-03: this file used to carry its own ConfirmDialog copy (a bare
+// role="dialog" div with no accessible name and no focus trap). It now uses the
+// shared component, which names the dialog, traps Tab, closes on Escape and
+// returns focus to the trigger.
 
 interface ReviewPanelProps {
   isOpen: boolean
@@ -86,7 +77,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         onClose()
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve timesheet'
+      const message = failureMessage(err, { what: 'approve that timesheet', reassurance: 'It is still pending', next: 'reload the page and try again' })
       addToast('error', message)
     } finally {
       setIsProcessing(false)
@@ -106,7 +97,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
         onClose()
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to decline timesheet'
+      const message = failureMessage(err, { what: 'decline that timesheet', reassurance: 'It is still pending and unchanged', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsProcessing(false)
@@ -174,7 +165,7 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
                 <tfoot className="bg-muted">
                   <tr>
                     <td colSpan={8} className="px-4 py-2 text-right text-sm font-semibold text-foreground">Total</td>
-                    <td className="px-4 py-2 text-right text-sm font-semibold text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                    <td className="px-4 py-2 text-right text-sm font-semibold text-foreground">{formatHours(timesheet.totalHours)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -184,15 +175,15 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.regularHours.toFixed(1)}h</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{formatHours(timesheet.regularHours)}</p>
             </div>
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Overtime</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.overtimeHours.toFixed(1)}h</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{formatHours(timesheet.overtimeHours)}</p>
             </div>
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Total Hours</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{timesheet.totalHours.toFixed(1)}h</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{formatHours(timesheet.totalHours)}</p>
             </div>
           </div>
 
@@ -215,13 +206,14 @@ export function ReviewPanel({ isOpen, onClose, timesheet }: ReviewPanelProps) {
       </Drawer>
 
       <ConfirmDialog
-        isOpen={isApproveOpen}
-        onClose={() => setIsApproveOpen(false)}
+        open={isApproveOpen}
+        onCancel={() => setIsApproveOpen(false)}
         onConfirm={handleApprove}
         title="Approve Timesheet?"
-        description={`Are you sure you want to approve this timesheet for ${employee?.name || 'the employee'}?`}
+        message={`Are you sure you want to approve this timesheet for ${employee?.name || 'the employee'}?`}
         confirmLabel="Approve"
-        loading={isProcessing}
+        variant="danger"
+        isLoading={isProcessing}
       />
 
       <DeclineModal

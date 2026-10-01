@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input'
 import { useToast } from '../../contexts/ToastContext'
 import { getMyNotificationPrefs, putMyNotificationPrefs, updateMyProfile } from '../../services/settingsService'
 import { changePassword } from '../../services/authService'
+import { failureMessage, failureText } from '../../utils/errorMessage'
 
 export function Settings() {
   const { user, logout } = useAuth()
@@ -46,7 +47,7 @@ export function Settings() {
         setDeadlineReminders(prefs.deadlineReminders)
         setApprovalNotifications(prefs.approvalNotifications)
       } catch {
-        if (!cancelled) addToast('error', 'Failed to load notification preferences')
+        if (!cancelled) addToast('error', failureText({ what: 'load your notification preferences', reassurance: 'Your saved settings are unchanged', next: 'refresh the page and try again' }))
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -65,7 +66,7 @@ export function Settings() {
       })
       addToast('success', 'Settings saved successfully')
     } catch {
-      addToast('error', 'Failed to save settings')
+      addToast('error', failureText({ what: 'save those settings', reassurance: 'Nothing was changed', next: 'try again in a moment' }))
     } finally {
       setIsSaving(false)
     }
@@ -82,7 +83,7 @@ export function Settings() {
       await updateMyProfile({ name, email, employeeId, department })
       addToast('success', 'Profile updated successfully')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update profile'
+      const message = failureMessage(err, { what: 'save your profile', reassurance: 'Nothing was changed', next: 'check the details and try again' })
       setProfileError(message)
       addToast('error', message)
     } finally {
@@ -130,7 +131,7 @@ export function Settings() {
       setConfirmPassword('')
       setTimeout(() => void logout(), 1500)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to change password'
+      const message = failureMessage(err, { what: 'change your password', reassurance: 'Your current password still works', next: 'try again in a moment' })
       setPasswordError(message)
       addToast('error', message)
     } finally {
@@ -167,8 +168,8 @@ export function Settings() {
             </div>
           )}
           <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="Work Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input label="Employee ID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
+          <Input label="Work Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} noSpell />
+          <Input label="Employee ID" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} noSpell />
           <Input label="Department" value={department} onChange={(e) => setDepartment(e.target.value)} />
           <div className="flex justify-end">
             <Button onClick={handleProfileSave} loading={isProfileSaving}>

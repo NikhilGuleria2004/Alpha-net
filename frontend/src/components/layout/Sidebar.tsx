@@ -86,7 +86,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`relative z-40 hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}
+        className={`relative z-40 hidden md:flex flex-col border-r border-border bg-card transition-[width] duration-200 ${isCollapsed ? 'w-16' : 'w-64'}`}
       >
         <div className="relative overflow-visible border-b border-border px-3 py-4">
           {!isCollapsed ? (
@@ -192,7 +192,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
         aria-hidden="true"
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card shadow-xl transition-transform duration-300 md:hidden ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card shadow-xl transition-transform duration-200 md:hidden ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
@@ -204,7 +204,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             type="button"
             onClick={onMobileClose}
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />

@@ -4,41 +4,43 @@ import { AIActionCard } from './AIActionCard'
 import { Button } from '../ui/Button'
 import { Send, Bot, ArrowLeft } from 'lucide-react'
 import { useRef, useEffect } from 'react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   const { messages, isLoading, error, sendMessage, clearChat } = useAIChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const previouslyFocusedRef = useRef<Element | null>(null)
 
+  // F-26: the global `scroll-behavior: auto !important` override cannot touch a
+  // JS `behavior: 'smooth'` argument, so the reduced-motion check has to happen
+  // here. And auto-scrolling only while the reader is already at the bottom stops
+  // a streaming reply from yanking the viewport back down mid-read.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const scroller = messagesEndRef.current?.parentElement
+    if (!scroller) return
+    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+    if (distanceFromBottom > 120) return
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [messages, isLoading])
 
-  // Guideline 1.1/1.3 (checklist item 1.1): the panel behaves like a modal —
-  // focus moves into the composer on open and returns to the trigger on close,
-  // and Escape dismisses it. PreviouslyFocused is captured on mount (before
-  // the auto-focused textarea steals document.activeElement).
+  // Guideline 1.1/1.3 → interface_guide.txt:5 ("Keyboard works everywhere") + interface_guide.txt:7 ("Manage focus"): the panel behaves like a modal —
+  // focus moves into the composer on open, returns to the trigger on close, and
+  // Escape dismisses it.
+  // The panel claims `aria-modal="true"`, so it owes the same contract as every
+  // other overlay: Tab stays inside, Escape closes, focus returns to the trigger.
+  // That used to be a bespoke effect here, which handled Escape and restore but
+  // let Tab walk out into the page behind — the exact F-03 defect, in the one
+  // surface F-03 did not cover. The shared trap does all three and brings the
+  // nested-overlay ordering for free. Initial focus is the composer, not the
+  // close button, so the user can type immediately.
+  useFocusTrap(true, panelRef, { onClose, initialFocus: 'container' })
   useEffect(() => {
-    previouslyFocusedRef.current = document.activeElement
     inputRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onClose?.()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      if (previouslyFocusedRef.current instanceof HTMLElement) {
-        previouslyFocusedRef.current.focus()
-      }
-    }
-  }, [onClose])
+  }, [])
 
-  // Guideline 1.3 (checklist item 1.1): Cmd/Ctrl+Enter submits from the
+  // Guideline 5.2 → interface_guide.txt:80 ("Textarea behavior"): Cmd/Ctrl+Enter submits from the
   // composer, matching chat-app conventions. Shift+Enter keeps a newline.
   const handleComposerKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
@@ -67,13 +69,13 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" ref={panelRef}>
+    <div className="fixed inset-0 z-50 flex justify-end">
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div role="dialog" aria-modal="true" aria-label="AI chat" className="relative flex h-full w-full max-w-lg flex-col bg-card shadow-2xl">
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="AI chat" className="relative flex h-full w-full max-w-lg flex-col bg-card shadow-2xl outline-none">
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-6 py-4">
           <button
             type="button"
@@ -190,10 +192,10 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
             </Button>
           </form>
           <p className="mt-2 text-center text-xs text-muted-foreground/60">
-            {/* Guideline 8.16: provider-neutral copy — the backend's default LLM
+            {/* House copy convention (F-30): provider-neutral copy — the backend's default LLM
                 provider is Groq (env-changeable to Gemini), so the panel must not
                 name a specific one. */}
-            Responses are AI-generated &amp; may be inaccurate. Don't share sensitive personal information.
+            Responses are AI-generated and may be inaccurate. Don’t share sensitive personal information.
           </p>
         </div>
       </div>

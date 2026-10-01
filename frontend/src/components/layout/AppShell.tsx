@@ -13,7 +13,7 @@ export function AppShell({ children }: AppShellProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const matches = useMatches()
 
-  // Guideline 4.3 (checklist item 1.3): the <title> reflects the current
+  // Guideline 4.3 → interface_guide.txt:56 ("Accurate page titles"): the <title> reflects the current
   // context. Titles come from route `handle`s defined in App.tsx; the deepest
   // match with a handle wins, and usePageTitle appends the app name.
   const leafMatch = [...matches]

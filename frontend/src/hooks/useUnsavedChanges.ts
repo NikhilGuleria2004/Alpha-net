@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useBlocker } from 'react-router-dom'
 
-// Guideline 5.15 (frontend_eval.md §12 item 1.2): warn before navigation when
+// Guideline 5.15 → interface_guide.txt:93 ("Unsaved changes"): warn before navigation when
 // data could be lost. Two layers:
 //
 //   1. `beforeunload` — covers tab close/refresh and any full-document

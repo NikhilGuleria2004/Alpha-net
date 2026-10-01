@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { Card } from '../../components/ui/Card'
 import { Select } from '../../components/ui/Select'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -13,6 +14,7 @@ import { resolveReportDateRange } from '../../utils/date'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getHoursByProject, getHoursByEmployee, getOvertimeStats, getTimesheetStatusBreakdown, exportToCSV } from '../../services/reportService'
 import type { ReportFilters, HoursByProject, HoursByEmployee, OvertimeStats, TimesheetStatusBreakdown, ReportStatusFilter } from '../../types/report'
+import { formatHours } from '../../utils/format'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -20,7 +22,7 @@ export function Reports() {
   const { users, projects } = useAppData()
   const { addToast } = useToast()
 
-  // Guideline 1.11/1.23 (checklist item 1.4): every report filter is URL state
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): every report filter is URL state
   // (?range=&start=&end=&project=&employee=&department=&status=) so a shared
   // report link reopens with the exact same data window.
   const [dateRange, setDateRange] = useQueryParamState('range', '30d', 'push')
@@ -93,6 +95,20 @@ export function Reports() {
     setDepartmentFilter('')
     setStatusFilter('approved')
   }
+
+  // F-21: the chart's accessible name. recharts renders a bare <svg>, so without
+  // this a screen reader announces nothing at all; the sr-only table below carries
+  // the same values for anyone who wants the numbers rather than the shape.
+  // The API returns rows unsorted, so the peak is computed rather than assumed.
+  const totalHours = hoursByProject.reduce((sum, row) => sum + row.totalHours, 0)
+  const topProject = hoursByProject.reduce<HoursByProject | null>(
+    (best, row) => (best === null || row.totalHours > best.totalHours ? row : best),
+    null
+  )
+  const chartSummary = hoursByProject.length
+    ? `Bar chart of total hours by project. ${hoursByProject.length} projects, ${formatHours(totalHours)} in total.` +
+      (topProject ? ` Highest is ${topProject.projectName} at ${formatHours(topProject.totalHours)}.` : '')
+    : 'Bar chart of total hours by project. No data for the selected filters.'
 
   const handleExport = () => {
     if (!hoursByProject.length && !hoursByEmployee.length) {
@@ -176,9 +192,9 @@ export function Reports() {
       </Card>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
-        </div>
+        // F-21: the shared loading pattern, not a bespoke spinner. Passing the real
+        // flag also lets the delay gate hold the minimum visible duration.
+        <LoadingState className="py-20" isLoading={isLoading} label="Building the report" />
       ) : (
         <div className="space-y-6">
           <Card>
@@ -189,12 +205,34 @@ export function Reports() {
               {hoursByProject.length === 0 ? (
                 <EmptyState title="No data" description="There are no hours recorded for the selected filters." />
               ) : (
-                <div className="h-80 w-full">
+                <div
+                  className="h-80 w-full"
+                  // F-21: recharts emits a bare <svg>, so a screen reader gets an
+                  // unlabelled graphic and no numbers. Naming the chart and adding a
+                  // visually-hidden table gives the data a text alternative.
+                  role="img"
+                  aria-label={chartSummary}
+                >
+                  {/* Visually-hidden text alternative for the same values. */}
+                  <table className="sr-only">
+                    <caption>Total hours by project</caption>
+                    <thead>
+                      <tr><th scope="col">Project</th><th scope="col">Hours</th></tr>
+                    </thead>
+                    <tbody>
+                      {hoursByProject.map((row) => (
+                        <tr key={row.projectName}>
+                          <th scope="row">{row.projectName}</th>
+                          <td>{formatHours(row.totalHours)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={hoursByProject} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis dataKey="projectName" tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                      <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                      <XAxis dataKey="projectName" tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }} />
+                      <YAxis tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }} />
                       <Tooltip
                         cursor={{ fill: 'var(--color-muted)', opacity: 0.5 }}
                         contentStyle={{
@@ -203,7 +241,7 @@ export function Reports() {
                           borderRadius: '0.75rem',
                           color: 'var(--color-foreground)',
                         }}
-                        formatter={(value) => [`${Number(value).toFixed(1)}h`, 'Hours']}
+                        formatter={(value) => [`${formatHours(Number(value))}`, 'Hours']}
                       />
                       <Bar dataKey="totalHours" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -239,9 +277,9 @@ export function Reports() {
                           <tr key={emp.userId} className="hover:bg-muted">
                             <td className="px-4 py-3 text-sm font-medium text-foreground">{emp.userName}</td>
                             <td className="px-4 py-3 text-sm text-foreground">{emp.department}</td>
-                            <td className="px-4 py-3 text-right text-sm text-foreground">{emp.regularHours.toFixed(1)}h</td>
-                            <td className="px-4 py-3 text-right text-sm text-foreground">{emp.overtimeHours.toFixed(1)}h</td>
-                            <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{emp.totalHours.toFixed(1)}h</td>
+                            <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(emp.regularHours)}</td>
+                            <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(emp.overtimeHours)}</td>
+                            <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(emp.totalHours)}</td>
                             <td className="px-4 py-3 text-center">
                               <button type="button" onClick={handleEmployeeSort} className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
                                 {employeeSortDir === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -286,15 +324,15 @@ export function Reports() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-xl border border-border bg-card p-5">
                     <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">{overtimeStats.regularHours.toFixed(1)}h</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{formatHours(overtimeStats.regularHours)}</p>
                   </div>
                   <div className="rounded-xl border border-border bg-card p-5">
                     <p className="text-sm font-medium text-muted-foreground">Overtime</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">{overtimeStats.overtimeHours.toFixed(1)}h</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{formatHours(overtimeStats.overtimeHours)}</p>
                   </div>
                   <div className="rounded-xl border border-border bg-card p-5">
                     <p className="text-sm font-medium text-muted-foreground">Total Hours</p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">{overtimeStats.totalHours.toFixed(1)}h</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">{formatHours(overtimeStats.totalHours)}</p>
                   </div>
                 </div>
               </div>

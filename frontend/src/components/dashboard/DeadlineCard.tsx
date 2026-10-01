@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { differenceInDays, isOverdue } from '../../utils/date'
+import { differenceInDays, isOverdue, formatDate } from '../../utils/date'
 
 interface DeadlineCardProps {
   projectName: string
@@ -36,7 +36,7 @@ export function DeadlineCard({ projectName, deadline, icon }: DeadlineCardProps)
         <div>
           <h3 className="text-sm font-semibold text-foreground">{projectName}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Deadline: {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(deadlineDate)}
+            Deadline: {formatDate(deadlineDate)}
           </p>
         </div>
         {icon && <div className="text-muted-foreground">{icon}</div>}

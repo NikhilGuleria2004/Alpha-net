@@ -20,7 +20,7 @@ interface TableProps<T> {
   rowActions?: (row: T) => ReactNode
   stickyHeader?: boolean
   pageSize?: number
-  /** Guideline 1.11 (checklist item 1.4): lift sort/pagination into the URL by
+  /** Guideline 1.11 → interface_guide.txt:15 ("URL as state"): lift sort/pagination into the URL by
    * passing [value, setter] pairs (e.g. derived from useQueryParamState). When
    * omitted, the table manages its own state as before. */
   sortState?: readonly [string | null, (key: string | null) => void]

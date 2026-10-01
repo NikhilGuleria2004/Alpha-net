@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ArrowLeft, Download } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -9,16 +9,16 @@ import { Card } from '../../components/ui/Card'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/date'
-import { formatFileSize } from '../../utils/format'
+import { formatFileSize, formatHours } from '../../utils/format'
 import { downloadDocument } from '../../services/documentService'
 import type { Document } from '../../types/document'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function ProjectDetails() {
   const { projectId } = useParams<{ projectId: string }>()
   const { user } = useAuth()
   const { projects, users, timesheets, documents } = useAppData()
   const { addToast } = useToast()
-  const navigate = useNavigate()
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const project = projects.find((p) => p.id === projectId)
@@ -34,7 +34,7 @@ export function ProjectDetails() {
     try {
       await downloadDocument(doc.id, doc.name)
     } catch (err) {
-      addToast('error', (err as Error)?.message || 'Failed to download document')
+      addToast('error', failureMessage(err, { what: 'download that document', reassurance: 'The file is still on the server', next: 'try again' }))
     } finally {
       setDownloadingId(null)
     }
@@ -56,7 +56,7 @@ export function ProjectDetails() {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-4">
-        <Button variant="ghost" onClick={() => navigate('/user/projects')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={'/user/projects'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-foreground">{project.name}</h1>
@@ -102,7 +102,7 @@ export function ProjectDetails() {
 
           <Card>
             <div className="border-b border-border px-5 py-4">
-              <h3 className="text-lg font-semibold text-foreground">This Week's Timesheet</h3>
+              <h3 className="text-lg font-semibold text-foreground">This Week’s Timesheet</h3>
             </div>
             <div className="p-5">
               {myTimesheet ? (
@@ -113,20 +113,20 @@ export function ProjectDetails() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground">Regular</span>
-                    <span className="text-sm font-medium text-foreground">{myTimesheet.regularHours.toFixed(1)}h</span>
+                    <span className="text-sm font-medium text-foreground">{formatHours(myTimesheet.regularHours)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground">Overtime</span>
-                    <span className="text-sm font-medium text-foreground">{myTimesheet.overtimeHours.toFixed(1)}h</span>
+                    <span className="text-sm font-medium text-foreground">{formatHours(myTimesheet.overtimeHours)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground">Total</span>
-                    <span className="text-sm font-semibold text-foreground">{myTimesheet.totalHours.toFixed(1)}h</span>
+                    <span className="text-sm font-semibold text-foreground">{formatHours(myTimesheet.totalHours)}</span>
                   </div>
-                  <Button className="w-full" onClick={() => navigate(`/user/timesheets/${myTimesheet.id}`)}>Open This Week's Timesheet</Button>
+                  <Button className="w-full" to={`/user/timesheets/${myTimesheet.id}`}>Open This Week’s Timesheet</Button>
                 </div>
               ) : (
-                <EmptyState title="No timesheet yet" description="Create a timesheet to start tracking hours for this project." action={<Button onClick={() => navigate('/user/timesheets')}>Create Timesheet</Button>} />
+                <EmptyState title="No timesheet yet" description="Create a timesheet to start tracking hours for this project." action={<Button to={'/user/timesheets'}>Create Timesheet</Button>} />
               )}
             </div>
           </Card>

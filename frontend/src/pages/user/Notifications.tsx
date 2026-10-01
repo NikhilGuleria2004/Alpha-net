@@ -104,7 +104,7 @@ export function Notifications() {
             <EmptyState
               icon={<Bell className="h-12 w-12" />}
               title="No notifications"
-              description="You don't have any notifications yet."
+              description="You don’t have any notifications yet."
             />
           ) : (
             <>

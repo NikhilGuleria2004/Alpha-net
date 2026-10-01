@@ -11,7 +11,9 @@ import { Card } from '../../components/ui/Card'
 import { Modal } from '../../components/ui/Modal'
 import { Avatar } from '../../components/ui/Avatar'
 import { validateDateRange } from '../../utils/validation'
+import { focusFirstError } from '../../utils/focusFirstError'
 import type { CreateProjectInput } from '../../types/project'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function EditProject() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -93,14 +95,17 @@ export function EditProject() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(e.currentTarget)
+      return
+    }
     setIsSubmitting(true)
     try {
       await updateProject(project.id, form)
       addToast('success', 'Project updated successfully')
       navigate(`/admin/projects/${project.id}`)
-    } catch {
-      addToast('error', 'Failed to update project')
+    } catch (err) {
+      addToast('error', failureMessage(err, { what: 'save those project changes', reassurance: 'The project is unchanged', next: 'try again in a moment' }))
     } finally {
       setIsSubmitting(false)
     }
@@ -109,14 +114,14 @@ export function EditProject() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate(`/admin/projects/${project.id}`)} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={`/admin/projects/${project.id}`} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Edit Project</h1>
           <p className="mt-1 text-sm text-muted-foreground">Update project details and settings.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
@@ -185,7 +190,7 @@ export function EditProject() {
         </Card>
 
         <div className="flex items-center justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate(`/admin/projects/${project.id}`)}>Cancel</Button>
+          <Button variant="secondary" to={`/admin/projects/${project.id}`}>Cancel</Button>
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>Save Changes</Button>
         </div>
       </form>

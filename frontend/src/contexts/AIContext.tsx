@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, type Dispatch, type SetStateAction, type ReactNode } from 'react'
 import type { AIChatMessage, AIPendingAction } from '../types/ai'
 import { sendAIChatMessage, confirmAIPendingAction, cancelAIPendingAction, createMessageId } from '../services/aiService'
+import { failureMessage } from '../utils/errorMessage'
 
 interface AIContextValue {
   messages: AIChatMessage[]
@@ -57,7 +58,7 @@ export function AIChatProvider({ children }: { children: ReactNode }) {
       }
       setMessages(prev => [...prev, modelMsg])
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to send message'
+      const msg = failureMessage(err, { what: 'send that message', reassurance: 'Nothing was sent to the assistant', next: 'try again' })
       setError(msg)
       const errMsg: AIChatMessage = {
         id: createMessageId(),
@@ -87,7 +88,7 @@ export function AIChatProvider({ children }: { children: ReactNode }) {
       const result = await confirmAIPendingAction(action.id)
       settleActionMessage(messageId, `Confirmed — ${result.message || 'the action was applied.'}`)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to approve action'
+      const msg = failureMessage(err, { what: 'complete that action', reassurance: 'Nothing was applied', next: 'try again' })
       setActionError(msg)
     } finally {
       setActionBusyId(null)
@@ -104,7 +105,7 @@ export function AIChatProvider({ children }: { children: ReactNode }) {
       await cancelAIPendingAction(action.id)
       settleActionMessage(messageId, 'Cancelled — nothing was saved.')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to cancel action'
+      const msg = failureMessage(err, { what: 'cancel that action', reassurance: 'It is still running', next: 'try again' })
       setActionError(msg)
     } finally {
       setActionBusyId(null)

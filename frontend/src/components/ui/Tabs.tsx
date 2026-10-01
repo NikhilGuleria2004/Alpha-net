@@ -23,30 +23,47 @@ export function useTabs() {
 interface TabsProps {
   tabs: Tab[]
   defaultValue?: string
+  /** Controlled active tab — pair with `onValueChange` to drive it from the URL. */
+  value?: string
+  onValueChange?: (id: string) => void
   className?: string
 }
 
-export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
+export function Tabs({ tabs, defaultValue, value, onValueChange, className = '' }: TabsProps) {
   const initial = defaultValue || tabs[0]?.id
-  const [activeTab, setActiveTab] = useState(initial)
+  const [uncontrolled, setUncontrolled] = useState(initial)
+  // Controlled when `value` is supplied, uncontrolled otherwise, so existing
+  // callers keep working while a page can put the tab in the URL.
+  const isControlled = value !== undefined
+  const activeTab = isControlled ? value : uncontrolled
+  const setActiveTab = (id: string) => {
+    if (!isControlled) setUncontrolled(id)
+    onValueChange?.(id)
+  }
+
+  const focusTab = (id: string) => {
+    setActiveTab(id)
+    document.getElementById(`tab-${id}`)?.focus()
+  }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const enabledTabs = tabs.filter((t) => !t.disabled)
+    if (enabledTabs.length === 0) return
     const currentIndex = enabledTabs.findIndex((t) => t.id === activeTab)
-    let nextIndex = currentIndex
+    let nextIndex: number | null = null
     if (event.key === 'ArrowRight') {
       nextIndex = (currentIndex + 1) % enabledTabs.length
     } else if (event.key === 'ArrowLeft') {
       nextIndex = (currentIndex - 1 + enabledTabs.length) % enabledTabs.length
+    } else if (event.key === 'Home') {
+      nextIndex = 0
+    } else if (event.key === 'End') {
+      nextIndex = enabledTabs.length - 1
     } else {
       return
     }
     const nextTab = enabledTabs[nextIndex]
-    if (nextTab) {
-      setActiveTab(nextTab.id)
-      const tabButton = document.getElementById(`tab-${nextTab.id}`)
-      tabButton?.focus()
-    }
+    if (nextTab) focusTab(nextTab.id)
   }
 
   return (
@@ -68,6 +85,10 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
                 aria-controls={`panel-${tab.id}`}
                 disabled={tab.disabled}
                 onClick={() => setActiveTab(tab.id)}
+                // Roving tabindex: only the selected tab is a tab stop, which is
+                // what the ARIA tabs pattern expects. Without it every tab joins
+                // the tab order and the arrow keys duplicate what Tab does.
+                tabIndex={isActive ? 0 : -1}
                 className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isActive
                     ? 'border-b-2 border-accent text-accent'
@@ -97,35 +118,5 @@ export function Tabs({ tabs, defaultValue, className = '' }: TabsProps) {
         </div>
       </div>
     </TabsContext.Provider>
-  )
-}
-
-export function TabList({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-1 border-b border-border">{children}</div>
-}
-
-export function TabTrigger({ id, children, disabled, activeTab, setActiveTab }: { id: string; children: ReactNode; disabled?: boolean; activeTab: string; setActiveTab: (id: string) => void }) {
-  const isActive = activeTab === id
-  return (
-    <button
-      role="tab"
-      aria-selected={isActive}
-      disabled={disabled}
-      onClick={() => setActiveTab(id)}
-      className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-        isActive ? 'border-b-2 border-accent text-accent' : 'text-muted-foreground hover:text-foreground'
-      } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-    >
-      {children}
-    </button>
-  )
-}
-
-export function TabContent({ id, children, activeTab }: { id: string; children: ReactNode; activeTab: string }) {
-  const isActive = activeTab === id
-  return (
-    <div role="tabpanel" hidden={!isActive} className="mt-4">
-      {isActive && children}
-    </div>
   )
 }

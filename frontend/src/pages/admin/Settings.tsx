@@ -10,6 +10,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { ThemeToggle } from '../../components/ui/ThemeToggle'
 import { getOrgSettings, putOrgSettings } from '../../services/settingsService'
 import type { DayKey } from '../../types/project'
+import { failureText } from '../../utils/errorMessage'
 
 const timezones = [
   { value: 'UTC', label: 'UTC' },
@@ -63,7 +64,7 @@ export function Settings() {
         setStandardWeeklyHours(String(settings.standardWeeklyHours))
         setWeekendOvertimeEnabled(settings.weekendOvertimeEnabled)
       } catch {
-        if (!cancelled) addToast('error', 'Failed to load settings')
+        if (!cancelled) addToast('error', failureText({ what: 'load your settings', reassurance: 'Your saved settings are unchanged', next: 'refresh the page and try again' }))
       }
     }
     load()
@@ -85,7 +86,7 @@ export function Settings() {
       })
       addToast('success', 'Settings saved successfully')
     } catch {
-      addToast('error', 'Failed to save settings')
+      addToast('error', failureText({ what: 'save those settings', reassurance: 'Nothing was changed', next: 'try again in a moment' }))
     } finally {
       setIsSaving(false)
     }
@@ -125,7 +126,9 @@ export function Settings() {
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted">
                 {logoPreview ? (
-                  <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
+                  // F-27: intrinsic dimensions reserve the box before the image
+                  // decodes, and this preview sits below the fold.
+                  <img src={logoPreview} alt="Logo preview" width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-xs text-muted-foreground">Logo</span>
                 )}
@@ -187,7 +190,7 @@ export function Settings() {
               ))}
             </div>
           </div>
-          <Input label="Standard Weekly Hours" type="number" min="1" max="168" value={standardWeeklyHours} onChange={(e) => setStandardWeeklyHours(e.target.value)} />
+          <Input label="Standard Weekly Hours" type="number" inputMode="decimal" min="1" max="168" value={standardWeeklyHours} onChange={(e) => setStandardWeeklyHours(e.target.value)} />
           <Switch label="Weekend Overtime Enabled" description="Allow overtime entries on Saturday and Sunday" checked={weekendOvertimeEnabled} onChange={setWeekendOvertimeEnabled} />
         </div>
       </Card>

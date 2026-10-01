@@ -8,8 +8,9 @@ import { ActivityTimeline } from '../../components/dashboard/ActivityTimeline'
 import { DeadlineCard } from '../../components/dashboard/DeadlineCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { differenceInDays, getCurrentWeekStart, formatWeekRange } from '../../utils/date'
+import { differenceInDays, getCurrentWeekStart, formatWeekRange, formatShortDate } from '../../utils/date'
 import type { ProjectStatus } from '../../types/project'
+import { formatHours } from '../../utils/format'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -87,7 +88,7 @@ export function AdminDashboard() {
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground sm:text-2xl">{getGreeting()}, {user?.name?.split(' ')[0] || 'Admin'}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Here's what's happening across Eniac today.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Here’s what’s happening across Eniac today.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -132,7 +133,7 @@ export function AdminDashboard() {
                 <div className="p-4 sm:p-6">
                   <EmptyState
                     icon={<Clock3 className="h-12 w-12" />}
-                    title="You're all caught up"
+                    title="You’re all caught up"
                     description="There are no timesheets waiting for review."
                   />
                 </div>
@@ -160,9 +161,9 @@ export function AdminDashboard() {
                             <td className="px-4 py-3 text-sm text-foreground">
                               {formatWeekRange(timesheet.weekStart)}
                             </td>
-                            <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                            <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.totalHours)}</td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">
-                              {submittedDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(submittedDate) : '-'}
+                              {submittedDate ? formatShortDate(submittedDate) : '-'}
                             </td>
                             <td className="px-4 py-3">
                               <StatusBadge status={timesheet.status} size="sm" />
@@ -203,11 +204,11 @@ export function AdminDashboard() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Hours</span>
-                              <span className="font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</span>
+                              <span className="font-medium text-foreground">{formatHours(timesheet.totalHours)}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Submitted</span>
-                              <span className="text-foreground">{submittedDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(submittedDate) : '-'}</span>
+                              <span className="text-foreground">{submittedDate ? formatShortDate(submittedDate) : '-'}</span>
                             </div>
                           </div>
                           <button
@@ -250,20 +251,20 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-foreground">Regular Hours</span>
                   <span className="text-sm font-medium text-foreground">
-                    {currentWeekTimesheets.reduce((sum, t) => sum + t.regularHours, 0).toFixed(1)}h
+                    {formatHours(currentWeekTimesheets.reduce((sum, t) => sum + t.regularHours, 0))}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-foreground">Overtime</span>
                   <span className="text-sm font-medium text-foreground">
-                    {currentWeekTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(1)}h
+                    {formatHours(currentWeekTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0))}
                   </span>
                 </div>
                 <div className="border-t border-border pt-2.5 sm:pt-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">Total</span>
                     <span className="text-sm font-semibold text-foreground">
-                      {currentWeekTimesheets.reduce((sum, t) => sum + t.totalHours, 0).toFixed(1)}h
+                      {formatHours(currentWeekTimesheets.reduce((sum, t) => sum + t.totalHours, 0))}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -24,43 +25,11 @@ const sizeClasses: Record<Size, string> = {
 export function Modal({ isOpen, onClose, title, description, size = 'md', children, footer, closeLabel = 'Close' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (event.key === 'Tab') {
-        const dialog = dialogRef.current
-        if (!dialog) return
-        const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault()
-            last.focus()
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault()
-            first.focus()
-          }
-        }
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const previousActive = document.activeElement as HTMLElement | null
-    dialogRef.current?.focus()
-    return () => previousActive?.focus()
-  }, [isOpen])
+  // Escape closes, Tab/Shift+Tab stay inside, focus enters the panel and is
+  // returned to the trigger on close (Interactions — "manage focus"). One
+  // shared implementation; the panel is the initial target so its title is
+  // announced before its controls.
+  useFocusTrap(isOpen, dialogRef, { onClose, initialFocus: 'container' })
 
   if (!isOpen) return null
 
@@ -70,7 +39,7 @@ export function Modal({ isOpen, onClose, title, description, size = 'md', childr
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto overscroll-contain rounded-none sm:rounded-xl border border-border bg-card shadow-xl transition-all`}
+        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto overscroll-contain rounded-none sm:rounded-xl border border-border bg-card shadow-xl transition-opacity`}
       >
         {(title || description) && (
           <div className="border-b border-border px-6 py-4">
@@ -87,7 +56,7 @@ export function Modal({ isOpen, onClose, title, description, size = 'md', childr
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

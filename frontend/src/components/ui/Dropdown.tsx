@@ -47,7 +47,7 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
       setIsOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
-    // Guideline 1.1 (checklist item 2.4): menu keyboard support — focus the
+    // Guideline 1.1 → interface_guide.txt:5 ("Keyboard works everywhere"): menu keyboard support — focus the
     // first item on open so Tab/arrow users land inside the menu.
     focusMenuItems()?.[0]?.focus()
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -59,7 +59,7 @@ export function Dropdown({ trigger, children, align = 'left' }: DropdownProps) {
       closeAndRefocusTrigger()
       return
     }
-    // Guideline 1.1 (checklist item 2.4): arrow-key navigation between items.
+    // Guideline 1.1 → interface_guide.txt:5 ("Keyboard works everywhere"): arrow-key navigation between items.
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const items = focusMenuItems()
       if (!items || items.length === 0) return

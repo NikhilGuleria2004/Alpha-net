@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validation'
 import { register } from '../../services/authService'
+import { focusFirstError } from '../../utils/focusFirstError'
 
 type RegistrationRole = 'user' | 'admin'
 
@@ -85,7 +86,10 @@ export function Register() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(event.currentTarget)
+      return
+    }
 
     setIsLoading(true)
     setErrors({})
@@ -124,15 +128,15 @@ export function Register() {
 
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-12">
         <div className="mx-auto w-full max-w-xl">
-          <Button type="button" variant="ghost" onClick={() => navigate('/userlog')} leftIcon={<ArrowLeft className="h-4 w-4" />} className="mb-6">
+          <Button variant="ghost" to={'/userlog'} leftIcon={<ArrowLeft className="h-4 w-4" />} className="mb-6">
             Back to sign in
           </Button>
           <div>
-            <h1 className="text-3xl font-semibold text-foreground">Create your account</h1>
+            <h1 className="text-3xl font-semibold text-foreground">Create Your Account</h1>
             <p className="mt-2 text-sm text-muted-foreground">Register as a team member or request an administrator account.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-6">
             {errors.general && (
               <div className="rounded-lg border border-destructive/20 bg-error-soft px-4 py-3 text-sm text-destructive" role="alert">
                 {errors.general}
@@ -141,8 +145,8 @@ export function Register() {
 
             <div className="grid gap-6 md:grid-cols-2">
               <Input label="Full Name" value={form.name} onChange={(event) => updateField('name', event.target.value)} error={errors.name} required autoComplete="name" />
-              <Input label="Work Email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} error={errors.email} required autoComplete="email" placeholder="you@eniac.com" />
-              <Input label="Employee ID" value={form.employeeId} onChange={(event) => updateField('employeeId', event.target.value)} error={errors.employeeId} required autoComplete="off" />
+              <Input label="Work Email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} error={errors.email} required autoComplete="email" noSpell placeholder="you@eniac.com" />
+              <Input label="Employee ID" value={form.employeeId} onChange={(event) => updateField('employeeId', event.target.value)} error={errors.employeeId} required autoComplete="off" noSpell />
               <Select label="Department" value={form.department} onChange={(event) => updateField('department', event.target.value)} options={[{ value: '', label: 'Select department' }, ...departments.map((department) => ({ value: department, label: department }))]} error={errors.department} required />
             </div>
 
@@ -152,6 +156,9 @@ export function Register() {
                 <div className="relative">
                   <input
                     id="register-password"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(event) => updateField('password', event.target.value)}
@@ -172,6 +179,9 @@ export function Register() {
                 <div className="relative">
                   <input
                     id="register-confirm-password"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
                     onChange={(event) => updateField('confirmPassword', event.target.value)}
@@ -191,7 +201,7 @@ export function Register() {
             <div className="grid gap-6 md:grid-cols-2">
               <Select label="Account Type" value={form.role} onChange={(event) => updateField('role', event.target.value as RegistrationRole)} options={[{ value: 'user', label: 'Team Member' }, { value: 'admin', label: 'Administrator' }]} required />
               {form.role === 'admin' && (
-                <Input label="Admin Pass" type="password" value={form.adminPass} onChange={(event) => updateField('adminPass', event.target.value)} error={errors.adminPass} required autoComplete="off" />
+                <Input label="Admin Pass" type="password" value={form.adminPass} onChange={(event) => updateField('adminPass', event.target.value)} error={errors.adminPass} required autoComplete="off" noSpell />
               )}
             </div>
 

@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
-import { useNavigate } from 'react-router-dom'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
 import { Search, SlidersHorizontal, Eye } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAppData } from '../../contexts/AppDataContext'
@@ -11,13 +10,15 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate, formatWeekRange } from '../../utils/date'
+import { formatHours } from '../../utils/format'
 
 export function SupervisorTimesheets() {
   const { user } = useAuth()
   const { timesheets, users, projects } = useAppData()
-  const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): all list controls are URL state.
-  const [search, setSearch] = useQueryParamState('q')
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): all list controls are URL state.
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [userFilter, setUserFilter] = useQueryParamState('user', '', 'push')
   const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
@@ -126,13 +127,13 @@ export function SupervisorTimesheets() {
                       <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.regularHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.overtimeHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(timesheet.totalHours)}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</td>
                       <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                       <td className="px-4 py-3 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/supervisor/approvals?timesheetId=${timesheet.id}`)} leftIcon={<Eye className="h-4 w-4" />}>Review</Button>
+                        <Button variant="ghost" size="sm" to={`/supervisor/approvals?timesheetId=${timesheet.id}`} leftIcon={<Eye className="h-4 w-4" />}>Review</Button>
                       </td>
                     </tr>
                   )

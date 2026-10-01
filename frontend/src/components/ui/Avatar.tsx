@@ -8,6 +8,16 @@ const sizeClasses: Record<Size, string> = {
   lg: 'h-12 w-12 text-base',
 }
 
+// F-27: intrinsic dimensions alongside the CSS sizing, so the browser reserves the
+// right box before the image decodes and nothing shifts.
+const sizePixels: Record<Size, number> = { sm: 32, md: 40, lg: 48 }
+
+const statusLabel: Record<NonNullable<AvatarProps['status']>, string> = {
+  online: 'Online',
+  offline: 'Offline',
+  away: 'Away',
+}
+
 interface AvatarProps {
   name?: string
   src?: string
@@ -40,18 +50,27 @@ export function Avatar({ name = '', src, alt, size = 'md', status, className = '
   const initials = getInitials(name)
   const colorClass = getColorFromName(name || 'User')
 
+  // F-25: one composed label on the wrapper instead of separate labels on the
+  // inner elements — two labels meant the avatar was announced twice. The status
+  // dot is colour-only, so it also carries visually-hidden text.
+  const label = [name || alt, status ? statusLabel[status] : ''].filter(Boolean).join(' — ')
+
   return (
-    <div className={`relative inline-flex shrink-0 ${className}`}>
+    <div className={`relative inline-flex shrink-0 ${className}`} role="img" aria-label={label || undefined}>
       {src ? (
         <img
           src={src}
           alt={alt || name}
+          width={sizePixels[size]}
+          height={sizePixels[size]}
+          loading="lazy"
+          decoding="async"
           className={`rounded-full object-cover ${sizeClasses[size]}`}
         />
       ) : (
         <div
           className={`flex items-center justify-center rounded-full font-semibold text-white ${sizeClasses[size]} ${colorClass}`}
-          aria-label={name}
+          aria-hidden="true"
         >
           {initials}
         </div>
@@ -65,8 +84,9 @@ export function Avatar({ name = '', src, alt, size = 'md', status, className = '
                   ? 'bg-warning'
                   : 'bg-muted-foreground/50'
           } ${size === 'sm' ? 'h-2.5 w-2.5' : size === 'md' ? 'h-3 w-3' : 'h-3.5 w-3.5'}`}
-          aria-label={status}
-        />
+        >
+          <span className="sr-only">{statusLabel[status]}</span>
+        </span>
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
 import { useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Eye, Plus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -10,16 +10,21 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
+import { Modal } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatWeekRange, getCurrentWeekStart, normalizeToMonday, parseLocalDate } from '../../utils/date'
+import { formatHours } from '../../utils/format'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function Timesheets() {
   const { user } = useAuth()
   const { timesheets, projects, createTimesheet, refreshTimesheets } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): list filters are URL state.
-  const [search, setSearch] = useQueryParamState('q')
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): list filters are URL state.
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [projectFilter, setProjectFilter] = useQueryParamState('project', '', 'push')
   const [statusFilter, setStatusFilter] = useQueryParamState('status', '', 'push')
   const [dateRange, setDateRange] = useQueryParamState('range', '', 'push')
@@ -110,7 +115,7 @@ export function Timesheets() {
       setNewDescription('')
       navigate(`/user/timesheets/${timesheet.id}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create timesheet'
+      const message = failureMessage(err, { what: 'create that timesheet', reassurance: 'Nothing was saved', next: 'try again in a moment' })
       console.error('Failed to create timesheet:', err)
       addToast('error', message)
     } finally {
@@ -173,12 +178,12 @@ export function Timesheets() {
                     <tr key={timesheet.id} className="hover:bg-muted">
                       <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(timesheet.weekStart)}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.regularHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.overtimeHours)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(timesheet.totalHours)}</td>
                       <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                       <td className="px-4 py-3 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/user/timesheets/${timesheet.id}`)} leftIcon={<Eye className="h-4 w-4" />}>View</Button>
+                        <Button variant="ghost" size="sm" to={`/user/timesheets/${timesheet.id}`} leftIcon={<Eye className="h-4 w-4" />}>View</Button>
                       </td>
                     </tr>
                   )
@@ -189,41 +194,39 @@ export function Timesheets() {
         </div>
       </Card>
 
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)} />
-          <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-foreground">New Timesheet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Pick a project and the week you want to log.</p>
-            <div className="mt-4">
-              <Select label="Project" value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} options={[{ value: '', label: 'Select project' }, ...projectOptions]} />
-            </div>
-            <div className="mt-4">
-              <Input
-                label="Week starting (Monday)"
-                type="date"
-                value={newWeekStart}
-                onChange={(e) => setNewWeekStart(e.target.value ? normalizeToMonday(e.target.value) : getCurrentWeekStart())}
-                helperText="Any day in the week works — it is snapped to that week's Monday."
-                required
-              />
-            </div>
-            <div className="mt-4">
-              <Input
-                label="Description"
-                placeholder="e.g. Project development, meetings, testing…"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => { setIsCreateOpen(false); setNewDescription(''); }} disabled={isCreating}>Cancel</Button>
-              <Button onClick={handleCreateTimesheet} loading={isCreating} disabled={!newProjectId || !newDescription.trim()}>Create</Button>
-            </div>
+      {/* F-03: was a hand-rolled role="dialog" overlay with no accessible name,
+          no focus trap and no Escape handling. The shared Modal supplies all
+          three from `title`, and carries a noValidate form so the app's own
+          messages are the only validation feedback. */}
+      <Modal
+        isOpen={isCreateOpen}
+        onClose={() => { setIsCreateOpen(false); setNewDescription('') }}
+        title="New Timesheet"
+        description="Pick a project and the week you want to log."
+      >
+        <form noValidate onSubmit={(event) => { event.preventDefault(); void handleCreateTimesheet() }} className="space-y-4">
+          <Select label="Project" value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} options={[{ value: '', label: 'Select project' }, ...projectOptions]} />
+          <Input
+            label="Week starting (Monday)"
+            type="date"
+            value={newWeekStart}
+            onChange={(e) => setNewWeekStart(e.target.value ? normalizeToMonday(e.target.value) : getCurrentWeekStart())}
+            helperText="Any day in the week works — it is snapped to that week's Monday."
+            required
+          />
+          <Input
+            label="Description"
+            placeholder="e.g. Project development, meetings, testing…"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            required
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => { setIsCreateOpen(false); setNewDescription(''); }} disabled={isCreating}>Cancel</Button>
+            <Button type="submit" loading={isCreating} disabled={!newProjectId || !newDescription.trim()}>Create</Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   )
 }

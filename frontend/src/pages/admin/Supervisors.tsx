@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Download, ChevronUp, ChevronDown, MoreHorizontal, UserCheck } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
-import { useQueryParamState } from '../../hooks/useQueryParamState'
+import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
@@ -18,9 +18,11 @@ export function Supervisors() {
   const { users, projects, timesheets } = useAppData()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  // Guideline 1.11/1.23 (checklist item 1.4): search, filter, and sort live in
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): search, filter, and sort live in
   // the URL (?q=&department=&sort=&dir=) — same pattern as Users/Projects.
-  const [search, setSearch] = useQueryParamState('q')
+  // F-20: the field stays instant (local state); only the URL write is debounced,
+  // so a 12-character query is one navigation instead of twelve.
+  const [search, setSearch] = useDebouncedQueryParam('q')
   const [departmentFilter, setDepartmentFilter] = useQueryParamState('department', '', 'push')
   const [sort, setSort] = useQueryParamState('sort', '', 'push')
   const [dir, setDir] = useQueryParamState('dir', 'asc', 'push')
@@ -110,7 +112,7 @@ export function Supervisors() {
           <h1 className="text-2xl font-semibold text-foreground">Supervisors</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage supervisors and their assigned teams.</p>
         </div>
-        <Button onClick={() => navigate('/admin/users/new')} leftIcon={<UserCheck className="h-4 w-4" />}>
+        <Button to={'/admin/users/new'} leftIcon={<UserCheck className="h-4 w-4" />}>
           Create Supervisor
         </Button>
       </div>
@@ -141,7 +143,7 @@ export function Supervisors() {
                 icon={<UserCheck className="h-12 w-12" />}
                 title="No supervisors found"
                 description="Get started by creating a new supervisor user."
-                action={<Button onClick={() => navigate('/admin/users/new')} leftIcon={<UserCheck className="h-4 w-4" />}>Create Supervisor</Button>}
+                action={<Button to={'/admin/users/new'} leftIcon={<UserCheck className="h-4 w-4" />}>Create Supervisor</Button>}
               />
             </div>
           ) : (
@@ -174,7 +176,14 @@ export function Supervisors() {
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <Avatar name={supervisor.name} size="sm" />
-                          <span className="font-medium text-foreground">{supervisor.name}</span>
+                          {/* F-05b: real link inside the clickable row (see Users.tsx). */}
+                          <Link
+                            to={`/admin/supervisors/${supervisor.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-foreground hover:text-accent hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            {supervisor.name}
+                          </Link>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">{supervisor.email}</td>

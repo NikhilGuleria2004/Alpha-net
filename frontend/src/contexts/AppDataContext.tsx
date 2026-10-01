@@ -278,8 +278,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setProjects((prev) => [...prev, project])
       return project
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create project'
-      throw new Error(message)
+      // Propagate the original error so the calling page can apply the D-3 copy
+      // policy; never flatten it into a generic failure string here.
+      throw err instanceof Error ? err : new Error('Request failed')
     }
   }
 
@@ -394,8 +395,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTimesheets((prev) => [...prev, timesheet])
       return timesheet
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create timesheet'
-      throw new Error(message)
+      // Propagate the original error so the calling page can apply the D-3 copy
+      // policy; never flatten it into a generic failure string here.
+      throw err instanceof Error ? err : new Error('Request failed')
     }
   }
 

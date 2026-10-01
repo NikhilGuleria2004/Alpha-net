@@ -9,6 +9,8 @@ import { Avatar } from '../ui/Avatar'
 import { EmptyState } from '../ui/EmptyState'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { resolveNotificationRoute } from '../../utils/notificationRoutes'
+import { formatDateTime } from '../../utils/date'
+import { useIsMac } from '../../hooks/useIsMac'
 
 interface TopbarProps {
   onToggleMobile?: () => void
@@ -34,6 +36,9 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  // F-31: the ⌦K hint must match the platform — the handler accepts Meta *and*
+  // Control, so a fixed ⌘ advertises a key Windows/Linux keyboards lack.
+  const isMac = useIsMac()
   const profileRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
@@ -151,6 +156,9 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
   }
 
   const recentNotifications = notifications.slice(0, 5)
+  // Guide ("show platform-specific symbols"). NBSP inside the label so the
+  // three tokens never wrap apart — the same NBSP rule as "8 h".
+  const searchKeyLabel = isMac ? '\u2318\u00a0+\u00a0K' : 'Ctrl\u00a0+\u00a0K'
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-card px-4 sm:px-6">
@@ -158,7 +166,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
         <button
           type="button"
           onClick={onToggleMobile}
-          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground md:hidden"
+          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
@@ -195,7 +203,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search projects, users…</span>
-            <kbd className="ml-2 hidden rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">⌘K</kbd>
+            <kbd className="ml-2 hidden rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">{searchKeyLabel}</kbd>
           </button>
           {isSearchOpen && (
             <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-border bg-card shadow-lg sm:w-80" role="search">
@@ -205,9 +213,12 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search projects, users, timesheets…"
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-base sm:text-sm focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20"
                   aria-label="Search projects, users, timesheets"
                   autoFocus
+                  // F-06: text-base on mobile keeps the field at >=16px, so iOS
+                  // Safari does not auto-zoom the page on focus. Desktop keeps
+                  // the denser text-sm — same pattern as Input/Textarea.
                 />
               </div>
               {searchResults.length > 0 && (
@@ -246,7 +257,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
           <button
             type="button"
             onClick={() => setIsNotificationsOpen((prev) => !prev)}
-            className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -278,7 +289,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
               <div className="max-h-80 overflow-y-auto">
                 {recentNotifications.length === 0 ? (
                   <div className="p-4">
-                    <EmptyState title="No notifications" description="You're up to date." />
+                    <EmptyState title="No notifications" description="You’re up to date." />
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -300,7 +311,7 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground">{notification.title}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">{notification.message}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleDateString()}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(notification.createdAt)}</p>
                         </div>
                       </button>
                     ))}

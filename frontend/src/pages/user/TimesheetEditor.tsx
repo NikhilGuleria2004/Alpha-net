@@ -12,6 +12,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { Modal } from '../../components/ui/Modal'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { addWeeks, formatWeekRange, getWeekDates, parseLocalDate, toLocalDateString } from '../../utils/date'
 import { createEntryId } from '../../utils/id'
 import { formatHours } from '../../utils/format'
@@ -19,6 +21,7 @@ import { getOrgSettings } from '../../services/settingsService'
 import { compileWeeklyTimesheet, getDailyEntriesForWeek } from '../../services/timesheetService'
 import type { DailyTimesheet, Timesheet, TimesheetEntry } from '../../types/timesheet'
 import type { DayKey } from '../../types/project'
+import { failureMessage, failureText } from '../../utils/errorMessage'
 
 const DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
@@ -32,27 +35,18 @@ const REGULAR_DAYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri']
 const OVERTIME_DAYS: DayKey[] = ['sat', 'sun']
 const MAX_DAILY_HOURS = 24
 
-function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel, isLoading, warnings }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; description: string; confirmLabel?: string; isLoading?: boolean; warnings?: string[] }) {
-  if (!isOpen) return null
+// F-03: this file used to declare its own ConfirmDialog and WithdrawModal, both
+// hand-rolled role="dialog" overlays with no accessible name, no focus trap and
+// no Escape handling. Both now render the shared components, whose focus
+// contract lives in src/hooks/useFocusTrap.ts.
+function WarningList({ warnings }: { warnings: string[] }) {
+  if (warnings.length === 0) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        {warnings && warnings.length > 0 && (
-          <ul className="mt-3 space-y-1 rounded-lg bg-warning-soft px-3 py-2">
-            {warnings.map((warning) => (
-              <li key={warning} className="text-xs leading-relaxed text-warning">{warning}</li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>Cancel</Button>
-          <Button onClick={onConfirm} loading={isLoading}>{confirmLabel || 'Confirm'}</Button>
-        </div>
-      </div>
-    </div>
+    <ul className="mt-3 space-y-1 rounded-lg bg-warning-soft px-3 py-2">
+      {warnings.map((warning) => (
+        <li key={warning} className="text-xs leading-relaxed text-warning">{warning}</li>
+      ))}
+    </ul>
   )
 }
 
@@ -99,7 +93,7 @@ export function TimesheetEditor() {
   // changes server-side when the parent is rebuilt).
   const [dailyTick, setDailyTick] = useState(0)
 
-  // Guideline 5.15 (checklist item 1.2): the editor is dirty when the working
+  // Guideline 5.15 → interface_guide.txt:93 ("Unsaved changes"): the editor is dirty when the working
   // copy differs from the last saved state. The hook covers tab close/refresh
   // (beforeunload) and in-app navigation (useBlocker); the returned blocker is
   // rendered as a confirm dialog below.
@@ -163,7 +157,7 @@ export function TimesheetEditor() {
       })
       .catch((err) => {
         if (!cancelled) {
-          addToast('error', err instanceof Error ? err.message : 'Failed to load daily logs')
+          addToast('error', failureMessage(err, { what: 'load your daily logs', reassurance: 'The weekly grid is unchanged', next: 'try again' }))
         }
       })
     return () => { cancelled = true }
@@ -184,14 +178,14 @@ export function TimesheetEditor() {
         for (const day of OVERTIME_DAYS) {
           const hours = entry.hours[day]
           if (hours > 0) {
-            errors.push(`Regular entry "${entry.description}" has hours on ${day} (${hours}h). Regular entries must be Mon-Fri only.`)
+            errors.push(`Regular entry "${entry.description}" has hours on ${day} (${hours}\u00a0h). Regular entries must be Mon-Fri only.`)
           }
         }
       } else if (entry.entryType === 'overtime') {
         for (const day of REGULAR_DAYS) {
           const hours = entry.hours[day]
           if (hours > 0) {
-            errors.push(`Overtime entry "${entry.description}" has hours on ${day} (${hours}h). Overtime entries must be Sat-Sun only.`)
+            errors.push(`Overtime entry "${entry.description}" has hours on ${day} (${hours}\u00a0h). Overtime entries must be Sat-Sun only.`)
           }
         }
       }
@@ -251,7 +245,7 @@ export function TimesheetEditor() {
       addToast('info', `Created a timesheet for the week of ${targetWeekStart}.`)
       navigate(`/user/timesheets/${created.id}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to open that week'
+      const message = failureMessage(err, { what: 'open that week', reassurance: 'No changes were made', next: 'pick another week or go back' })
       addToast('error', message)
     } finally {
       setIsNavigatingWeek(false)
@@ -281,7 +275,7 @@ export function TimesheetEditor() {
       const hours = { ...entry.hours }
       for (const day of forbiddenDays) {
         if (hours[day] > 0) {
-          removed.push(`${day} ${hours[day]}h`)
+          removed.push(`${day} ${hours[day]}\u00a0h`)
           hours[day] = 0
         }
       }
@@ -369,7 +363,7 @@ export function TimesheetEditor() {
     try {
       const compiled = await compileWeeklyTimesheet(project.id, existingTimesheet.weekStart)
       if (!compiled) {
-        addToast('error', 'Failed to compile daily logs. Please try again.')
+        addToast('error', failureText({ what: 'compile your daily logs', reassurance: 'The weekly grid is unchanged', next: 'try again in a moment' }))
         return
       }
       // The compiled rows are now the saved server state for the rows half —
@@ -380,9 +374,9 @@ export function TimesheetEditor() {
       await refreshTimesheets()
       setDailyTick((tick) => tick + 1)
       setIsCompileConfirmOpen(false)
-      addToast('success', `Compiled daily logs — weekly total ${compiled.totalHours.toFixed(1)}h.`)
+      addToast('success', `Compiled daily logs — weekly total ${formatHours(compiled.totalHours)}.`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to compile daily logs'
+      const message = failureMessage(err, { what: 'compile your daily logs', reassurance: 'The weekly grid is unchanged', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsCompiling(false)
@@ -409,7 +403,7 @@ export function TimesheetEditor() {
       warnings.push(`${missingDailyDesc} daily ${missingDailyDesc === 1 ? 'entry is' : 'entries are'} missing a description.`)
     }
     if (isOutOfSync) {
-      warnings.push(`Daily logs (${dailyTotalHours.toFixed(1)}h) and this grid (${totals.totalHours.toFixed(1)}h) are out of sync — they will be compiled before submitting.`)
+      warnings.push(`Daily logs (${formatHours(dailyTotalHours)}) and this grid (${formatHours(totals.totalHours)}) are out of sync — they will be compiled before submitting.`)
     }
     return warnings
   }
@@ -436,7 +430,7 @@ export function TimesheetEditor() {
       // show a success toast.
       const updated = await saveDraft(existingTimesheet.id, data)
       if (!updated) {
-        addToast('error', 'Failed to save draft. Please try again.')
+        addToast('error', failureText({ what: 'save that draft', reassurance: 'Your edits are still on screen', next: 'try again in a moment' }))
         return
       }
       addToast('success', 'Draft saved')
@@ -445,7 +439,7 @@ export function TimesheetEditor() {
       rebaseSavedSnapshot()
       await refreshTimesheets()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save draft'
+      const message = failureMessage(err, { what: 'save that draft', reassurance: 'Your edits are still on screen', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsSaving(false)
@@ -464,7 +458,7 @@ export function TimesheetEditor() {
       if (dailyRows.length > 0) {
         const compiled = await compileWeeklyTimesheet(project.id, existingTimesheet.weekStart)
         if (!compiled) {
-          addToast('error', 'Failed to compile daily logs before submitting. Please try again.')
+          addToast('error', failureText({ what: 'compile your daily logs first', reassurance: 'Nothing was submitted', next: 'try again in a moment' }))
           return
         }
         workingEntries = compiled.entries.map((e) => ({ ...e, hours: { ...e.hours } }))
@@ -490,14 +484,14 @@ export function TimesheetEditor() {
 
       const draft = await saveDraft(existingTimesheet.id, data)
       if (!draft) {
-        addToast('error', 'Failed to save draft. Please try again.')
+        addToast('error', failureText({ what: 'save that draft', reassurance: 'Your edits are still on screen', next: 'try again in a moment' }))
         return
       }
 
       const submitted = await submitTimesheet(existingTimesheet.id)
       if (!submitted) {
         // H1 (QA.md): no false success — the backend rejected the submission.
-        addToast('error', 'Failed to submit timesheet. Please try again.')
+        addToast('error', failureText({ what: 'submit that timesheet', reassurance: 'It is still a draft — nothing was submitted', next: 'try again in a moment' }))
         return
       }
 
@@ -514,7 +508,7 @@ export function TimesheetEditor() {
       await refreshTimesheets()
       navigate('/user/timesheets')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to submit timesheet'
+      const message = failureMessage(err, { what: 'submit that timesheet', reassurance: 'It is still a draft — nothing was submitted', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsProcessing(false)
@@ -528,7 +522,7 @@ export function TimesheetEditor() {
       const updated = await withdrawTimesheet(existingTimesheet.id, withdrawReason)
       if (!updated) {
         // H1 (QA.md): no false success — the backend rejected the withdrawal.
-        addToast('error', 'Failed to withdraw timesheet. Please try again.')
+        addToast('error', failureText({ what: 'withdraw that timesheet', reassurance: 'It is still pending', next: 'try again in a moment' }))
         return
       }
       addToast('success', 'Timesheet withdrawn')
@@ -540,7 +534,7 @@ export function TimesheetEditor() {
       await refreshTimesheets()
       navigate('/user/timesheets')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to withdraw timesheet'
+      const message = failureMessage(err, { what: 'withdraw that timesheet', reassurance: 'It is still pending', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsProcessing(false)
@@ -561,7 +555,7 @@ export function TimesheetEditor() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/user/timesheets')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/user/timesheets'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Weekly Timesheet</h1>
             {project && <p className="text-sm text-muted-foreground">{project.name}</p>}
@@ -589,7 +583,7 @@ export function TimesheetEditor() {
                 ? 'Loading…'
                 : dailyRows.length === 0
                   ? 'No daily entries this week'
-                  : `${dailyRows.length} ${dailyRows.length === 1 ? 'entry' : 'entries'} · ${dailyTotalHours.toFixed(1)}h`}
+                  : `${dailyRows.length} ${dailyRows.length === 1 ? 'entry' : 'entries'} · ${formatHours(dailyTotalHours)}`}
             </span>
             {hasLockedDailyRows && (
               <Badge variant="warning" size="sm" leftIcon={<Lock className="h-3 w-3" />}>Locked</Badge>
@@ -611,7 +605,7 @@ export function TimesheetEditor() {
           <div className="flex items-start gap-2 border-b border-border bg-warning-soft px-5 py-3" role="status">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <p className="text-sm text-warning">
-              Daily logs ({dailyTotalHours.toFixed(1)}h) and this week's grid ({totals.totalHours.toFixed(1)}h) are out
+              Daily logs ({formatHours(dailyTotalHours)}) and this week's grid ({formatHours(totals.totalHours)}) are out
               of sync. The grid will be rebuilt from your daily logs before submission.
             </p>
           </div>
@@ -639,7 +633,7 @@ export function TimesheetEditor() {
                         <span className="block truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {dayLabels.get(day) ?? day}
                         </span>
-                        <span className="block text-sm font-semibold text-foreground">{dayTotal.toFixed(1)}h</span>
+                        <span className="block text-sm font-semibold text-foreground">{formatHours(dayTotal)}</span>
                       </span>
                       <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -723,6 +717,7 @@ export function TimesheetEditor() {
                       <td key={day} className="px-2 py-2 text-center sm:px-2 sm:py-2">
                         <input
                           type="number"
+                          inputMode="decimal"
                           min="0"
                           max="24"
                           step="0.5"
@@ -746,7 +741,7 @@ export function TimesheetEditor() {
             <tfoot className="bg-muted">
               <tr>
                 <td colSpan={9} className="px-3 py-2 text-right text-sm font-semibold text-foreground sm:px-4 sm:py-2">Total Hours</td>
-                <td className="px-3 py-2 text-right text-sm font-semibold text-foreground sm:px-4 sm:py-2">{totals.totalHours.toFixed(1)}h</td>
+                <td className="px-3 py-2 text-right text-sm font-semibold text-foreground sm:px-4 sm:py-2">{formatHours(totals.totalHours)}</td>
                 {!isReadOnly && <td />}
               </tr>
             </tfoot>
@@ -772,24 +767,24 @@ export function TimesheetEditor() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{totals.regularHours.toFixed(1)}h</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatHours(totals.regularHours)}</p>
             </div>
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Overtime</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{totals.overtimeHours.toFixed(1)}h</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatHours(totals.overtimeHours)}</p>
             </div>
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium text-muted-foreground">Total Hours</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{totals.totalHours.toFixed(1)}h</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatHours(totals.totalHours)}</p>
             </div>
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-foreground">Weekly Target</span>
-              <span className={`font-medium ${isAboveTarget ? 'text-warning' : 'text-foreground'}`}>{totals.totalHours.toFixed(1)}h / {weeklyTarget}h</span>
+              <span className={`font-medium ${isAboveTarget ? 'text-warning' : 'text-foreground'}`}>{formatHours(totals.totalHours)} / {`${weeklyTarget}\u00a0h`}</span>
             </div>
             <div className="mt-2 h-2 w-full rounded-full bg-border">
-              <div className={`h-full rounded-full transition-all ${isAboveTarget ? 'bg-warning' : 'bg-accent'}`} style={{ width: `${progressPercent}%` }} />
+              <div className={`h-full rounded-full transition-[width] duration-200 ${isAboveTarget ? 'bg-warning' : 'bg-accent'}`} style={{ width: `${progressPercent}%` }} />
             </div>
             {isAboveTarget && <p className="mt-1 text-xs text-warning">You are above the weekly target</p>}
           </div>
@@ -817,23 +812,24 @@ export function TimesheetEditor() {
       )}
 
       <ConfirmDialog
-        isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
+        open={isSubmitOpen}
+        onCancel={() => setIsSubmitOpen(false)}
         onConfirm={handleSubmit}
         title="Submit Timesheet?"
-        description={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatWeekRange(weekStart) : ''}. Total hours: ${totals.totalHours.toFixed(1)}h.${dailyRows.length > 0 ? ' Your daily logs will be compiled into this timesheet first.' : ''}`}
-        warnings={getSubmissionWarnings()}
+        message={`Are you sure you want to submit this timesheet for ${project?.name || 'this project'}? Week: ${weekStart ? formatWeekRange(weekStart) : ''}. Total hours: ${formatHours(totals.totalHours)}.${dailyRows.length > 0 ? ' Your daily logs will be compiled into this timesheet first.' : ''}`}
         confirmLabel="Submit"
         isLoading={isProcessing}
-      />
+      >
+        <WarningList warnings={getSubmissionWarnings()} />
+      </ConfirmDialog>
 
       {/* ts.md 7.2 — explicit "Compile from Daily Logs" CTA confirmation. */}
       <ConfirmDialog
-        isOpen={isCompileConfirmOpen}
-        onClose={() => setIsCompileConfirmOpen(false)}
+        open={isCompileConfirmOpen}
+        onCancel={() => setIsCompileConfirmOpen(false)}
         onConfirm={handleCompile}
         title="Compile from Daily Logs?"
-        description={`Rebuild this week's entries from your ${dailyRows.length} daily ${dailyRows.length === 1 ? 'log' : 'logs'} (${dailyTotalHours.toFixed(1)}h)? Unsaved edits to the grid below will be replaced. Notes are kept.`}
+        message={`Rebuild this week's entries from your ${dailyRows.length} daily ${dailyRows.length === 1 ? 'log' : 'logs'} (${formatHours(dailyTotalHours)})? Unsaved edits to the grid below will be replaced. Notes are kept.`}
         confirmLabel="Compile"
         isLoading={isCompiling}
       />
@@ -847,42 +843,36 @@ export function TimesheetEditor() {
         isLoading={isProcessing}
       />
 
-      {/* Guideline 5.15 (checklist item 1.2 + ts.md 7.3): in-app navigation
+      {/* Guideline 5.15 → interface_guide.txt:93 ("Unsaved changes") + ts.md 7.3: in-app navigation
           with unsaved rows/notes is intercepted by useBlocker — the snapshot is
           re-based after saves and compiles so only genuine local edits block. */}
       <ConfirmDialog
-        isOpen={unsavedBlocker.state === 'blocked'}
-        onClose={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.reset()}
+        open={unsavedBlocker.state === 'blocked'}
+        onCancel={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.reset()}
         onConfirm={() => unsavedBlocker.state === 'blocked' && unsavedBlocker.proceed()}
         title="Discard unsaved changes?"
-        description="You have unsaved edits to this timesheet's entries or notes. Leaving now will lose them."
+        message="You have unsaved edits to this timesheet's entries or notes. Leaving now will lose them."
         confirmLabel="Discard changes"
+        variant="danger"
       />
     </div>
   )
 }
 
 function WithdrawModal({ isOpen, onClose, onConfirm, reason, onReasonChange, isLoading }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; reason: string; onReasonChange: (reason: string) => void; isLoading?: boolean }) {
-  if (!isOpen) return null
-
   const handleSubmit = () => {
     onConfirm()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-foreground">Withdraw Timesheet</h3>
-        <p className="mt-2 text-sm text-muted-foreground">Optionally provide a reason for withdrawing this timesheet.</p>
-        <div className="mt-4">
-          <Textarea value={reason} onChange={(e) => onReasonChange(e.target.value)} placeholder="Reason for withdrawal (optional)" rows={3} />
-        </div>
-        <div className="mt-6 flex justify-end gap-3">
+    <Modal isOpen={isOpen} onClose={onClose} title="Withdraw Timesheet" description="Optionally provide a reason for withdrawing this timesheet." size="md">
+      <div className="space-y-4">
+        <Textarea value={reason} onChange={(e) => onReasonChange(e.target.value)} placeholder="Reason for withdrawal (optional)" rows={3} />
+        <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>Cancel</Button>
-          <Button variant="danger" onClick={handleSubmit} loading={isLoading}>Withdraw</Button>
+          <Button variant="danger" onClick={handleSubmit} loading={isLoading} disabled={isLoading}>Withdraw</Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

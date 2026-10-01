@@ -35,7 +35,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-[13px] shadow-xl transition-all ${bgMap[toast.type]}`}
+          className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-[13px] shadow-xl transition-opacity ${bgMap[toast.type]}`}
           role="alert"
         >
           <div className="shrink-0">{iconMap[toast.type]}</div>
@@ -43,7 +43,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           <button
             type="button"
             onClick={() => onDismiss(toast.id)}
-            className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-muted-foreground"
+            className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground"
             aria-label="Dismiss notification"
           >
             <X className="h-4 w-4" />

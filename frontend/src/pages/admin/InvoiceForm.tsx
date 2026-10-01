@@ -9,7 +9,9 @@ import { Card } from '../../components/ui/Card'
 import { KpiChip } from '../../components/ui/KpiChip'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { createInvoice as createInvoiceService, getInvoiceById, updateInvoice as updateInvoiceService } from '../../services/invoiceService'
+import { focusFirstError } from '../../utils/focusFirstError'
 import type { VariableCost } from '../../types/invoice'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function InvoiceForm() {
   const { invoiceId } = useParams<{ invoiceId: string }>()
@@ -110,6 +112,12 @@ export function InvoiceForm() {
       if (vc.amount && !vc.reason.trim()) {
         newErrors[`vc-${i}-reason`] = 'Reason is required when amount is provided'
       }
+      // F-01: the amount input used to carry a native min="0". The form is now
+      // noValidate, so the rule lives here — otherwise a negative cost would
+      // sail through to the API. (Same shape as the hourlyRate check above.)
+      if (vc.amount < 0) {
+        newErrors[`vc-${i}-amount`] = 'Amount cannot be negative'
+      }
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -117,7 +125,10 @@ export function InvoiceForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      focusFirstError(e.currentTarget)
+      return
+    }
     setIsSubmitting(true)
     try {
       if (isEdit && invoiceId) {
@@ -152,7 +163,7 @@ export function InvoiceForm() {
         navigate(`/admin/invoices/${invoice.id}`)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save invoice'
+      const message = failureMessage(err, { what: 'save that invoice', reassurance: 'Nothing was sent and no changes were saved', next: 'try again in a moment' })
       addToast('error', message)
     } finally {
       setIsSubmitting(false)
@@ -178,14 +189,14 @@ export function InvoiceForm() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/admin/invoices')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+        <Button variant="ghost" to={'/admin/invoices'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{isEdit ? 'Edit Invoice' : 'New Invoice'}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{isEdit ? 'Update the rate and variable costs.' : 'Bill a project\u2019s total logged hours at an hourly rate.'}</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate onSubmit={handleSubmit} className="space-y-6">
         {!isEdit && (
           <Card>
             <div className="border-b border-border px-5 py-4">
@@ -193,12 +204,15 @@ export function InvoiceForm() {
             </div>
             <div className="p-5">
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">Project</label>
+                <label htmlFor="invoice-project" className="mb-1 block text-sm font-medium text-foreground">Project</label>
                 <select
+                  id="invoice-project"
                   value={selectedProjectId}
                   onChange={(e) => {
                     setSelectedProjectId(e.target.value)
                   }}
+                  aria-invalid={Boolean(errors.projectId)}
+                  aria-describedby={errors.projectId ? 'invoice-project-error' : undefined}
                   className="w-full appearance-none rounded-full border border-border bg-muted px-3 h-9 text-base sm:text-sm text-foreground focus:outline-none focus:border-ring"
                 >
                   <option value="">Select a project</option>
@@ -206,7 +220,7 @@ export function InvoiceForm() {
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
-                {errors.projectId && <p className="mt-1 text-sm text-destructive">{errors.projectId}</p>}
+                {errors.projectId && <p id="invoice-project-error" role="alert" className="mt-1 text-sm text-destructive">{errors.projectId}</p>}
               </div>
             </div>
           </Card>
@@ -231,7 +245,7 @@ export function InvoiceForm() {
               <span className="text-sm text-muted-foreground">Hourly Rate ($/h)</span>
               <Input
                 type="number"
-                min="0"
+                inputMode="decimal"
                 step="0.01"
                 value={hourlyRate}
                 onChange={(e) => {
@@ -286,8 +300,8 @@ export function InvoiceForm() {
                       <label className="mb-1 block text-xs font-medium text-muted-foreground">Amount ($)</label>
                       <Input
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
-                        min="0"
                         placeholder="0.00"
                         value={vc.amount || ''}
                         onChange={(e) => updateVariableCost(index, 'amount', parseFloat(e.target.value) || 0)}
@@ -308,7 +322,7 @@ export function InvoiceForm() {
         </Card>
 
         <div className="flex items-center justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate('/admin/invoices')}>Cancel</Button>
+          <Button variant="secondary" to={'/admin/invoices'}>Cancel</Button>
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>
             {isEdit ? 'Save Changes' : 'Create Invoice'}
           </Button>

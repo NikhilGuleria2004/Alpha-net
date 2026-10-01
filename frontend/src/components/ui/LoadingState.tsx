@@ -1,11 +1,24 @@
+import { useDelayedLoading } from '../../hooks/useDelayedLoading'
+
 interface LoadingStateProps {
   variant?: 'skeleton' | 'spinner'
   fullPage?: boolean
   className?: string
   label?: string
+  /**
+   * Pass the real flag when the caller has one: it lets the gate also honour the
+   * minimum-visible duration. Omitted (the usual
+   * `if (loading) return <LoadingState />` shape) the delay gate still removes
+   * the flash, which is the part users notice.
+   */
+  isLoading?: boolean
 }
 
-export function LoadingState({ variant = 'spinner', fullPage = false, className = '', label }: LoadingStateProps) {
+export function LoadingState({ variant = 'spinner', fullPage = false, className = '', label, isLoading = true }: LoadingStateProps) {
+  // F-19: an indicator that appears for one frame is worse than none.
+  const visible = useDelayedLoading(isLoading)
+  if (!visible) return null
+
   if (variant === 'skeleton') {
     return (
       <div className={`space-y-4 ${className}`} aria-label="Loading">

@@ -7,7 +7,8 @@ import { StatCard } from '../../components/dashboard/StatCard'
 import { DailyEntryCard } from '../../components/timesheets/DailyEntryCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { toLocalDateString, formatWeekRange } from '../../utils/date'
+import { toLocalDateString, formatWeekRange, formatShortDate, formatDate } from '../../utils/date'
+import { formatHours } from '../../utils/format'
 
 export function UserDashboard() {
   const { user } = useAuth()
@@ -91,7 +92,7 @@ export function UserDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">{greeting}, {user?.name?.split(' ')[0] || 'User'}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Here's your work overview.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Here’s your work overview.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -104,7 +105,7 @@ export function UserDashboard() {
         />
         <StatCard
           title="This Week"
-          value={`${thisWeekHours.toFixed(1)}h`}
+          value={`${formatHours(thisWeekHours)}`}
           icon={<Clock3 className="h-6 w-6" />}
           iconBgColor="bg-success-soft text-success"
           onClick={() => navigate('/user/timesheets')}
@@ -152,15 +153,15 @@ export function UserDashboard() {
                       <div className="mt-3 flex items-center gap-4">
                         <div className="text-center">
                           <p className="text-xs text-muted-foreground">Regular</p>
-                          <p className="text-lg font-semibold text-foreground">{thisWeekRegularHours.toFixed(1)}h</p>
+                          <p className="text-lg font-semibold text-foreground">{formatHours(thisWeekRegularHours)}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-muted-foreground">Overtime</p>
-                          <p className="text-lg font-semibold text-foreground">{thisWeekOvertimeHours.toFixed(1)}h</p>
+                          <p className="text-lg font-semibold text-foreground">{formatHours(thisWeekOvertimeHours)}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-muted-foreground">Total</p>
-                          <p className="text-lg font-semibold text-foreground">{thisWeekHours.toFixed(1)}h</p>
+                          <p className="text-lg font-semibold text-foreground">{formatHours(thisWeekHours)}</p>
                         </div>
                       </div>
                     </div>
@@ -229,7 +230,7 @@ export function UserDashboard() {
                             {formatWeekRange(timesheet.weekStart)}
                           </td>
                           <td className="px-4 py-3 text-sm text-foreground">{getProjectName(timesheet.projectId)}</td>
-                          <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                          <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.totalHours)}</td>
                           <td className="px-4 py-3">
                             <StatusBadge status={timesheet.status} size="sm" />
                           </td>
@@ -270,7 +271,7 @@ export function UserDashboard() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{project.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {project.client} • Due {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(project.deadline))}
+                          {project.client} • Due {formatShortDate(project.deadline)}
                         </p>
                       </div>
                       <button
@@ -301,7 +302,7 @@ export function UserDashboard() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{project.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(project.deadline))}
+                          {formatDate(project.deadline)}
                         </p>
                       </div>
                       <span className={`text-xs font-medium ${project.daysRemaining <= 7 ? 'text-destructive' : 'text-warning'}`}>

@@ -15,6 +15,7 @@ import { Modal } from '../../components/ui/Modal'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import { canDeactivateUser } from '../../utils/permissions'
 import type { Project } from '../../types/project'
+import { formatHours } from '../../utils/format'
 
 function DropdownItem({ children, onClick, icon, destructive }: { children: React.ReactNode; onClick?: () => void; icon?: React.ReactNode; destructive?: boolean }) {
   return (
@@ -168,7 +169,7 @@ export function UserDetails() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/users')} leftIcon={<ArrowLeft className="h-4 w-4" />} />
+          <Button variant="ghost" to={'/admin/users'} leftIcon={<ArrowLeft className="h-4 w-4" />} />
           <div className="flex items-center gap-4">
             <Avatar name={user.name} size="lg" />
             <div>
@@ -191,7 +192,7 @@ export function UserDetails() {
           >
             Add to Project
           </Button>
-          <Button variant="secondary" onClick={() => navigate(`/admin/users/${user.id}/edit`)} leftIcon={<Edit3 className="h-4 w-4" />}>Edit User</Button>
+          <Button variant="secondary" to={`/admin/users/${user.id}/edit`} leftIcon={<Edit3 className="h-4 w-4" />}>Edit User</Button>
           <Dropdown
             trigger={
               <Button variant="secondary" rightIcon={<Edit3 className="h-4 w-4" />} />
@@ -290,7 +291,7 @@ export function UserDetails() {
                            <tr key={t.id} className="hover:bg-muted">
                              <td className="px-4 py-3 text-sm text-foreground">{formatWeekRange(t.weekStart)}</td>
                             <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
-                            <td className="px-4 py-3 text-right text-sm text-foreground">{t.totalHours.toFixed(1)}h</td>
+                            <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(t.totalHours)}</td>
                             <td className="px-4 py-3"><StatusBadge status={t.status} size="sm" /></td>
                           </tr>
                         )

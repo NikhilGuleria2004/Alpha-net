@@ -10,13 +10,14 @@ import { Button } from '../../components/ui/Button'
 import { ReviewPanel } from '../../components/approvals/ReviewPanel'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
+import { formatHours } from '../../utils/format'
 
 type TabId = 'pending' | 'approved' | 'declined' | 'withdrawn'
 
 export function Approvals() {
   const { user } = useAuth()
   const { timesheets, users, projects } = useAppData()
-  // Guideline 1.11/1.23 (checklist item 1.4): the active tab is URL state
+  // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): the active tab is URL state
   // (?tab=). The existing ?timesheetId= effect below already preserves other
   // params when it clears itself, so the two coexist.
   const [tab, setTab] = useQueryParamState('tab', 'pending', 'push')
@@ -129,9 +130,9 @@ export function Approvals() {
                         <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
-                        <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
-                        <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.regularHours)}</td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.overtimeHours)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(timesheet.totalHours)}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">{timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}</td>
                         <td className="px-4 py-3"><StatusBadge status={timesheet.status} size="sm" /></td>
                         <td className="px-4 py-3 text-right">

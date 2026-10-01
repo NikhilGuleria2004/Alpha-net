@@ -22,6 +22,11 @@ const variantClasses: Record<ProgressVariant, string> = {
 export function Progress({ value, max = 100, variant = 'default', label, showValue = false, className = '' }: ProgressProps) {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100))
 
+  // F-08: list the property being animated — a catch-all transition rule also
+  // animated font-size, border-width and the colour of every descendant, which
+  // shows up as hover artefacts. The fill animates `width` because that is what
+  // the inline style changes; F-08b keeps it at duration-200 so the bar settles
+  // promptly.
   return (
     <div className={`w-full ${className}`}>
       {(label || showValue) && (
@@ -32,7 +37,7 @@ export function Progress({ value, max = 100, variant = 'default', label, showVal
       )}
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${variantClasses[variant]}`}
+          className={`h-full rounded-full transition-[width] duration-200 ${variantClasses[variant]}`}
           style={{ width: `${percentage}%` }}
         />
       </div>

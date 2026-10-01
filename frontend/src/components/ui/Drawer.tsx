@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -22,6 +23,14 @@ const sizeClasses: Record<Size, string> = {
   lg: 'max-w-2xl',
 }
 
+const MIN_WIDTH = 320
+const MAX_WIDTH = 1400
+const KEYBOARD_STEP = 16
+
+function clampWidth(value: number): number {
+  return Math.min(Math.max(value, MIN_WIDTH), MAX_WIDTH)
+}
+
 export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, closeLabel = 'Close', resizable = false, defaultWidth = 640 }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(defaultWidth)
@@ -40,59 +49,27 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
 
   useEffect(() => {
     if (!isResizing) return
-    const handleMouseMove = (e: MouseEvent) => {
+    // Pointer events (not mouse) so touch and pen drag the handle too — a
+    // mouse-only drag is unusable on a tablet, which is where a resizable review
+    // panel is most useful.
+    const handlePointerMove = (e: PointerEvent) => {
       const newWidth = window.innerWidth - e.clientX
-      setWidth(Math.min(Math.max(newWidth, 320), 1400))
+      setWidth(clampWidth(newWidth))
     }
-    const handleMouseUp = () => setIsResizing(false)
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+    const handlePointerUp = () => setIsResizing(false)
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('pointerup', handlePointerUp)
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
     }
   }, [isResizing])
 
-  useEffect(() => {
-    if (!isOpen) return
-    const previousActive = document.activeElement as HTMLElement | null
-    const focusTarget = drawerRef.current?.querySelector<HTMLElement>(
-      'input, select, textarea, [autofocus]',
-    )
-    ;(focusTarget ?? drawerRef.current)?.focus()
-    return () => previousActive?.focus()
-  }, [isOpen])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (event.key === 'Tab') {
-        const drawer = drawerRef.current
-        if (!drawer) return
-        const focusable = drawer.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault()
-            last.focus()
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault()
-            first.focus()
-          }
-        }
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  // Escape closes, Tab is trapped, focus enters on an autofocus control (or the
+  // panel) and returns to the trigger on close. Shared with Modal and
+  // ConfirmDialog so nested overlays — a Drawer holding a ConfirmDialog — only
+  // react for the topmost one.
+  useFocusTrap(isOpen, drawerRef, { onClose, initialFocus: 'container' })
 
   if (!isOpen) return null
 
@@ -107,13 +84,39 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
         style={resizable ? { width: `${width}px`, minWidth: '320px', maxWidth: '90vw' } : undefined}
       >
         {resizable && (
+          // F-16 (Phase 0 decision: keep and fix). A drag-only, role-less handle
+          // is invisible to keyboard and assistive tech and carries a label that
+          // nothing announces. It is now a real separator with a value, and the
+          // arrow keys are the keyboard equivalent of the drag.
           <div
-            onMouseDown={(e) => {
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panel"
+            aria-valuenow={Math.round(width)}
+            aria-valuemin={MIN_WIDTH}
+            aria-valuemax={MAX_WIDTH}
+            tabIndex={0}
+            onPointerDown={(e) => {
               e.preventDefault()
               setIsResizing(true)
             }}
-            className={`absolute left-0 top-0 h-full w-[3px] cursor-col-resize opacity-30 hover:opacity-60`}
-            aria-label="Drag to resize"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault()
+                // Shift gives a fine-grained 1px nudge.
+                setWidth((prev) => clampWidth(prev + (e.shiftKey ? 1 : KEYBOARD_STEP)))
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault()
+                setWidth((prev) => clampWidth(prev - (e.shiftKey ? 1 : KEYBOARD_STEP)))
+              } else if (e.key === 'Home') {
+                e.preventDefault()
+                setWidth(MIN_WIDTH)
+              } else if (e.key === 'End') {
+                e.preventDefault()
+                setWidth(MAX_WIDTH)
+              }
+            }}
+            className="absolute left-0 top-0 h-full w-[3px] cursor-col-resize opacity-30 hover:opacity-60 focus:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
           />
         )}
         {title && (
@@ -130,7 +133,7 @@ export function Drawer({ isOpen, onClose, title, size = 'md', children, footer, 
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

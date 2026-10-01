@@ -10,6 +10,8 @@ import { Checkbox } from '../../components/ui/Checkbox'
 import { ReviewPanel } from '../../components/approvals/ReviewPanel'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import type { Timesheet } from '../../types/timesheet'
+import { formatHours } from '../../utils/format'
+import { failureMessage, failureText } from '../../utils/errorMessage'
 
 type TabId = 'pending' | 'approved' | 'declined' | 'withdrawn'
 
@@ -47,7 +49,7 @@ export function Approvals() {
       if (updated) {
         addToast('success', 'Timesheet approved')
       } else {
-        addToast('error', 'Failed to approve timesheet')
+        addToast('error', failureText({ what: 'approve that timesheet', reassurance: 'It is still pending', next: 'reload the page and try again' }))
         setCheckedIds((prev) => {
           const next = new Set(prev)
           next.delete(timesheet.id)
@@ -55,7 +57,7 @@ export function Approvals() {
         })
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve timesheet'
+      const message = failureMessage(err, { what: 'approve that timesheet', reassurance: 'It is still pending', next: 'reload the page and try again' })
       addToast('error', message)
       setCheckedIds((prev) => {
         const next = new Set(prev)
@@ -138,9 +140,9 @@ export function Approvals() {
                         <td className="px-4 py-3 text-sm text-foreground">{employee?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-foreground">{project?.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">{formatWeekRange(timesheet.weekStart)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.regularHours.toFixed(1)}h</td>
-                        <td className="px-4 py-3 text-right text-sm text-foreground">{timesheet.overtimeHours.toFixed(1)}h</td>
-                        <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{timesheet.totalHours.toFixed(1)}h</td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.regularHours)}</td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{formatHours(timesheet.overtimeHours)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-foreground">{formatHours(timesheet.totalHours)}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {timesheet.submittedAt ? formatDate(timesheet.submittedAt) : '-'}
                         </td>

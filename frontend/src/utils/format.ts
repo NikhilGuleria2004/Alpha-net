@@ -1,6 +1,14 @@
+/**
+ * Guideline (Content — "space between the number and unit" + "use non-breaking
+ * spaces to keep numbers and units together").
+ *
+ * Decision D-4: this is the ONLY place an hours value is turned into text, so
+ * the unit style cannot drift and the number can never wrap away from its unit
+ * in a table cell or KPI chip. The old `0h` special case is gone — one style
+ * everywhere, including zero.
+ */
 export function formatHours(hours: number): string {
-  if (hours === 0) return '0h'
-  return `${hours.toFixed(1)}h`
+  return `${hours.toFixed(1)}\u00a0h`
 }
 
 export function formatCurrency(amount: number): string {
@@ -27,7 +35,7 @@ export function formatFileSize(bytes: number): string {
 
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
-  // Guideline 4.12: use the typographic ellipsis character, not three periods.
+  // Guideline 4.12 → interface_guide.txt:65 ("Use the ellipsis character"): use the typographic ellipsis character, not three periods.
   // Slice to maxLength - 1 so the single-glyph ellipsis keeps total length == maxLength.
   return `${text.slice(0, maxLength - 1)}…`
 }
