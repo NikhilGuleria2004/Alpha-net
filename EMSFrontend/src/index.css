@@ -1,0 +1,635 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant black (&:where(.black, .black *));
+
+/* Self-hosted JetBrains Mono (variable weight 100–800, latin subset).
+   Source: @fontsource-variable/jetbrains-mono (OFL-1.1 licensed). */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+}
+
+@theme {
+  /* Default font for the whole app — body { font-family: var(--font-sans) }
+     and Tailwind's preflight both resolve through this token. */
+  --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Style overhaul (style_overhaul.md): canvas page background + hairline
+     borders + blue-600 accent. Accent moved indigo → blue (#4f46e5 → #2563eb). */
+  --color-canvas: #f7f8fa;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8fafc;
+  --color-bg-tertiary: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748b;
+  --color-border-primary: #e8eaf0;
+  --color-border-secondary: #d6dae3;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #eff4ff;
+  --color-success: #16a34a;
+  --color-success-soft: #e8f7ee;
+  --color-warning: #d97706;
+  --color-warning-soft: #fdf2e2;
+  --color-error: #dc2626;
+  --color-error-soft: #fdecec;
+
+  /* Semantic (shadcn-style) tokens — MUST live in @theme so Tailwind v4
+     generates utilities like bg-card, text-foreground, border-border,
+     bg-muted, bg-primary, etc. (tokens defined only in :root do NOT
+     generate utilities, which is why the chat panel rendered transparent). */
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e8eaf0;
+  --color-input: #d6dae3;
+  --color-ring: #2563eb;
+}
+
+/* Light theme tokens — kept in :root as runtime fallbacks so every
+   var(--color-*) reference resolves even outside Tailwind utilities. */
+:root {
+  /* Guideline 7.9 → interface_guide.txt:124 ("Set the appropriate color-scheme"): declare the scheme so device UI (scrollbars, form controls,
+     forced-colors fallbacks) renders in the light variant this theme expects. */
+  color-scheme: light;
+  --color-canvas: #f7f8fa;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #2563eb;
+  --color-accent-soft: #eff4ff;
+  --color-accent-foreground: #ffffff;
+  --color-success-soft: #e8f7ee;
+  --color-warning-soft: #fdf2e2;
+  --color-error-soft: #fdecec;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e8eaf0;
+  --color-input: #d6dae3;
+  --color-ring: #2563eb;
+  --color-sidebar: #f8fafc;
+  --color-sidebar-foreground: #0f172a;
+  --color-sidebar-border: #e8eaf0;
+  --color-sidebar-accent: #f1f5f9;
+  --color-sidebar-accent-foreground: #0f172a;
+  --color-sidebar-ring: #2563eb;
+  --color-sidebar-primary: #2563eb;
+  --color-sidebar-primary-foreground: #ffffff;
+}
+
+/* Dedicated calm slate dark theme — matches Eniac's cool monochrome slate aesthetic
+   with harmonious deep-slate surfaces, hairline dark borders, and legible typography. */
+.dark {
+  color-scheme: dark;
+  --color-canvas: #090d16;
+  --color-background: #090d16;
+  --color-foreground: #f8fafc;
+  --color-card: #0f172a;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #0f172a;
+  --color-popover-foreground: #f8fafc;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-soft: rgba(59, 130, 246, 0.15);
+  --color-accent-foreground: #ffffff;
+  --color-success: #22c55e;
+  --color-success-soft: rgba(34, 197, 94, 0.15);
+  --color-warning: #f59e0b;
+  --color-warning-soft: rgba(245, 158, 11, 0.15);
+  --color-error: #ef4444;
+  --color-error-soft: rgba(239, 68, 68, 0.15);
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #1e293b;
+  --color-input: #334155;
+  --color-ring: #3b82f6;
+  --color-sidebar: #0c121e;
+  --color-sidebar-foreground: #f8fafc;
+  --color-sidebar-border: #1e293b;
+  --color-sidebar-accent: #1e293b;
+  --color-sidebar-accent-foreground: #f8fafc;
+  --color-sidebar-ring: #3b82f6;
+  --color-sidebar-primary: #3b82f6;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #131c31;
+  --color-bg-tertiary: #1e293b;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-border-primary: #1e293b;
+  --color-border-secondary: #334155;
+}
+
+/* True dark mode — pure black OLED surfaces with monochrome neutral accents
+   instead of the blue-tinted night palette. Applied as `.dark.black` so every
+   existing `dark:` utility keeps working; token swaps happen beneath it. */
+.dark.black {
+  color-scheme: dark;
+  --color-canvas: #000000;
+  --color-background: #000000;
+  --color-foreground: #fafafa;
+  --color-card: #0a0a0a;
+  --color-card-foreground: #fafafa;
+  --color-popover: #0a0a0a;
+  --color-popover-foreground: #fafafa;
+  --color-primary: #fafafa;
+  --color-primary-foreground: #09090b;
+  --color-secondary: #18181b;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #232326;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #fafafa;
+  --color-accent-hover: #e4e4e7;
+  --color-accent-soft: rgba(250, 250, 250, 0.1);
+  --color-accent-foreground: #09090b;
+  --color-success: #4ade80;
+  --color-success-soft: rgba(74, 222, 128, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-soft: rgba(251, 191, 36, 0.12);
+  --color-error: #f87171;
+  --color-error-soft: rgba(248, 113, 113, 0.12);
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #09090b;
+  --color-border: #27272a;
+  --color-input: #3f3f46;
+  --color-ring: #d4d4d8;
+  --color-sidebar: #000000;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-border: #27272a;
+  --color-sidebar-accent: #18181b;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-ring: #d4d4d8;
+  --color-sidebar-primary: #fafafa;
+  --color-sidebar-primary-foreground: #09090b;
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #101012;
+  --color-bg-tertiary: #18181b;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #d4d4d8;
+  --color-text-tertiary: #a1a1aa;
+  --color-border-primary: #27272a;
+  --color-border-secondary: #3f3f46;
+}
+
+/* Contrast fix: many components pair `bg-accent`/`bg-primary` with a hardcoded
+   `text-white`. In night mode the accent is blue so that works, but in true
+   dark the accent surface is near-white — white text would vanish. Remap that
+   exact combination to dark text while true dark is active. Same for the light
+   red destructive badge. Unlayered rules beat Tailwind's layered utilities. */
+.dark.black .bg-accent.text-white,
+.dark.black .bg-primary.text-white {
+  color: #09090b;
+}
+
+.dark.black .bg-destructive.text-white {
+  color: #09090b;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-foreground);
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------------------
+   Web Interface Guidelines compliance (interface_guide.txt, Phase 0)
+   --------------------------------------------------------------------------- */
+
+/* 0.2 — Keyboard-only focus indicator.
+   Elements that manage their own ring (focus-visible:ring-*) also carry
+   focus:outline-none, which wins on specificity and applies on :focus, so they
+   never double up with this outline. Everything else (native links, custom
+   buttons without focus classes) gets a brand outline for keyboard focus and
+   none for pointer focus. */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 0.3 — Touch ergonomics: no gray tap flash, no double-tap zoom on controls.
+   (Modal/Drawer/chat/mobile-nav scroll panels also carry overscroll-contain
+   so overlay scrolling doesn't chain to the page behind them.) */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+[role='button'],
+[role='switch'],
+[role='menuitem'],
+[role='tab'],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* 0.4 — Sticky headers must never cover the focused element. The Topbar is
+   `sticky top-0 h-14` (56px), so any in-page target — the skip link's
+   #main-content, a deep-linked card, an anchored heading — has to stop 4rem
+   below the top edge instead of underneath it. Scoped to [id] because every
+   scroll target in the app is an element with an id. */
+[id] {
+  scroll-margin-top: 4.5rem;
+}
+
+/* 0.1 — Honor prefers-reduced-motion: collapse animation/transition to
+   near-zero while keeping end states visible (spinners become static marks,
+   drawer slides snap, pulses freeze). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+/* ===========================================================================
+   EMS DENSITY LAYER  (EMSFrontend.md §4.2 — "Eniac Dense Maximalist")
+   ---------------------------------------------------------------------------
+   ADDITIVE ONLY. Everything above is ported verbatim from the timesheet
+   platform so the two apps share one identity (same tokens, font, accent,
+   light/dark/black themes). This block adds the EMS-specific density tokens
+   and utilities on top — it never overrides an inherited token.
+
+   Density is toggled via <html data-density="comfortable|compact"> (driven by
+   the zustand uiStore + localStorage['eniac_ems_density']). Default is
+   comfortable; power users switch to compact in Settings or via Cmd/Ctrl+.
+   =========================================================================== */
+
+@theme {
+  /* Density scale — strict 4px grid. */
+  --ems-row-comfortable: 40px; /* table/list row height */
+  --ems-row-compact: 32px;
+  --ems-row-dense: 28px;       /* hard accessibility floor */
+  --ems-gutter: 12px;          /* grid gap (vs sibling's 16px) */
+  --ems-pad-card: 16px;        /* card body padding (vs sibling's 20px) */
+  --ems-pad-section: 20px;
+  --ems-control-h: 32px;       /* default control height (vs sibling's 36px) */
+  --ems-control-h-sm: 28px;
+
+  /* Type scale — one step denser than the sibling. */
+  --ems-text-micro: 10px;      /* uppercase section labels, overline */
+  --ems-text-label: 11px;      /* meta, table headers */
+  --ems-text-dense: 12px;      /* dense body, table cells */
+  --ems-text-body: 13px;       /* standard body */
+  --ems-text-title: 15px;      /* card titles */
+  --ems-text-h2: 18px;         /* page sub-titles */
+  --ems-text-h1: 22px;         /* page titles */
+  --ems-text-kpi: 28px;        /* KPI numbers (hero 34px via utility) */
+
+  /* Elevation — layered shadows (guide "Layered shadows": ambient + direct). */
+  --ems-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --ems-shadow-raised: 0 2px 4px rgba(15, 23, 42, 0.05), 0 6px 16px rgba(15, 23, 42, 0.08);
+  --ems-shadow-overlay: 0 10px 30px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.10);
+}
+
+:root {
+  --ems-density-row: var(--ems-row-comfortable);
+}
+:root[data-density='compact'] {
+  --ems-density-row: var(--ems-row-compact);
+}
+
+@layer utilities {
+  /* Tabular numerals so every metric column aligns. */
+  .ems-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Section overline label (micro, uppercase, tracked). */
+  .ems-overline {
+    font-size: var(--ems-text-micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  /* Dense data row height, driven by the active density mode. */
+  .ems-row {
+    min-height: var(--ems-density-row);
+  }
+  /* Card surface using the EMS elevation token. */
+  .ems-shadow-card {
+    box-shadow: var(--ems-shadow-card);
+  }
+}
+
+}
+/* ===========================================================================
+   EMS HARD SURFACE  —  monochrome / brutalist / minimalist
+   ---------------------------------------------------------------------------
+   Opt-in alternative to the soft Eniac look. Activated by
+   `<html data-style="hard">` (driven by the zustand uiStore +
+   localStorage['eniac_ems_style'], switchable in Settings > Appearance).
+
+   This axis is ORTHOGONAL to the colour theme, so it composes with all three
+   canvases: `[data-style=hard]`, `[data-style=hard].dark`, and
+   `[data-style=hard].dark.black`. Selectors are written cumulatively so each
+   later block out-specifies the one before it without needing `!important`.
+
+   Design intent, versus the soft default:
+     · true greyscale (neutral zinc ramp) instead of blue-tinted slate
+     · hairlines instead of elevation — every shadow token is neutralised
+     · square geometry — the radius scale collapses, pills become 2px
+     · a grotesque sans for prose, monospace reserved for data and labels
+     · tighter tracking and a hairline grid overlay to expose page structure
+
+   Nothing above this block is modified: removing `data-style="hard"` restores
+   the soft look exactly, because every rule here is scoped to that attribute.
+   =========================================================================== */
+
+/* --- Hard · light canvas ------------------------------------------------- */
+[data-style='hard'] {
+  color-scheme: light;
+
+  /* Greyscale ramp (zinc). No blue cast anywhere. */
+  --color-canvas: #ffffff;
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #000000;
+
+  /* Solid black action surfaces — the brutalist inversion. */
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #000000;
+  --color-accent-hover: #18181b;
+  --color-accent-soft: #f4f4f5;
+  --color-accent-foreground: #ffffff;
+  --color-ring: #000000;
+
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #000000;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #52525b;
+
+  /* Hairlines. */
+  --color-border: #e4e4e7;
+  --color-border-primary: #e4e4e7;
+  --color-border-secondary: #d4d4d8;
+  --color-input: #d4d4d8;
+
+  /* Status colours stay legible but lose their glow; nothing else carries hue. */
+  --color-success: #15803d;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #a16207;
+  --color-warning-soft: #fefce8;
+  --color-error: #b91c1c;
+  --color-error-soft: #fef2f2;
+  --color-destructive: #b91c1c;
+  --color-destructive-foreground: #ffffff;
+
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fafafa;
+  --color-bg-tertiary: #f4f4f5;
+  --color-text-primary: #000000;
+  --color-text-secondary: #3f3f46;
+  --color-text-tertiary: #71717a;
+
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #000000;
+  --color-sidebar-border: #e4e4e7;
+  --color-sidebar-accent: #f4f4f5;
+  --color-sidebar-accent-foreground: #000000;
+  --color-sidebar-ring: #000000;
+  --color-sidebar-primary: #000000;
+  --color-sidebar-primary-foreground: #ffffff;
+}
+
+/* --- Hard · dark canvas -------------------------------------------------- */
+[data-style='hard'].dark {
+  color-scheme: dark;
+
+  --color-canvas: #0a0a0a;
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+  --color-card: #0f0f0f;
+  --color-card-foreground: #fafafa;
+  --color-popover: #0f0f0f;
+  --color-popover-foreground: #fafafa;
+
+  --color-primary: #fafafa;
+  --color-primary-foreground: #0a0a0a;
+  --color-accent: #fafafa;
+  --color-accent-hover: #e4e4e7;
+  --color-accent-soft: #1c1c1c;
+  --color-accent-foreground: #0a0a0a;
+  --color-ring: #fafafa;
+
+  --color-secondary: #171717;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #171717;
+  --color-muted-foreground: #a1a1aa;
+
+  --color-border: #262626;
+  --color-border-primary: #262626;
+  --color-border-secondary: #3f3f46;
+  --color-input: #3f3f46;
+
+  --color-success: #4ade80;
+  --color-success-soft: #052e16;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #422006;
+  --color-error: #f87171;
+  --color-error-soft: #450a0a;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #0a0a0a;
+
+  --color-bg-primary: #0f0f0f;
+  --color-bg-secondary: #141414;
+  --color-bg-tertiary: #1c1c1c;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #d4d4d8;
+  --color-text-tertiary: #a1a1aa;
+
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-border: #262626;
+  --color-sidebar-accent: #171717;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-ring: #fafafa;
+  --color-sidebar-primary: #fafafa;
+  --color-sidebar-primary-foreground: #0a0a0a;
+}
+
+/* --- Hard · true black canvas (Vercel's signature look) ------------------ */
+[data-style='hard'].dark.black {
+  color-scheme: dark;
+
+  --color-canvas: #000000;
+  --color-background: #000000;
+  --color-foreground: #fafafa;
+  --color-card: #0a0a0a;
+  --color-card-foreground: #fafafa;
+  --color-popover: #0a0a0a;
+  --color-popover-foreground: #fafafa;
+
+  --color-primary: #fafafa;
+  --color-primary-foreground: #000000;
+  --color-accent: #fafafa;
+  --color-accent-hover: #d4d4d8;
+  --color-accent-soft: #171717;
+  --color-accent-foreground: #000000;
+  --color-ring: #fafafa;
+
+  --color-secondary: #0f0f0f;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #0f0f0f;
+  --color-muted-foreground: #a1a1aa;
+
+  --color-border: #1f1f1f;
+  --color-border-primary: #1f1f1f;
+  --color-border-secondary: #333333;
+  --color-input: #333333;
+
+  --color-success: #4ade80;
+  --color-success-soft: #052e16;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #422006;
+  --color-error: #f87171;
+  --color-error-soft: #450a0a;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #000000;
+
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #0d0d0d;
+  --color-bg-tertiary: #141414;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #d4d4d8;
+  --color-text-tertiary: #a1a1aa;
+
+  --color-sidebar: #000000;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-border: #1f1f1f;
+  --color-sidebar-accent: #0f0f0f;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-ring: #fafafa;
+  --color-sidebar-primary: #fafafa;
+  --color-sidebar-primary-foreground: #000000;
+}
+
+/* --- Hard · geometry, elevation, and type -------------------------------- */
+[data-style='hard'] {
+  /* Collapse the radius scale. `rounded-lg`/`rounded-md`/`rounded-xl` all read
+     these variables, so every rounded surface squares off at once. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  /* Flatten elevation — depth comes from hairlines, not from shadow. */
+  --ems-shadow-card: none;
+  --ems-shadow-raised: none;
+  --ems-shadow-overlay: none;
+
+  /* Prose switches to a grotesque sans; `--font-mono` is untouched so data,
+     IDs and overline labels keep the technical mono voice. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+  /* Tighter tracking across the board. */
+  --tracking-tight: -0.015em;
+}
+
+/* `rounded-full` compiles to a literal `2147483647px`, so it cannot be reached
+   through the radius variables — this unlayered rule outranks the layered
+   utility (same technique the `.dark.black` contrast fix above relies on) and
+   squares off avatars, switches, progress bars and pill buttons. A 2px radius
+   is kept rather than 0 so circular controls stay legible as controls. */
+[data-style='hard'] .rounded-full {
+  border-radius: 2px;
+}
+
+/* Panels and cards read as structure, not as floating objects. */
+[data-style='hard'] .shadow-sm,
+[data-style='hard'] .shadow,
+[data-style='hard'] .shadow-md,
+[data-style='hard'] .shadow-lg,
+[data-style='hard'] .shadow-xl,
+[data-style='hard'] .shadow-2xl {
+  box-shadow: none !important;
+}
+
+/* Expose the layout grid the way the brutalist reference does: a faint hairline
+   ruling across the canvas. Painted as a `body` background-image rather than a
+   pseudo-element, because backgrounds always composite *beneath* content — a
+   positioned `::before` would paint on top of the app's own text. */
+[data-style='hard'] body {
+  background-image: linear-gradient(to right, var(--color-border) 1px, transparent 1px);
+  background-size: 64px 100%;
+  background-attachment: fixed;
+}
+
+/* Hard dark canvases use near-white action surfaces, so the same
+   `bg-accent`/`bg-primary` + hardcoded `text-white` pairing that the
+   `.dark.black` fix above handles would otherwise wash out. */
+[data-style='hard'].dark .bg-accent.text-white,
+[data-style='hard'].dark .bg-primary.text-white,
+[data-style='hard'].dark .bg-sidebar-primary.text-white,
+[data-style='hard'].dark .bg-destructive.text-white {
+  color: #0a0a0a;
+}

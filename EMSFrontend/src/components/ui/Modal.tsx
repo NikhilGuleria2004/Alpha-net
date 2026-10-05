@@ -1,0 +1,68 @@
+import { type ReactNode, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+
+type Size = 'sm' | 'md' | 'lg'
+
+interface ModalProps {
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  description?: string
+  size?: Size
+  children?: ReactNode
+  footer?: ReactNode
+  closeLabel?: string
+}
+
+const sizeClasses: Record<Size, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-2xl',
+}
+
+export function Modal({ isOpen, onClose, title, description, size = 'md', children, footer, closeLabel = 'Close' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Escape closes, Tab/Shift+Tab stay inside, focus enters the panel and is
+  // returned to the trigger on close (Interactions — "manage focus"). One
+  // shared implementation; the panel is the initial target so its title is
+  // announced before its controls.
+  useFocusTrap(isOpen, dialogRef, { onClose, initialFocus: 'container' })
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined}>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto overscroll-contain rounded-none sm:rounded-xl border border-border bg-card shadow-xl transition-opacity`}
+      >
+        {(title || description) && (
+          <div className="border-b border-border px-6 py-4">
+            {title && (
+              <h2 id="modal-title" className="text-lg font-semibold text-foreground">
+                {title}
+              </h2>
+            )}
+            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          </div>
+        )}
+        <div className="px-6 py-4">{children}</div>
+        {footer && <div className="border-t border-border px-6 py-4">{footer}</div>}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label={closeLabel}
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+    </div>,
+    document.body
+  )
+}

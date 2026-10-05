@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- translate="no": application UI with brand names ("Eniac") and identifier
+     labels (Employee ID, Client ID, W2/C2C). Browser auto-translate rewrites
+     those mid-sentence, which reads as broken. -->
+<html lang="en" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Align browser chrome (mobile URL bar, PWA shell) with the canvas background. -->
+    <meta name="theme-color" content="#f7f8fa" />
+    <!-- The mono font is the app's only family and renders above-the-fold text —
+         preload it so first paint doesn't wait on the CSS → @font-face chain. -->
+    <link rel="preload" href="/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (function() {
+        try {
+          // Surface style (soft | hard). Mirrors `<html data-style>` set by the
+          // uiStore, and must run before first paint so the switch never flashes
+          // the soft palette on a hard-mode reload.
+          var style = localStorage.getItem('eniac_ems_style');
+          if (style === 'soft' || style === 'hard') {
+            document.documentElement.setAttribute('data-style', style);
+          }
+        } catch (e) {}
+        try {
+          var stored = localStorage.getItem('eniac_ems_theme') || localStorage.getItem('eniac_theme') || localStorage.getItem('theme');
+          var isBlack = stored === 'black';
+          var isDark = isBlack || stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            if (isBlack) document.documentElement.classList.add('black');
+            document.documentElement.style.colorScheme = 'dark';
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', isBlack ? '#000000' : '#090d16');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <title>Eniac EMS</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

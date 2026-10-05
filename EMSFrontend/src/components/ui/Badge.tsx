@@ -1,0 +1,37 @@
+import { type ReactNode, type HTMLAttributes } from 'react'
+
+type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info'
+type BadgeSize = 'sm' | 'md'
+
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  variant?: BadgeVariant
+  size?: BadgeSize
+  leftIcon?: ReactNode
+  rightIcon?: ReactNode
+}
+
+const variantClasses: Record<BadgeVariant, string> = {
+  default: 'bg-muted text-foreground',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-error-soft text-destructive',
+  info: 'bg-accent-soft text-accent',
+}
+
+const sizeClasses: Record<BadgeSize, string> = {
+  sm: 'px-2 py-0.5 text-xs',
+  md: 'px-2.5 py-1 text-sm',
+}
+
+export function Badge({ variant = 'default', size = 'md', leftIcon, rightIcon, className = '', children, ...props }: BadgeProps) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full font-medium ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      {...props}
+    >
+      {leftIcon && <span className="shrink-0">{leftIcon}</span>}
+      {children}
+      {rightIcon && <span className="shrink-0">{rightIcon}</span>}
+    </span>
+  )
+}
