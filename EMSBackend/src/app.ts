@@ -48,7 +48,13 @@ export function createApp() {
     },
     credentials: true,
   }))
-  app.use(helmet())
+  // helmet() defaults to cross-origin-resource-policy: same-origin, which is a
+  // sensible default for a page but wrong for an API consumed by a different
+  // origin — the SPA is served from the marketing domain while this runs on
+  // *.vercel.app. `cross-origin` keeps the header meaningful (no leaking
+  // resources to arbitrary sites via <img>/<script>) while letting the SPA read
+  // API responses. Everything else stays at helmet's defaults.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
   app.use(cookieParser())
 
