@@ -517,6 +517,26 @@ const mockAdapter: ApiAdapter = {
       } as T
     }
 
+    if (path === '/audit') {
+      const sessionUser = currentSessionUser()
+      if (!sessionUser) mockError(401, 'UNAUTHORIZED', 'Sign in to view the audit log.')
+      // Admin-only, mirroring the backend's `requireRole('admin')`.
+      if (currentSessionUser()?.role !== 'admin') {
+        mockError(403, 'FORBIDDEN', 'Admin access required')
+      }
+      // No `entityType` on the fixtures, so the type filter is a no-op here and
+      // only paging is exercised. Kept so the URL-driven pager is testable.
+      const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
+      const limit = Math.min(100, Math.max(1, Number(params.get('limit') ?? '25') || 25))
+      const total = MOCK_RECENT_AUDIT.length
+      return {
+        events: MOCK_RECENT_AUDIT.slice((page - 1) * limit, page * limit),
+        total,
+        page,
+        limit,
+      } as T
+    }
+
     if (path === '/notifications') {
       return {
         notifications: MOCK_NOTIFICATIONS,

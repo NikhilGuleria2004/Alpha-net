@@ -61,12 +61,26 @@ export interface LatestOnboarding {
   startedAt: string
 }
 
+export type AuditSeverity = 'info' | 'warning' | 'error'
+
 export interface AuditEvent {
   id: string
   description: string
   actor: string
   timestamp: string
-  severity: 'info' | 'warning' | 'error'
+  severity: AuditSeverity
+}
+
+/**
+ * GET /audit response. Server-paginated — `total` is the full match count, not
+ * the page length, so the pager can render page N of M correctly.
+ * Mirrors `EMSBackend/src/types/system.ts` `AuditListResult` exactly.
+ */
+export interface AuditListResult {
+  events: AuditEvent[]
+  total: number
+  page: number
+  limit: number
 }
 
 export interface IntegrationStatus {

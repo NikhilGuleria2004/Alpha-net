@@ -42,9 +42,12 @@ import { ManagerProjectDetailPage } from './pages/manager/ProjectDetail'
 import { ManagerAssignmentsPage } from './pages/manager/Assignments'
 import { EmployeeDashboard } from './pages/me/Dashboard'
 import { MyLeavePage } from './pages/me/Leave'
+import { LeaveNewPage } from './pages/me/LeaveNew'
 import { MyDocumentsPage } from './pages/me/Documents'
+import { MyProfilePage } from './pages/me/Profile'
 import { AdminPayrollPage } from './pages/admin/Payroll'
 import { AdminRolesPage } from './pages/admin/Roles'
+import { AdminAuditLogPage } from './pages/admin/AuditLog'
 import { AdminReportsPage } from './pages/admin/Reports'
 import { NotificationsPage } from './pages/shared/NotificationsPage'
 import { SettingsPage } from './pages/shared/SettingsPage'
@@ -55,7 +58,6 @@ import type { UserRole } from './types/auth'
 import type { ReactNode } from 'react'
 
 const P6 = 'Phase 6 (Manager: clients, projects, assignments)'
-const P7 = 'Phase 7 (Finance, reports, notifications, settings)'
 
 const inPhase = (phase: string) => `Arrives in ${phase} — see EMSFrontend.md §14.`
 
@@ -134,7 +136,7 @@ const routes: RouteObject[] = [
     page('payroll', 'Payroll', { ns: 'Admin', element: <AdminPayrollPage /> }),
     page('reports', 'Reports', { ns: 'Admin', element: <AdminReportsPage /> }),
     page('roles', 'Roles & Access', { ns: 'Admin', element: <AdminRolesPage /> }),
-    page('audit', 'Audit Log', { ns: 'Admin', note: inPhase(P7) }),
+    page('audit', 'Audit Log', { ns: 'Admin', element: <AdminAuditLogPage /> }),
     page('settings', 'Settings', { ns: 'Admin', element: <SettingsPage /> }),
     page('notifications', 'Notifications', { ns: 'Admin', element: <NotificationsPage /> }),
   ]),
@@ -148,6 +150,7 @@ const routes: RouteObject[] = [
     page('payroll', 'Pay Rates', { ns: 'HR', element: <HrPayrateManagement /> }),
     page('attendance', 'Attendance', { ns: 'HR', element: <AttendancePage /> }),
     page('leave', 'Leave', { ns: 'HR', element: <HrLeaveList /> }),
+    page('leave/new', 'New Leave Request', { ns: 'HR', crumb: 'New Request', element: <LeaveNewPage /> }),
     page('documents', 'Documents', { ns: 'HR', element: <HrDocumentsList /> }),
     page('reports', 'Reports', { ns: 'HR', element: <AdminReportsPage /> }),
     page('settings', 'Settings', { ns: 'HR', element: <SettingsPage /> }),
@@ -174,9 +177,10 @@ const routes: RouteObject[] = [
   namespace('/me', ['employee', 'hr', 'manager'], 'My Workspace', [
     page('dashboard', 'Dashboard', { ns: 'Me', element: <EmployeeDashboard /> }),
     page('attendance', 'My Attendance', { ns: 'Me', element: <AttendancePage /> }),
-    page('profile', 'My Profile', { ns: 'Me', note: inPhase(P7) }),
+    page('profile', 'My Profile', { ns: 'Me', element: <MyProfilePage /> }),
     page('schedule', 'My Schedule', { ns: 'Me', note: 'Arrives in a later phase — see EMSFrontend.md §14.' }),
     page('leave', 'My Leave', { ns: 'Me', element: <MyLeavePage /> }),
+    page('leave/new', 'New Leave Request', { ns: 'Me', crumb: 'New Request', element: <LeaveNewPage /> }),
     page('documents', 'My Documents', { ns: 'Me', element: <MyDocumentsPage /> }),
     page('settings', 'My Settings', { ns: 'Me', element: <SettingsPage /> }),
     page('notifications', 'Notifications', { ns: 'Me', element: <NotificationsPage /> }),

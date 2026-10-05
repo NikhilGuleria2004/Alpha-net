@@ -30,7 +30,7 @@ interface AttendanceStatusDotProps {
  * optional visible one) so status is never conveyed by colour alone.
  */
 export function AttendanceStatusDot({ status, showLabel = false, className = '' }: AttendanceStatusDotProps) {
-  const meta = STATUS_META[status]
+  const meta = STATUS_META[status] ?? { label: 'Unknown', dot: 'bg-muted-foreground' }
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />

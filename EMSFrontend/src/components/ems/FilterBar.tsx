@@ -9,8 +9,12 @@ export interface FilterChip {
 }
 
 interface FilterBarProps {
-  searchValue: string
-  onSearchChange: (value: string) => void
+  /**
+   * Omit both to render a chips-only bar. Required when the underlying endpoint
+   * has no free-text filter — a search box wired to nothing reads as broken.
+   */
+  searchValue?: string
+  onSearchChange?: (value: string) => void
   searchPlaceholder?: string
   chips?: FilterChip[]
   onClearAll?: () => void
@@ -35,21 +39,24 @@ export function FilterBar({
   savedViews,
   className = '',
 }: FilterBarProps) {
-  const hasActive = chips.some((c) => c.active) || searchValue !== ''
+  const showSearch = searchValue !== undefined && onSearchChange !== undefined
+  const hasActive = chips.some((c) => c.active) || (searchValue ?? '') !== ''
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <input
-            type="search"
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          />
-        </div>
+        {showSearch && (
+          <div className="relative min-w-52 flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              value={searchValue}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            />
+          </div>
+        )}
         {savedViews}
         <div className="ml-auto flex items-center gap-2">{actions}</div>
       </div>

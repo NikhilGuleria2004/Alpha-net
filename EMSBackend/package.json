@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "seed:accounts": "tsx src/scripts/seed-accounts.ts",
     "typecheck": "tsc --noEmit",
     "smoke:vercel": "tsx vercel-smoke.ts"
   },

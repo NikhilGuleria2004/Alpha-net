@@ -1,7 +1,7 @@
 import { type ReactNode, type ButtonHTMLAttributes, type AnchorHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'pill' | 'icon'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'pill' | 'icon'
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -25,6 +25,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-primary-foreground hover:bg-accent-hover focus-visible:ring-ring',
   secondary: 'bg-card border border-border text-foreground hover:bg-muted focus-visible:ring-ring',
   danger: 'bg-destructive text-destructive-foreground hover:opacity-90 focus-visible:ring-destructive',
+  success: 'bg-success text-success-foreground hover:opacity-90 focus-visible:ring-success',
   ghost: 'bg-transparent text-muted-foreground hover:bg-muted focus-visible:ring-ring',
   pill: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
   icon: 'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',

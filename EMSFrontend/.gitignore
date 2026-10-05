@@ -9,7 +9,6 @@ dist-ssr/
 # Environment (local overrides; .env.example is committed)
 .env
 .env.local
-.env.production
 .env.*.local
 
 # Editor / OS
