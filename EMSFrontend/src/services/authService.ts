@@ -8,7 +8,7 @@
  * touches this file's adapter, not the callers.
  */
 import type { EmsUser } from '../types/auth'
-import { api, setAccessToken, refresh } from './apiClient'
+import { api, setAccessToken, getAccessToken, refresh } from './apiClient'
 
 /** POST /auth/login → `{ user, accessToken }`; the token is stored in memory. */
 export async function login(email: string, password: string): Promise<EmsUser> {
@@ -21,23 +21,26 @@ export async function login(email: string, password: string): Promise<EmsUser> {
 }
 
 /**
- * Session bootstrap. On a hard reload the in-memory access token is gone, so
- * /auth/me 401s immediately — exactly as in the sibling (auth.service.ts QA
- * "getCurrentUser"). Try a refresh first; only give up if that also fails.
+ * Session bootstrap, called once on mount.
+ *
+ * The access token is module state and is never persisted, so after a hard
+ * reload it is always gone and `/auth/me` is guaranteed to 401. Asking it first
+ * spent a doomed round trip ahead of the cookie refresh on every single page
+ * load. Refresh first instead: the endpoint returns the user alongside the
+ * token, so the common (already-signed-in) case costs one request, and the
+ * unauthenticated case costs one too instead of two.
  */
 export async function getCurrentUser(): Promise<EmsUser | null> {
+  const restored = await refresh()
+  if (restored) return restored
+
+  // Only worth asking /auth/me if a token actually survived the failed refresh.
+  if (!getAccessToken()) return null
   try {
     const response = await api.get<{ user: EmsUser }>('/auth/me')
     return response.user
   } catch {
-    const restored = await refresh()
-    if (!restored) return null
-    try {
-      const response = await api.get<{ user: EmsUser }>('/auth/me')
-      return response.user
-    } catch {
-      return null
-    }
+    return null
   }
 }
 

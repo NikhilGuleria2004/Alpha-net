@@ -295,6 +295,50 @@ describe('POST /api/v1/auth/refresh', () => {
     expect(res.headers['set-cookie']).toBeDefined()
   })
 
+  // The refresh response now carries the user so a hard reload restores the
+  // session in one request. That means a sanitised document is now sent on the
+  // refresh path, so the whitelist needs pinning: the raw user still carries
+  // passwordHash, and this response is reachable with only a cookie.
+  it('returns the user on refresh so bootstrap needs one round trip', async () => {
+    vi.mocked(jwt.verifyAccessToken).mockReset()
+
+    const fakeToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = crypto.createHash('sha256').update(fakeToken).digest('hex')
+
+    sessionsCollection.findOne.mockResolvedValue({
+      _id: new ObjectId(),
+      userId: new ObjectId('507f1f77bcf86cd799439011'),
+      refreshHash: tokenHash,
+      expiresAt: new Date(Date.now() + 86400000),
+    })
+    usersCollection.findOne.mockResolvedValue(mockUser({ passwordHash: 'super-secret-hash' }))
+    sessionsCollection.findOneAndDelete.mockResolvedValue({
+      value: {
+        _id: new ObjectId(),
+        userId: new ObjectId('507f1f77bcf86cd799439011'),
+        refreshHash: tokenHash,
+        expiresAt: new Date(Date.now() + 86400000),
+      },
+    })
+    sessionsCollection.insertOne.mockResolvedValue({ insertedId: new ObjectId() })
+    vi.mocked(jwt.signAccessToken).mockResolvedValue('new-access-token' as any)
+
+    const res = await request(createApp())
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'http://localhost:5173')
+      .set('Cookie', `refreshToken=${fakeToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.user).toBeDefined()
+    expect(res.body.user.email).toBe('test@example.com')
+    expect(res.body.user.id).toBe('507f1f77bcf86cd799439011')
+
+    // The whole point of buildUserResponse: nothing sensitive leaves here.
+    expect(res.body.user.passwordHash).toBeUndefined()
+    expect(JSON.stringify(res.body)).not.toContain('super-secret-hash')
+    expect(res.body.user).not.toHaveProperty('_id')
+  })
+
   it('returns 401 without a refresh cookie', async () => {
     const res = await request(createApp()).post('/api/v1/auth/refresh')
 

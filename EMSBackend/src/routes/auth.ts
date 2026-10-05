@@ -91,14 +91,16 @@ export function authRoutes() {
       return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'No refresh token provided' } })
     }
     try {
-      const { accessToken, refreshToken: newRefreshToken } = await refreshUserSession(
+      const { accessToken, refreshToken: newRefreshToken, user } = await refreshUserSession(
         refreshToken, req.get('user-agent'), req.ip,
       )
 
       // Rotation: clear old cookie then set the new one.
       clearRefreshCookie(res)
       setRefreshCookie(res, newRefreshToken)
-      res.json({ accessToken })
+      // `user` rides along so a hard reload restores the session in one request
+      // rather than refresh-then-/auth/me.
+      res.json({ accessToken, user })
     } catch (err) {
       logger.warn({ err, presentedSuffix: typeof refreshToken === 'string' ? refreshToken.slice(-8) : undefined }, 'refresh failed')
       clearRefreshCookie(res)

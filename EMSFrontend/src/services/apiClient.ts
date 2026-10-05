@@ -20,6 +20,7 @@
  * flag (§9.3). The real HTTP adapter is `apiClient` itself (httpAdapter is a
  * re-export alias so the two adapters have parallel names).
  */
+import type { EmsUser } from '../types/auth'
 import { mockAdapter } from './mockAdapter'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -190,16 +191,26 @@ export const apiClient: ApiAdapter = httpAdapter
 // re-points all calls at the real backend with zero component changes.
 export const api: ApiAdapter = import.meta.env.VITE_USE_MOCK === 'true' ? mockAdapter : httpAdapter
 
-export async function refresh(): Promise<boolean> {
+/**
+ * Exchange the httpOnly refresh cookie for a fresh access token.
+ *
+ * Returns the resolved user when the endpoint supplies one (it does, since the
+ * backend returns it alongside the token), so a hard reload can restore the
+ * session without a follow-up /auth/me round trip. Returns null when there is
+ * no usable session; the access token is only overwritten on success.
+ */
+export async function refresh(): Promise<EmsUser | null> {
   try {
-    const data = await request<{ accessToken?: string }>('/auth/refresh', { method: 'POST' }, 0)
+    const data = await request<{ accessToken?: string; user?: EmsUser }>(
+      '/auth/refresh', { method: 'POST' }, 0,
+    )
     if (data?.accessToken) {
       accessToken = data.accessToken
-      return true
+      return data.user ?? null
     }
-    return false
+    return null
   } catch {
-    return false
+    return null
   }
 }
 

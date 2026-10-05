@@ -256,7 +256,10 @@ export async function refreshUserSession(refreshToken: string, userAgent?: strin
 
   logger.info({ userId: user._id.toString() }, 'access token refreshed')
 
-  return { accessToken, refreshToken: newRefreshToken }
+  // buildUserResponse is an explicit field whitelist — the raw document still
+  // carries passwordHash. Returning it here lets the client restore a session in
+  // one round trip instead of calling /auth/me immediately afterwards.
+  return { accessToken, refreshToken: newRefreshToken, user: buildUserResponse(user) }
 }
 
 export async function logoutUser(refreshToken: string | undefined) {
