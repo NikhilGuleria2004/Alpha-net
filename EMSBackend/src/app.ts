@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
-import rateLimit from 'express-rate-limit'
+import rateLimitDefault from 'express-rate-limit'
 import { randomUUID } from 'node:crypto'
 import pinoHttp from 'pino-http'
 import { notFoundHandler, errorHandler } from './middleware/error.js'
@@ -28,6 +28,31 @@ import { reportsRoutes } from './routes/reports.js'
 import { notificationsRoutes } from './routes/notifications.js'
 import { settingsRoutes } from './routes/settings.js'
 import { auditRoutes } from './routes/audit.js'
+
+type RateLimitFn = typeof rateLimitDefault
+
+/**
+ * `express-rate-limit` is dual-published, and its three declaration files
+ * (.d.ts / .d.cts / .d.mts) are byte-identical and written with ESM
+ * `export { rateLimit as default }` syntax. That makes the shape a default
+ * import binds genuinely resolver-dependent: normally the function, but when
+ * TypeScript picks the other entry it can be the module *namespace* instead,
+ * and every call site then fails with
+ * "TS2349: This expression is not callable" — even though the code is correct
+ * and typechecks locally with an identical tsconfig and lockfile.
+ *
+ * Unwrapping all three possible shapes in one place keeps the call sites clean
+ * and makes this import independent of which entry the resolver picks, so a
+ * deploy cannot turn on a module-resolution difference between local and CI.
+ */
+const rateLimit = (() => {
+  const mod = rateLimitDefault as unknown as {
+    default?: RateLimitFn
+    rateLimit?: RateLimitFn
+  }
+  if (typeof mod === 'function') return mod
+  return mod.default ?? mod.rateLimit ?? (mod as unknown as RateLimitFn)
+})()
 
 export function createApp() {
   const app = express()
