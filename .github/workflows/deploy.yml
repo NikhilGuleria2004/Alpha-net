@@ -1,0 +1,85 @@
+name: Deploy Frontends
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # =========================
+      # Build Frontend
+      # =========================
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      # =========================
+      # Build EMS Frontend
+      # =========================
+      - name: Install EMS frontend dependencies
+        working-directory: EMSFrontend
+        run: npm ci
+
+      - name: Build EMS frontend
+        working-directory: EMSFrontend
+        run: npm run build
+
+      # =========================
+      # Configure SSH
+      # =========================
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HOSTINGER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.HOSTINGER_PORT }}" "${{ secrets.HOSTINGER_HOST }}" >> ~/.ssh/known_hosts
+
+      # =========================
+      # Deploy TS frontend
+      # =========================
+      - name: Deploy TS frontend
+        run: |
+          ssh \
+            -p "${{ secrets.HOSTINGER_PORT }}" \
+            -i ~/.ssh/deploy_key \
+            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}" \
+            'rm -rf /home/u407424049/domains/eniacinc.com/public_html/ts/*'
+
+          scp -r \
+            -P "${{ secrets.HOSTINGER_PORT }}" \
+            -i ~/.ssh/deploy_key \
+            frontend/dist/. \
+            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:/home/u407424049/domains/eniacinc.com/public_html/ts/"
+
+      # =========================
+      # Deploy HR frontend
+      # =========================
+      - name: Deploy HR frontend
+        run: |
+          ssh \
+            -p "${{ secrets.HOSTINGER_PORT }}" \
+            -i ~/.ssh/deploy_key \
+            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}" \
+            'rm -rf /home/u407424049/domains/eniacinc.com/public_html/hr/*'
+
+          scp -r \
+            -P "${{ secrets.HOSTINGER_PORT }}" \
+            -i ~/.ssh/deploy_key \
+            EMSFrontend/dist/. \
+            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:/home/u407424049/domains/eniacinc.com/public_html/hr/"
