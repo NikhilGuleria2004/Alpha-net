@@ -15,7 +15,6 @@ EMSFrontend/dist/
 # Environment files
 .env
 .env.local
-.env.production
 .env.*.local
 backend/.env
 frontend/.env
@@ -48,3 +47,7 @@ coverage/
 .temp/
 .tmp/
 *.tsbuildinfo
+
+# Production frontend configuration
+!frontend/.env.production
+!EMSFrontend/.env.production
