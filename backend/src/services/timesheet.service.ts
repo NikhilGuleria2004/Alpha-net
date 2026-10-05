@@ -11,6 +11,7 @@ import {
   lockDailyEntriesForWeeklyTimesheet,
   unlockDailyEntriesForWeeklyTimesheet,
 } from './daily-timesheet-lock.service.js'
+import type { TimesheetPdfItem, EmployeeTimesheetGroup } from './timesheet-pdf.service.js'
 export type TimesheetStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'withdrawn'
 
 // Flow Integration Phase 8 (§5, item 4) — how the docx submission workflow
@@ -959,5 +960,166 @@ export async function compileWeeklyTimesheet(
 
   const finalDoc = await db.collection(COLLECTIONS.TIMESHEETS).findOne({ _id: weeklyId })
   return toTimesheet(finalDoc)
+}
+
+export interface TimesheetsReportFilters {
+  userId?: string
+  projectId?: string
+  status?: string
+  weekStart?: string
+  search?: string
+}
+
+export async function getTimesheetsReportData(
+  filters: TimesheetsReportFilters = {},
+  requesterId?: string
+) {
+  const db = await getDb()
+
+  const timesheetFilters: Record<string, string> = {}
+  if (filters.userId) timesheetFilters.userId = filters.userId
+  if (filters.projectId) timesheetFilters.projectId = filters.projectId
+  if (filters.status) timesheetFilters.status = filters.status
+  if (filters.weekStart) timesheetFilters.weekStart = filters.weekStart
+
+  let timesheets = await getTimesheets(timesheetFilters)
+
+  const users = await db.collection(COLLECTIONS.USERS).find({}).toArray()
+  const projects = await db.collection(COLLECTIONS.PROJECTS).find({}).toArray()
+
+  const userMap = new Map<string, any>()
+  for (const u of users) {
+    userMap.set(u._id.toString(), u)
+  }
+
+  const projectMap = new Map<string, any>()
+  for (const p of projects) {
+    projectMap.set(p._id.toString(), p)
+  }
+
+  if (filters.search && filters.search.trim()) {
+    const q = filters.search.trim().toLowerCase()
+    timesheets = timesheets.filter((t) => {
+      const u = userMap.get(t.userId)
+      const p = projectMap.get(t.projectId)
+      const matchUser = u?.name?.toLowerCase().includes(q) || u?.email?.toLowerCase().includes(q)
+      const matchProj = p?.name?.toLowerCase().includes(q) || p?.client?.toLowerCase().includes(q)
+      const matchNotes = t.notes?.toLowerCase().includes(q)
+      return matchUser || matchProj || matchNotes
+    })
+  }
+
+  // Sort timesheets by weekStart descending
+  timesheets.sort((a, b) => b.weekStart.localeCompare(a.weekStart))
+
+  // Group by userId
+  const groupsMap = new Map<string, any[]>()
+  for (const t of timesheets) {
+    if (!groupsMap.has(t.userId)) {
+      groupsMap.set(t.userId, [])
+    }
+    groupsMap.get(t.userId)!.push(t)
+  }
+
+  let totalCombinedRegularHours = 0
+  let totalCombinedOvertimeHours = 0
+  let totalCombinedHours = 0
+
+  const groups: EmployeeTimesheetGroup[] = []
+
+  for (const [userId, userTimesheets] of groupsMap.entries()) {
+    const user = userMap.get(userId)
+    const empName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Unknown Employee')
+    const empEmail = user?.email || 'N/A'
+    const employeeId = user?.employeeId
+    const department = user?.department
+
+    let subtotalReg = 0
+    let subtotalOt = 0
+    let subtotalTot = 0
+
+    const items: TimesheetPdfItem[] = userTimesheets.map((ts) => {
+      const proj = projectMap.get(ts.projectId)
+      const weekEnd = addDays(ts.weekStart, 6)
+      const reg = ts.regularHours || 0
+      const ot = ts.overtimeHours || 0
+      const tot = ts.totalHours || (reg + ot)
+
+      subtotalReg += reg
+      subtotalOt += ot
+      subtotalTot += tot
+
+      const entryDescs = ts.entries
+        ?.filter((e: any) => e.description && e.description.trim())
+        ?.map((e: any) => e.description.trim()) || []
+      const description = entryDescs.length > 0 ? entryDescs.join('; ') : (ts.notes || undefined)
+
+      return {
+        id: ts.id,
+        weekStart: ts.weekStart,
+        weekEnd,
+        projectName: proj?.name || 'Project',
+        clientName: proj?.client,
+        status: (ts.status || 'draft').toUpperCase(),
+        regularHours: reg,
+        overtimeHours: ot,
+        totalHours: tot,
+        description,
+        submittedAt: ts.submittedAt,
+      }
+    })
+
+    totalCombinedRegularHours += subtotalReg
+    totalCombinedOvertimeHours += subtotalOt
+    totalCombinedHours += subtotalTot
+
+    groups.push({
+      employee: {
+        id: userId,
+        name: empName,
+        email: empEmail,
+        employeeId,
+        department,
+      },
+      timesheets: items,
+      subtotalRegularHours: subtotalReg,
+      subtotalOvertimeHours: subtotalOt,
+      subtotalTotalHours: subtotalTot,
+    })
+  }
+
+  // Sort groups alphabetically by employee name
+  groups.sort((a, b) => a.employee.name.localeCompare(b.employee.name))
+
+  const adminUser = requesterId ? userMap.get(requesterId) : undefined
+
+  const summaryParts: string[] = []
+  if (filters.userId && userMap.has(filters.userId)) {
+    summaryParts.push(`Employee: ${userMap.get(filters.userId).name}`)
+  }
+  if (filters.projectId && projectMap.has(filters.projectId)) {
+    summaryParts.push(`Project: ${projectMap.get(filters.projectId).name}`)
+  }
+  if (filters.status) {
+    summaryParts.push(`Status: ${filters.status.toUpperCase()}`)
+  }
+  if (filters.weekStart) {
+    summaryParts.push(`Week: ${filters.weekStart}`)
+  }
+  if (filters.search) {
+    summaryParts.push(`Query: "${filters.search}"`)
+  }
+  const filterSummary = summaryParts.length > 0 ? summaryParts.join(' · ') : 'All Personnel & Projects'
+
+  return {
+    groups,
+    totalCombinedRegularHours,
+    totalCombinedOvertimeHours,
+    totalCombinedHours,
+    totalTimesheetsCount: timesheets.length,
+    totalEmployeesCount: groups.length,
+    adminUser,
+    filterSummary,
+  }
 }
 

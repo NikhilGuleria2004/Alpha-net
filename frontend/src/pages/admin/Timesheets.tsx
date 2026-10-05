@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQueryParamState, useDebouncedQueryParam } from '../../hooks/useQueryParamState'
-import { Search, SlidersHorizontal, Eye } from 'lucide-react'
+import { Search, SlidersHorizontal, Eye, Download } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
+import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
@@ -10,9 +11,13 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDate, formatWeekRange } from '../../utils/date'
 import { formatHours } from '../../utils/format'
+import { downloadTimesheetsPdf } from '../../services/timesheetService'
+import { failureMessage } from '../../utils/errorMessage'
 
 export function Timesheets() {
   const { timesheets, users, projects } = useAppData()
+  const { addToast } = useToast()
+  const [isDownloading, setIsDownloading] = useState(false)
   // Guideline 1.11/1.23 → interface_guide.txt:15 ("URL as state") + interface_guide.txt:27 ("Deep-link everything"): all list controls are URL state.
   // F-20: the field stays instant (local state); only the URL write is debounced,
   // so a 12-character query is one navigation instead of twelve.
@@ -53,11 +58,53 @@ export function Timesheets() {
     setWeekStartFilter('')
   }
 
+  const handleDownloadDocument = async () => {
+    setIsDownloading(true)
+    try {
+      const { blob, filename } = await downloadTimesheetsPdf({
+        userId: userFilter || undefined,
+        projectId: projectFilter || undefined,
+        status: statusFilter || undefined,
+        weekStart: weekStartFilter || undefined,
+        search: search.trim() || undefined,
+      })
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename ?? `timesheet-report-${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      addToast('success', 'Timesheet document downloaded successfully')
+    } catch (err) {
+      const message = failureMessage(err, {
+        what: 'download timesheet document',
+        reassurance: 'No data was modified',
+        next: 'try again in a moment',
+      })
+      addToast('error', message)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Timesheets</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View and manage all timesheet submissions.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Timesheets</h1>
+          <p className="mt-1 text-sm text-muted-foreground">View and manage all timesheet submissions.</p>
+        </div>
+        <Button
+          onClick={handleDownloadDocument}
+          leftIcon={<Download className="h-4 w-4" />}
+          loading={isDownloading}
+        >
+          Download Document
+        </Button>
       </div>
 
       <Card>

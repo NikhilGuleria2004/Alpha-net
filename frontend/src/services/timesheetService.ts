@@ -5,7 +5,7 @@ import type {
   SaveDailyTimesheetInput,
   UpdateDailyTimesheetInput,
 } from '../types/timesheet'
-import apiClient from './apiClient'
+import apiClient, { downloadBlob } from './apiClient'
 import { toLocalDateString } from '../utils/date'
 
 export async function getTimesheets(): Promise<Timesheet[]> {
@@ -135,4 +135,30 @@ export async function searchTimesheets(query: string, opts?: { projectName?: (id
     const userName = opts?.userName?.(t.userId)?.toLowerCase() ?? ''
     return noteMatch || (projectName !== '' && projectName.includes(lower)) || (userName !== '' && userName.includes(lower))
   })
+}
+
+export interface DownloadTimesheetsPdfFilters {
+  userId?: string
+  projectId?: string
+  status?: string
+  weekStart?: string
+  search?: string
+}
+
+/**
+ * Downloads the aggregated timesheet PDF report for all employees (or filtered).
+ * Returns the PDF Blob and filename from Content-Disposition header.
+ */
+export async function downloadTimesheetsPdf(
+  filters?: DownloadTimesheetsPdfFilters
+): Promise<{ blob: Blob; filename: string | null }> {
+  const params = new URLSearchParams()
+  if (filters?.userId) params.set('userId', filters.userId)
+  if (filters?.projectId) params.set('projectId', filters.projectId)
+  if (filters?.status) params.set('status', filters.status)
+  if (filters?.weekStart) params.set('weekStart', filters.weekStart)
+  if (filters?.search) params.set('search', filters.search)
+
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return downloadBlob(`/timesheets/export/pdf${query}`)
 }

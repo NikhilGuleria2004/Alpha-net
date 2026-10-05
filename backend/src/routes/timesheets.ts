@@ -1,6 +1,15 @@
 import { Router } from 'express'
-import { listTimesheets, getTimesheet, create, update, submit, withdraw, createWeeklyDraftsCron } from '../controllers/timesheet.controller.js'
-import { authenticate } from '../middleware/auth.js'
+import {
+  listTimesheets,
+  getTimesheet,
+  create,
+  update,
+  submit,
+  withdraw,
+  createWeeklyDraftsCron,
+  exportTimesheetsPdfHandler,
+} from '../controllers/timesheet.controller.js'
+import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { requireTimesheetAccess, requireTimesheetEdit } from '../middleware/access.js'
 
 export function timesheetsRoutes() {
@@ -12,6 +21,9 @@ export function timesheetsRoutes() {
   router.post('/cron/weekly', createWeeklyDraftsCron)
 
   router.use(authenticate)
+
+  // Export report PDF (admin only). Registered before '/:id' so 'export' is not treated as an ID.
+  router.get('/export/pdf', requireAdmin, exportTimesheetsPdfHandler)
 
   router.get('/', listTimesheets)
   router.get('/:id', requireTimesheetAccess, getTimesheet)

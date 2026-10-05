@@ -2,7 +2,18 @@ import { type Request, type Response } from 'express'
 import { getDb } from '../lib/mongodb.js'
 import { COLLECTIONS } from '../lib/collections.js'
 import { ObjectId } from 'mongodb'
-import { getTimesheets, getTimesheetById, createTimesheet, updateTimesheet, submitTimesheet, withdrawTimesheet, createWeeklyDrafts } from '../services/timesheet.service.js'
+import {
+  getTimesheets,
+  getTimesheetById,
+  createTimesheet,
+  updateTimesheet,
+  submitTimesheet,
+  withdrawTimesheet,
+  createWeeklyDrafts,
+  getTimesheetsReportData,
+} from '../services/timesheet.service.js'
+import { buildTimesheetsPdf } from '../services/timesheet-pdf.service.js'
+import { getOrgSettings } from '../services/settings.service.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { type AuthenticatedRequest } from '../middleware/auth.js'
 import { createTimesheetSchema, updateTimesheetSchema } from '../schemas/timesheet.schema.js'
@@ -153,5 +164,56 @@ export async function createWeeklyDraftsCron(req: Request, res: Response) {
   } catch (err) {
     logger.error({ err }, 'failed to create weekly draft timesheets')
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } })
+  }
+}
+
+/**
+ * GET /api/v1/timesheets/export/pdf
+ * Generates an aggregated timesheet report PDF for all employees (or filtered).
+ * Lists all timesheet records grouped per employee with subtotals,
+ * and prints combined total hours worked across all employees at the end.
+ */
+export async function exportTimesheetsPdfHandler(req: AuthenticatedRequest, res: Response) {
+  try {
+    const filters = {
+      userId: req.query.userId ? String(req.query.userId) : undefined,
+      projectId: req.query.projectId ? String(req.query.projectId) : undefined,
+      status: req.query.status ? String(req.query.status) : undefined,
+      weekStart: req.query.weekStart ? String(req.query.weekStart) : undefined,
+      search: req.query.search
+        ? String(req.query.search)
+        : req.query.q
+          ? String(req.query.q)
+          : undefined,
+    }
+
+    const requesterId = req.user?.userId
+    const reportData = await getTimesheetsReportData(filters, requesterId)
+    const settings = await getOrgSettings()
+
+    const pdfBuffer = await buildTimesheetsPdf({
+      companyName: settings.companyName || 'Eniac Inc.',
+      issuedOn: new Date(),
+      adminName: reportData.adminUser?.name || 'Administrator',
+      filterSummary: reportData.filterSummary,
+      groups: reportData.groups,
+      totalCombinedRegularHours: reportData.totalCombinedRegularHours,
+      totalCombinedOvertimeHours: reportData.totalCombinedOvertimeHours,
+      totalCombinedHours: reportData.totalCombinedHours,
+      totalTimesheetsCount: reportData.totalTimesheetsCount,
+      totalEmployeesCount: reportData.totalEmployeesCount,
+    })
+
+    const timestamp = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="timesheet-report-${timestamp}.pdf"`,
+    )
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(200).send(pdfBuffer)
+  } catch (err) {
+    logger.error({ err }, 'failed to generate timesheets pdf report')
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate timesheet PDF report' } })
   }
 }
