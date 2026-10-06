@@ -4,13 +4,15 @@ import { EmsCard } from '../../components/ems/EmsCard'
 import { useQueryParamState } from '../../hooks/useQueryParamState'
 import { useDelayedLoading } from '../../hooks/useDelayedLoading'
 import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
 import { Link } from 'react-router-dom'
-import { UserPlus } from 'lucide-react'
+import { Trash2, UserPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getOnboardingPipeline, type GetOnboardingPipelineResponse } from '../../services/hrService'
+import { getOnboardingPipeline, deleteOnboardingCandidate, type GetOnboardingPipelineResponse } from '../../services/hrService'
 import { useToast } from '../../contexts/ToastContext'
 import type { OnboardingCandidate, OnboardingPipeline } from '../../types/hr'
 import { formatDate } from '../../utils/date'
+import { failureMessage } from '../../utils/errorMessage'
 import type { Column } from '../../components/ems/DataTable'
 
 const STATUS_COLUMNS: Record<string, { label: string; color: string }> = {
@@ -20,6 +22,11 @@ const STATUS_COLUMNS: Record<string, { label: string; color: string }> = {
   ready: { label: 'Ready', color: 'border-success' },
   active: { label: 'Active', color: 'border-accent' },
 }
+
+// Soft-deleted invites never reach the UI (the backend excludes them, and
+// the mock adapter filters them out too), so we only need a guard for the
+// "active" stage here.
+const canDelete = (candidate: OnboardingCandidate) => candidate.stage !== 'active' && !candidate.deletedAt
 
 const STAGES = ['invited', 'docs_pending', 'payrate_pending', 'ready', 'active'] as const
 
@@ -39,6 +46,11 @@ export function HrOnboardingPipeline() {
   const { addToast } = useToast()
   const [data, setData] = useState<GetOnboardingPipelineResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The invite currently being withdrawn (awaiting confirmation). Held
+  // here so the Modal and the optimistic row-rewrite share one source of
+  // truth.
+  const [candidateToDelete, setCandidateToDelete] = useState<OnboardingCandidate | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const showLoading = useDelayedLoading(!data && !error)
 
   useEffect(() => {
@@ -72,15 +84,46 @@ export function HrOnboardingPipeline() {
     })
   }
 
+  const handleConfirmDelete = async () => {
+    const candidate = candidateToDelete
+    if (!candidate) return
+    // Optimistically drop the row from the board/table so the user sees
+    // immediate feedback, then reconcile against the server.
+    setDeleting(true)
+    setCandidateToDelete(null)
+    setData((prev) => {
+      if (!prev) return prev
+      const candidates = prev.candidates.filter((c) => c.id !== candidate.id)
+      return { pipeline: derivePipeline(candidates), candidates }
+    })
+    try {
+      await deleteOnboardingCandidate(candidate.id)
+      addToast('success', `Withdrew invite for ${candidate.email}`)
+    } catch (err) {
+      addToast('error', failureMessage(err, { what: 'withdraw that invite', reassurance: 'No changes were saved', next: 'try again in a moment' }))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const columns = STAGES.map((stage) => ({
     key: stage,
     title: STATUS_COLUMNS[stage]?.label ?? stage,
     items: candidates.filter((c) => c.stage === stage),
     renderItem: (candidate: OnboardingCandidate) => (
       <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">{candidate.name}</span>
-        </div>
+         <div className="flex items-center justify-between">
+           <span className="text-sm font-medium text-foreground">{candidate.name}</span>
+           {canDelete(candidate) && (
+             <Button
+               variant="ghost"
+               size="sm"
+               aria-label={`Withdraw invite for ${candidate.name}`}
+               leftIcon={<Trash2 className="h-4 w-4 text-destructive" />}
+               onClick={() => setCandidateToDelete(candidate)}
+             />
+           )}
+         </div>
         <p className="text-xs text-muted-foreground">{candidate.email}</p>
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span>ID: {candidate.employeeId}</span>
@@ -128,6 +171,30 @@ export function HrOnboardingPipeline() {
           <DataTable columns={employeeColumns} data={candidates} onRowClick={(c) => console.log('view', c)} />
         </div>
       )}
+
+      <Modal
+        isOpen={candidateToDelete !== null}
+        onClose={() => setCandidateToDelete(null)}
+        title="Withdraw invite?"
+        description={
+          candidateToDelete
+            ? `This removes ${candidateToDelete.name} (${candidateToDelete.email}) from onboarding, freeing the email to be re-invited later. Their staged docs and payrate progress are retained for rehire.`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setCandidateToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" loading={deleting} onClick={handleConfirmDelete}>
+              Withdraw
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground">This action cannot be undone here.</p>
+      </Modal>
     </div>
   )
 }

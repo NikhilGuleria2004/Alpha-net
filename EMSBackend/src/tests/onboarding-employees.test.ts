@@ -26,9 +26,12 @@ vi.mock('../services/activity.service', () => ({
 }))
 
 vi.mock('../lib/email', () => ({
+  emailEnabled: vi.fn().mockReturnValue(true),
+  sendInviteEmail: vi.fn().mockResolvedValue(undefined),
   sendPasswordResetEmail: vi.fn(),
   sendWelcomeEmail: vi.fn(),
 }))
+import { emailEnabled, sendInviteEmail } from '../lib/email.js'
 
 function createChainableCursor(docs: any[] = []): any {
   const cursor: any = {
@@ -61,6 +64,24 @@ type MockCollection = ReturnType<typeof createMockCollection>
 
 let mockDb: any
 let mockCollections: Record<string, MockCollection>
+
+function mockCandidate(overrides: Partial<any> = {}): any {
+  return {
+    _id: new ObjectId(),
+    name: 'Candidate Person',
+    email: 'candidate@test.com',
+    employeeId: 'E000200',
+    department: 'Engineering',
+    role: 'employee',
+    stage: 'invited',
+    invitedAt: new Date().toISOString(),
+    documentsUploaded: 0,
+    documentsTotal: 3,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+}
 
 function setupDbMocks() {
   mockCollections = {}
@@ -139,9 +160,11 @@ describe('Phase 4: Onboarding & People', () => {
 
   describe('POST /onboarding (wizard step 1)', () => {
     it('creates an onboarding candidate successfully', async () => {
-      setupAuth('hr')
+       setupAuth('hr')
+      vi.mocked(emailEnabled).mockClear()
+      vi.mocked(sendInviteEmail).mockClear()
 
-      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+       const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
 
       const res = await request(createApp())
         .post('/api/v1/onboarding')
@@ -166,6 +189,10 @@ describe('Phase 4: Onboarding & People', () => {
       expect(res.body.candidate.documentsUploaded).toBe(0)
       expect(res.body.candidate.documentsTotal).toBe(3)
       expect(onboardingCollection.insertOne).toHaveBeenCalled()
+      // The invite email must be dispatched to the candidate's work email.
+      expect(emailEnabled).toHaveBeenCalled()
+      expect(sendInviteEmail).toHaveBeenCalledTimes(1)
+      expect(sendInviteEmail).toHaveBeenCalledWith('arjun@test.com', expect.any(String))
     })
 
     it('returns 400 when billable without payRate', async () => {
@@ -596,6 +623,154 @@ describe('Phase 4: Onboarding & People', () => {
       expect(res.body).toHaveLength(1)
       expect(res.body[0].employeeName).toBe('Esha Employee')
       expect(res.body[0].newRate).toBe(80)
+    })
+  })
+
+  describe('DELETE /onboarding/:id (soft-delete / withdraw invite)', () => {
+    it('soft-deletes an invited candidate: stamps deletedAt/deletedBy and audits', async () => {
+      const hrUserId = setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      const candidate = mockCandidate({ stage: 'invited', email: 'arjun@test.com' })
+      onboardingCollection.findOne = vi.fn().mockResolvedValue(candidate)
+      onboardingCollection.updateOne = vi.fn().mockResolvedValue({ modifiedCount: 1 })
+
+      const res = await request(createApp())
+        .delete(`/api/v1/onboarding/${candidate._id.toString()}`)
+        .set('Authorization', 'Bearer valid-token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.ok).toBe(true)
+      expect(res.body.deletedId).toBe(candidate._id.toString())
+      expect(res.body.stage).toBe('invited')
+      expect(onboardingCollection.updateOne).toHaveBeenCalledWith(
+        { _id: new ObjectId(candidate._id.toString()) },
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            deletedAt: expect.any(Date),
+            deletedBy: hrUserId,
+          }),
+        }),
+      )
+    })
+
+    it('returns 403 for non-hr/admin', async () => {
+      setupAuth('employee')
+      const candidate = mockCandidate()
+      const res = await request(createApp())
+        .delete(`/api/v1/onboarding/${candidate._id.toString()}`)
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(403)
+    })
+
+    it('returns 401 when not authenticated', async () => {
+      const candidate = mockCandidate()
+      const res = await request(createApp()).delete(`/api/v1/onboarding/${candidate._id.toString()}`)
+      expect(res.status).toBe(401)
+    })
+
+    it('returns 404 when the candidate does not exist', async () => {
+      setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      onboardingCollection.findOne = vi.fn().mockResolvedValue(null)
+      const res = await request(createApp())
+        .delete(`/api/v1/onboarding/${new ObjectId().toString()}`)
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
+    })
+
+    it('returns 400 on an invalid id', async () => {
+      setupAuth('hr')
+      const res = await request(createApp())
+        .delete('/api/v1/onboarding/not-an-id')
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    })
+
+    it('returns 409 for an already-hired (active) candidate', async () => {
+      setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      const candidate = mockCandidate({ stage: 'active' })
+      onboardingCollection.findOne = vi.fn().mockResolvedValue(candidate)
+      const res = await request(createApp())
+        .delete(`/api/v1/onboarding/${candidate._id.toString()}`)
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('CONFLICT')
+    })
+
+    it('returns 410 (Gone) when the invite was already withdrawn', async () => {
+      setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      const candidate = mockCandidate({ deletedAt: new Date(), deletedBy: '507f1f77bcf86cd799439001' })
+      onboardingCollection.findOne = vi.fn().mockResolvedValue(candidate)
+      const res = await request(createApp())
+        .delete(`/api/v1/onboarding/${candidate._id.toString()}`)
+        .set('Authorization', 'Bearer valid-token')
+      expect(res.status).toBe(410)
+      expect(res.body.error.code).toBe('GONE')
+      // No second update written.
+      expect(onboardingCollection.updateOne).not.toHaveBeenCalled()
+    })
+
+    it('a soft-deleted candidate does not block re-inviting the same email', async () => {
+      const hrUserId = setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      const deletedCandidate = mockCandidate({
+        deletedAt: new Date(),
+        deletedBy: hrUserId,
+        email: 'arjun@test.com',
+        employeeId: 'E000103',
+      })
+      // The duplicate guard must filter deletedAt out; simulate Mongo
+      // honoring that predicate: a deleted row is invisible to the
+      // new-invite check but still visible to an unfiltered query.
+      onboardingCollection.findOne = vi.fn().mockImplementation((filter: any) => {
+        if (filter?.deletedAt?.['$exists'] === false) return Promise.resolve(null)
+        return Promise.resolve(deletedCandidate)
+      })
+      onboardingCollection.insertOne = vi.fn().mockResolvedValue({ insertedId: deletedCandidate._id })
+
+      const res = await request(createApp())
+        .post('/api/v1/onboarding')
+        .set('Authorization', 'Bearer valid-token')
+        .send({
+          name: 'New Arjun',
+          email: 'arjun@test.com',
+          employeeId: 'E000103',
+          department: 'Engineering',
+          role: 'employee',
+        })
+
+      expect(res.status).toBe(201)
+      expect(res.body.candidate.email).toBe('arjun@test.com')
+      // The create path must exclude soft-deleted rows from the dup check.
+      expect(onboardingCollection.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: { $exists: false } }),
+      )
+    })
+
+    it('excludes soft-deleted candidates from the pipeline counts and list', async () => {
+      setupAuth('hr')
+      const onboardingCollection = mockCollections[COLLECTIONS.ONBOARDING_CANDIDATES]
+      onboardingCollection.aggregate.mockReturnValue({
+        toArray: vi.fn().mockResolvedValue([
+          { _id: 'invited', count: 1 },
+          { _id: 'docs_pending', count: 0 },
+        ]),
+      })
+      onboardingCollection.find.mockReturnValue(createChainableCursor([]))
+
+      const res = await request(createApp())
+        .get('/api/v1/onboarding/pipeline')
+        .set('Authorization', 'Bearer valid-token')
+
+      expect(res.status).toBe(200)
+      // The service must $match deletedAt out before grouping.
+      expect(onboardingCollection.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ $match: { deletedAt: { $exists: false } } })]),
+      )
     })
   })
 })

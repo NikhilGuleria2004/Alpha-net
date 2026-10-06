@@ -410,9 +410,17 @@ const mockAdapter: ApiAdapter = {
     }
 
     if (path === '/onboarding/pipeline') {
+      const visible = MOCK_ONBOARDING_CANDIDATES.filter((c) => !c.deletedAt)
+      const pipeline = {
+        invited: visible.filter((c) => c.stage === 'invited').length,
+        docsPending: visible.filter((c) => c.stage === 'docs_pending').length,
+        payratePending: visible.filter((c) => c.stage === 'payrate_pending').length,
+        ready: visible.filter((c) => c.stage === 'ready').length,
+        active: visible.filter((c) => c.stage === 'active').length,
+      }
       return {
-        pipeline: MOCK_ONBOARDING_PIPELINE,
-        candidates: MOCK_ONBOARDING_CANDIDATES,
+        pipeline,
+        candidates: visible,
       } as T
     }
 
@@ -866,6 +874,26 @@ const mockAdapter: ApiAdapter = {
       delete store[attKey(sessionUser.id, date)]
       saveAttendance(store)
       return undefined as T
+    }
+
+    const onboardingMatch = matchPath('/onboarding/:id', path)
+    if (onboardingMatch.matched) {
+      const sessionUser = currentSessionUser()
+      if (!sessionUser) mockError(401, 'UNAUTHORIZED', 'Sign in to manage onboarding.')
+      if (sessionUser.role !== 'admin' && sessionUser.role !== 'hr') {
+        mockError(403, 'FORBIDDEN', 'Insufficient role')
+      }
+      const candidate = MOCK_ONBOARDING_CANDIDATES.find((c) => c.id === onboardingMatch.params.id)
+      if (!candidate) mockError(404, 'NOT_FOUND', 'Onboarding candidate not found.')
+      if (candidate!.stage === 'active') {
+        mockError(409, 'CONFLICT', 'Candidate is already hired — remove the employee record instead.')
+      }
+      if (candidate!.deletedAt) {
+        mockError(410, 'GONE', 'Onboarding candidate already deleted.')
+      }
+      candidate!.deletedAt = NOW
+      candidate!.deletedBy = sessionUser.id
+      return { ok: true, deletedId: candidate!.id, stage: candidate!.stage } as T
     }
 
     mockError(404, 'NOT_FOUND', `No mock DELETE handler for ${path}`)

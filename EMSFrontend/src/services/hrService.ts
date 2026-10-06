@@ -87,6 +87,17 @@ export async function createOnboarding(input: CreateOnboardingInput): Promise<{ 
   return api.post<{ candidate: OnboardingCandidate }>('/onboarding', input)
 }
 
+/**
+ * Flow Integration Phase 5 — soft-delete (withdraw) an onboarding invite.
+ * admin/hr only. A withdrawn invite frees its email for re-invitation; an
+ * already-hired (active) candidate is refused server-side with a 409.
+ */
+export async function deleteOnboardingCandidate(
+  id: string,
+): Promise<{ ok: boolean; deletedId: string; stage: string }> {
+  return api.delete<{ ok: boolean; deletedId: string; stage: string }>(`/onboarding/${id}`)
+}
+
 export async function getDepartments(): Promise<GetDepartmentsResponse> {
   return api.get<GetDepartmentsResponse>('/departments')
 }

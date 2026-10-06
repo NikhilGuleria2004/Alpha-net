@@ -17,6 +17,9 @@ export interface OnboardingCandidate {
   documentsTotal: number
   payRate?: number | null
   currency?: SupportedCurrencyCode
+  inviteTokenHash?: string
+  inviteExpiresAt?: string
+  inviteSentAt?: string
 }
 
 export interface OnboardingPipeline {

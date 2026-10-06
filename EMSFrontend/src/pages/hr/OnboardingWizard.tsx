@@ -8,8 +8,9 @@
  * Features: Stepper rail, draft save, unsaved-changes guard, per-step validation,
  * inline error summary, payrate-required-when-billable, review + confirm.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Info } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useQueryParamState } from '../../hooks/useQueryParamState'
@@ -94,6 +95,37 @@ const PAY_FREQUENCIES = [
   { value: 'monthly', label: 'Monthly' },
 ]
 
+// Convenience payload for quick demos/testing. Email is the seeded address
+// requested by the test harness; the remaining fields are static dummy data
+// that satisfies every step's validation so the wizard can be completed in
+// one click.
+const DUMMY_WIZARD_DATA: WizardData = {
+  legalName: 'Demo Employee',
+  preferredName: 'Demo',
+  email: 'kaptaanzirakpur@gmail.com',
+  personalEmail: 'demo.personal@example.com',
+  phone: '+1 (555) 123-4567',
+  dateOfBirth: '1990-04-15',
+  gender: 'non_binary',
+  address: '123 Demo Street, Portland, OR 97201',
+  employeeId: 'DEMO-0001',
+  role: 'employee',
+  department: 'engineering',
+  title: 'Senior Widget Engineer',
+  managerId: '',
+  employmentType: 'full_time',
+  startDate: '2026-10-15',
+  workLocation: 'Remote',
+  billable: true,
+  payRate: 9500,
+  currency: 'USD',
+  payFrequency: 'biweekly',
+  documents: [],
+  systemRoles: ['employee'],
+  inviteMethod: 'invite',
+  twoFactorNote: 'Enforced on first login',
+}
+
 function validateStep(stepId: WizardStepId, data: WizardData): Record<string, string> {
   const errors: Record<string, string> = {}
   switch (stepId) {
@@ -158,6 +190,7 @@ export function HrOnboardingWizard() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [draftLoading, setDraftLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   // Managers come from the live directory: a hardcoded list would hand the
   // wizard ids ('u-manager') that match no real user, silently attaching the
   // new hire to nobody.
@@ -187,7 +220,8 @@ export function HrOnboardingWizard() {
   const isSavingDraft = useDelayedLoading(draftLoading)
 
   const isDirty = JSON.stringify(data) !== JSON.stringify(getEmptyData())
-  useUnsavedChanges(isDirty)
+  const navigateBlockBypass = useRef(false)
+  useUnsavedChanges(isDirty, navigateBlockBypass)
 
   // Draft save / load from localStorage
   useEffect(() => {
@@ -266,13 +300,20 @@ export function HrOnboardingWizard() {
     }, 500)
   }
 
+  const handleFillDemo = () => {
+    setData(DUMMY_WIZARD_DATA)
+    setErrors({})
+    setStepParam('1')
+  }
+
   async function handleConfirm() {
     const stepErrors = validateStep('billing', data)
     setErrors(stepErrors)
     if (hasErrors(stepErrors)) return
 
     try {
-      await createOnboarding({
+       setSubmitting(true)
+       await createOnboarding({
         name: data.preferredName || data.legalName,
         email: data.email,
         employeeId: data.employeeId,
@@ -283,11 +324,15 @@ export function HrOnboardingWizard() {
         currency: data.currency as SupportedCurrencyCode,
       })
 
-      localStorage.removeItem('onboarding_draft')
+       localStorage.removeItem('onboarding_draft')
+      setData(getEmptyData())
+      navigateBlockBypass.current = true
       addToast('success', `${data.legalName || data.preferredName} has been added to onboarding.`)
       navigate('/hr/onboarding')
     } catch {
       addToast('error', 'Failed to create onboarding candidate. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -312,6 +357,16 @@ export function HrOnboardingWizard() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">New Hire Onboarding</h1>
         <p className="mt-1 text-sm text-muted-foreground">{data.legalName ? `Onboarding: ${data.legalName}` : 'Enter the new hire details below.'}</p>
+         <Button
+          variant="secondary"
+          size="sm"
+          className="mt-2"
+          aria-label="Fill form with demo data"
+          leftIcon={<Info className="h-4 w-4" />}
+          onClick={handleFillDemo}
+        >
+          Fill demo data (test)
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -351,7 +406,7 @@ export function HrOnboardingWizard() {
               <div className="flex items-center gap-3">
                 <Button
                   type="button"
-                  variant="ghost"
+          variant="secondary"
                   onClick={handleSaveDraft}
                   loading={isSavingDraft}
                   aria-busy={isSavingDraft}
@@ -363,7 +418,7 @@ export function HrOnboardingWizard() {
                     Save & Continue
                   </Button>
                 ) : (
-                  <Button type="submit" variant="primary" onClick={handleConfirm}>
+                  <Button type="submit" variant="primary" loading={submitting} disabled={submitting}>
                     Create Employee
                   </Button>
                 )}

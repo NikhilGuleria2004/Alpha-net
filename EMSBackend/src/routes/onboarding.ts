@@ -3,7 +3,11 @@ import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 import { requireRole } from '../middleware/access.js'
 import { validateBody } from '../middleware/validate.js'
 import { logger } from '../lib/logger.js'
-import { createOnboardingCandidate, getOnboardingPipeline } from '../services/onboarding.service.js'
+import {
+  createOnboardingCandidate,
+  getOnboardingPipeline,
+  deleteOnboardingCandidate,
+} from '../services/onboarding.service.js'
 import { createOnboardingSchema } from '../schemas/people.schema.js'
 import type { CreateOnboardingInput } from '../types/people.js'
 
@@ -36,6 +40,37 @@ export function onboardingRoutes() {
         }
         logger.warn({ err }, 'onboarding creation failed')
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message } })
+      }
+    },
+  )
+
+  // DELETE /onboarding/:id — soft-delete a candidate (withdraw an invite).
+  // admin/hr only. Refuses active (already-hired) candidates; frees the
+  // email for re-invitation (create/getPipeline both exclude deletedAt).
+  router.delete(
+    '/:id',
+    authenticate,
+    requireRole('admin', 'hr'),
+    async (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const result = await deleteOnboardingCandidate(req.params.id as string, req.user!.userId)
+        res.json({ ok: true, ...result })
+      } catch (err: any) {
+        const message = err instanceof Error ? err.message : 'Failed to delete candidate'
+        if (message === 'Invalid candidate id') {
+          return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
+        }
+        if (message === 'Onboarding candidate not found') {
+          return res.status(404).json({ error: { code: 'NOT_FOUND', message } })
+        }
+        if (message === 'Onboarding candidate already deleted') {
+          return res.status(410).json({ error: { code: 'GONE', message } })
+        }
+        if (message === 'Candidate is already hired — remove the employee record instead') {
+          return res.status(409).json({ error: { code: 'CONFLICT', message } })
+        }
+        logger.warn({ err }, 'onboarding deletion failed')
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } })
       }
     },
   )

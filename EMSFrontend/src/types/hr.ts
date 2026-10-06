@@ -19,6 +19,9 @@ export interface OnboardingCandidate {
   documentsTotal: number
   payRate?: number | null
   currency?: SupportedCurrencyCode
+  /** Set when the invite was withdrawn (soft-delete). Re-inviting the email is allowed. */
+  deletedAt?: string
+  deletedBy?: string
 }
 
 export interface OnboardingPipeline {
