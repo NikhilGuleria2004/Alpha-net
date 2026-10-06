@@ -73,6 +73,51 @@ export const insertInvoiceSchema = z.object({
    * cutover reversible without a code change.
    */
   approvedOnly: z.boolean().optional(),
+  /**
+   * Flow Integration Phase 5 create-flow preview: per-EMPLOYEE rate
+   * overrides typed into the new-invoice UI. Keys are RESOURCE ids
+   * (users._id); the collector expands each key across every billable
+   * timesheet of that employee, so one typed rate prices all of an
+   * employee's weeks at once. Applied as `rateSource: 'manual'`
+   * overrides folded into `fixedCost` exactly like a post-create
+   * `updateInvoiceRates` would — an invoice-level price decision,
+   * never an assignment/timesheet mutation. Empty/undefined ⇒ no
+   * overrides. Expansion intersects with the collected set, so a
+   * forged key for an employee who is not being billed is ignored.
+   */
+  lineRateOverrides: z
+    .record(z.string(), z.coerce.number().refine((v) => Number.isFinite(v) && v >= 0, 'Rate must be 0 or greater'))
+    .optional(),
+  /**
+   * Variable costs added in the SAME request as creation, so the
+   * create flow is one round trip (the UI used to PATCH them in a
+   * second call). Validated exactly like updateInvoiceSchema's
+   * addVariableCosts; the service re-derives total = fixedCost +
+   * variableCostTotal server-side, so a forged amount cannot alter
+   * the fixed cost.
+   */
+  variableCosts: z.array(variableCostItemSchema).max(50, 'At most 50 variable costs per request').optional(),
+})
+
+/**
+ * Flow Integration Phase 5 — PATCH /invoices/:id/rates. Atomically
+ * updates the rate on several lines of a draft invoice (typically every
+ * line of one employee) and re-derives fixedCost = Σ line amounts and
+ * total = fixedCost + variableCostTotal in a single write.
+ */
+export const updateInvoiceRatesSchema = z.object({
+  rates: z
+    .array(
+      z.object({
+        timesheetId: z.string().min(1, 'timesheetId is required'),
+        rate: z.coerce
+          .number()
+          .refine((value) => Number.isFinite(value), 'Rate must be a finite number')
+          .refine((value) => value >= 0, 'Rate must be 0 or greater'),
+      }),
+    )
+    .min(1, 'At least one rate is required')
+    .max(500, 'At most 500 line rates per request'),
 })
 
 export const updateInvoiceSchema = z

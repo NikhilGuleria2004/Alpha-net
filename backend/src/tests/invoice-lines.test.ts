@@ -195,13 +195,14 @@ function mockTimesheet(
     weekStart?: string
     status?: string
     assignmentId?: Doc | null
+    userId?: ObjectId
     hours?: { mon?: number; tue?: number; wed?: number; thu?: number; fri?: number }
     entryType?: string
   } = {},
 ): Doc {
   return {
     _id: new ObjectId(),
-    userId: new ObjectId(),
+    userId: opts.userId ?? new ObjectId(),
     projectId: project._id,
     weekStart: opts.weekStart ?? '2024-01-01',
     status: opts.status ?? 'approved',
@@ -765,6 +766,270 @@ describe('Phase 5 — invoice traceability (lines, approved-only, paid/void)', (
       const invoice = await getInvoice(empty._id.toString())
       expect(invoice!.lines).toEqual([]) // nothing fabricated
       expect(invoice!.billedTimesheetIds).toEqual([])
+    })
+  })
+
+  describe('Phase 5 create flow — per-employee aggregation, overrides, atomic rate edits', () => {
+    /** A user doc whose _id IS the resource id the timesheets reference. */
+    function mockUser(id: ObjectId, name: string): Doc {
+      return { _id: id, name, role: 'user', status: 'active' }
+    }
+
+    it('aggregates the lines per employee with summed hours, names, and timesheet ids', async () => {
+      const empA = new ObjectId()
+      const empB = new ObjectId()
+      const userA = mockUser(empA, 'Alice Engineer')
+      const userB = mockUser(empB, 'Bob Builder')
+      const assignment = { _id: new ObjectId(), billRate: 75, status: 'active' }
+      // Alice: two approved weeks on the same project.
+      const aWeek1 = mockTimesheet(project, {
+        weekStart: '2024-01-01',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { mon: 8 },
+      })
+      const aWeek2 = mockTimesheet(project, {
+        weekStart: '2024-01-08',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { tue: 4 },
+      })
+      const bWeek1 = mockTimesheet(project, {
+        weekStart: '2024-01-01',
+        userId: empB,
+        hours: { wed: 6 },
+      })
+      const { db, raw } = setup([aWeek1, aWeek2, bWeek1], [], [assignment])
+      raw.set(COLLECTIONS.USERS, [userA, userB])
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { previewBillableTimesheets } = await import('../services/invoice.service.js')
+      const collection = await previewBillableTimesheets(project._id.toString(), { hourlyRate: 50 })
+
+      // One row per employee; Alice's two weeks are summed.
+      expect(collection.employees).toHaveLength(2)
+      const alice = collection.employees.find((e) => e.resourceId === empA.toString())!
+      const bob = collection.employees.find((e) => e.resourceId === empB.toString())!
+      expect(alice).toMatchObject({
+        resourceName: 'Alice Engineer',
+        hours: 12,
+        rate: 75,
+        amount: 900,
+        rateSource: 'assignment',
+        mixedRates: false,
+      })
+      expect(alice.timesheetIds.sort()).toEqual(
+        [aWeek1._id.toString(), aWeek2._id.toString()].sort(),
+      )
+      expect(bob).toMatchObject({
+        resourceName: 'Bob Builder',
+        hours: 6,
+        rate: 50,
+        amount: 300,
+        rateSource: 'invoice',
+      })
+      // The aggregation can never disagree with the totals.
+      expect(collection.billableHours).toBe(18)
+      expect(collection.fixedCost).toBe(1200)
+      expect(
+        collection.employees.reduce((s, e) => s + e.amount, 0),
+      ).toBe(collection.fixedCost)
+    })
+
+    it('applies one employee-keyed override across ALL of that employee\'s timesheets', async () => {
+      const empA = new ObjectId()
+      const userA = mockUser(empA, 'Alice Engineer')
+      const assignment = { _id: new ObjectId(), billRate: 75, status: 'active' }
+      const aWeek1 = mockTimesheet(project, {
+        weekStart: '2024-01-01',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { mon: 8 },
+      })
+      const aWeek2 = mockTimesheet(project, {
+        weekStart: '2024-01-08',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { tue: 4 },
+      })
+      const other = mockTimesheet(project, { hours: { wed: 2 } })
+      const { db, raw } = setup([aWeek1, aWeek2, other], [], [assignment])
+      raw.set(COLLECTIONS.USERS, [userA])
+      vi.mocked(getDb).mockResolvedValue(db as never)
+
+      const { createInvoice } = await import('../services/invoice.service.js')
+      const invoice = await createInvoice({
+        projectId: project._id.toString(),
+        approvedOnly: true,
+        // One typed rate for Alice — covers both her weeks.
+        lineRateOverrides: { [empA.toString()]: 100 },
+        adminUserId: ADMIN_ID,
+        adminUserName: 'Admin User',
+      })
+
+      const aliceLines = invoice.lines!.filter((l) => l.resourceId === empA.toString())
+      expect(aliceLines).toHaveLength(2)
+      for (const line of aliceLines) {
+        expect(line.rate).toBe(100)
+        expect(line.rateSource).toBe('manual')
+      }
+      // Alice: 12h × 100 = 1200; the other timesheet keeps the
+      // invoice rate: 2h × 50 = 100.
+      expect(invoice.fixedCost).toBe(1300)
+      expect(invoice.total).toBe(1300)
+    })
+
+    it('ignores override keys for employees who are not being billed (forged body safety)', async () => {
+      const assignment = { _id: new ObjectId(), billRate: 75, status: 'active' }
+      const ts = mockTimesheet(project, {
+        assignmentId: assignment._id,
+        hours: { mon: 8 },
+      })
+      setup([ts], [], [assignment])
+
+      const { createInvoice } = await import('../services/invoice.service.js')
+      const invoice = await createInvoice({
+        projectId: project._id.toString(),
+        approvedOnly: true,
+        // Forged key: matches no employee in the collected set.
+        lineRateOverrides: { '507f1f77bcf86cd799439999': 999 },
+        adminUserId: ADMIN_ID,
+        adminUserName: 'Admin User',
+      })
+
+      expect(invoice.lines![0].rate).toBe(75)
+      expect(invoice.lines![0].rateSource).toBe('assignment')
+      expect(invoice.fixedCost).toBe(600)
+    })
+
+    it('flags mixed captured rates on the employee row', async () => {
+      const empA = new ObjectId()
+      const assignmentOld = { _id: new ObjectId(), billRate: 75, status: 'active' }
+      const assignmentNew = { _id: new ObjectId(), billRate: 90, status: 'active' }
+      const week1 = mockTimesheet(project, {
+        weekStart: '2024-01-01',
+        userId: empA,
+        assignmentId: assignmentOld._id,
+        hours: { mon: 8 },
+      })
+      const week2 = mockTimesheet(project, {
+        weekStart: '2024-01-08',
+        userId: empA,
+        assignmentId: assignmentNew._id,
+        hours: { tue: 8 },
+      })
+      setup([week1, week2], [], [assignmentOld, assignmentNew])
+
+      const { previewBillableTimesheets } = await import('../services/invoice.service.js')
+      const collection = await previewBillableTimesheets(project._id.toString(), { hourlyRate: 50 })
+
+      expect(collection.employees).toHaveLength(1)
+      expect(collection.employees[0].mixedRates).toBe(true)
+      expect(collection.employees[0].hours).toBe(16)
+    })
+
+    it('updateInvoiceRates atomically reprices every line of the employee and re-derives the totals', async () => {
+      const empA = new ObjectId()
+      const assignment = { _id: new ObjectId(), billRate: 75, status: 'active' }
+      const aWeek1 = mockTimesheet(project, {
+        weekStart: '2024-01-01',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { mon: 8 },
+      })
+      const aWeek2 = mockTimesheet(project, {
+        weekStart: '2024-01-08',
+        userId: empA,
+        assignmentId: assignment._id,
+        hours: { tue: 4 },
+      })
+      setup([aWeek1, aWeek2], [], [assignment])
+
+      const svc = await import('../services/invoice.service.js')
+      const created = await svc.createInvoice({
+        projectId: project._id.toString(),
+        approvedOnly: true,
+        adminUserId: ADMIN_ID,
+        adminUserName: 'Admin User',
+      })
+      expect(created.fixedCost).toBe(900) // 12h × 75
+
+      // One atomic edit: Alice's two lines move to 100/h.
+      const updated = await svc.updateInvoiceRates(
+        created.id,
+        [
+          { timesheetId: aWeek1._id.toString(), rate: 100 },
+          { timesheetId: aWeek2._id.toString(), rate: 100 },
+        ],
+        ADMIN_ID,
+      )
+      const aliceLines = updated.lines!.filter((l) => l.resourceId === empA.toString())
+      expect(aliceLines).toHaveLength(2)
+      for (const line of aliceLines) {
+        expect(line.rate).toBe(100)
+        expect(line.rateSource).toBe('manual')
+      }
+      expect(updated.fixedCost).toBe(1200) // 8×100 + 4×100
+      expect(updated.total).toBe(1200)
+    })
+
+    it('updateInvoiceRates recomputes total with variable costs included', async () => {
+      const ts = mockTimesheet(project, { hours: { mon: 8 } })
+      setup([ts])
+
+      const svc = await import('../services/invoice.service.js')
+      const created = await svc.createInvoice({
+        projectId: project._id.toString(),
+        approvedOnly: true,
+        variableCosts: [{ amount: 50, reason: 'expenses' }],
+        adminUserId: ADMIN_ID,
+        adminUserName: 'Admin User',
+      })
+      expect(created.variableCosts).toHaveLength(1)
+      expect(created.variableCostTotal).toBe(50)
+      expect(created.fixedCost).toBe(400) // 8h × 50
+      expect(created.total).toBe(450)
+
+      const updated = await svc.updateInvoiceRates(
+        created.id,
+        [{ timesheetId: ts._id.toString(), rate: 60 }],
+        ADMIN_ID,
+      )
+      expect(updated.fixedCost).toBe(480) // 8h × 60
+      expect(updated.variableCostTotal).toBe(50)
+      expect(updated.total).toBe(530) // fixed + variable
+    })
+
+    it('updateInvoiceRates rejects unknown lines, bad rates, and non-draft invoices', async () => {
+      const ts = mockTimesheet(project, { hours: { mon: 8 } })
+      setup([ts])
+
+      const svc = await import('../services/invoice.service.js')
+      const created = await svc.createInvoice({
+        projectId: project._id.toString(),
+        approvedOnly: true,
+        adminUserId: ADMIN_ID,
+        adminUserName: 'Admin User',
+      })
+
+      // Unknown timesheet id — a stale UI can't silently price a
+      // line it no longer sees.
+      await expect(
+        svc.updateInvoiceRates(created.id, [{ timesheetId: '507f1f77bcf86cd799439999', rate: 10 }], ADMIN_ID),
+      ).rejects.toThrow('Line not found on this invoice')
+      // Negative rate.
+      await expect(
+        svc.updateInvoiceRates(created.id, [{ timesheetId: ts._id.toString(), rate: -5 }], ADMIN_ID),
+      ).rejects.toThrow('Rate must be 0 or greater')
+      // Empty batch.
+      await expect(
+        svc.updateInvoiceRates(created.id, [], ADMIN_ID),
+      ).rejects.toThrow('At least one rate is required')
+      // Sent invoices are immutable.
+      await svc.sendInvoice(created.id, ADMIN_ID)
+      await expect(
+        svc.updateInvoiceRates(created.id, [{ timesheetId: ts._id.toString(), rate: 10 }], ADMIN_ID),
+      ).rejects.toThrow('Cannot modify a sent invoice')
     })
   })
 })

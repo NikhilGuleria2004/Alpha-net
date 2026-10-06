@@ -46,7 +46,7 @@ export interface InvoiceLine {
    * 'invoice' when the invoice's hourlyRate was used. Never silently 0: a
    * backfilled assignment carries `billRate: 0`, which is treated as unset.
    */
-  rateSource: 'assignment' | 'invoice'
+  rateSource: 'assignment' | 'invoice' | 'manual'
   /** 'approved' = forward approved-only path; 'proportional' = backfill reconstruction. */
   source: 'approved' | 'proportional'
 }
@@ -263,6 +263,18 @@ export interface CollectBillableOptions {
   assignmentId?: string
   /** Phase 5 scope: only these timesheets. */
   timesheetIds?: string[]
+  /**
+   * Phase 5 create-flow preview: per-EMPLOYEE rate overrides the admin
+   * typed into the new-invoice UI before the invoice is created. Keys
+   * are resource ids (users._id); each key is expanded across every
+   * billable timesheet of that employee. Applied as
+   * `rateSource: 'manual'` (an invoice-level price decision, never an
+   * assignment/timesheet mutation) and folded into `fixedCost` exactly
+   * like a post-create `updateInvoiceRates` would. Empty/undefined ⇒
+   * no overrides. Expansion intersects with the collected set, so a
+   * forged key for an employee who is not being billed is ignored.
+   */
+  lineRateOverrides?: Record<string, number>
 }
 
 export interface BillableCollection {
@@ -273,6 +285,39 @@ export interface BillableCollection {
   fixedCost: number
   /** The approved + unbilled timesheets that produced the lines (period span). */
   timesheets: any[]
+  /**
+   * Phase 5 create flow: the same lines aggregated per employee — one
+   * row per resource with summed hours, the effective rate, the line
+   * amount sum, and the timesheet ids behind it. This is exactly what
+   * the new-invoice UI renders (and what the invoice would persist),
+   * computed by the same collector so preview and create can never
+   * disagree. `mixedRates` is true when the employee's lines would
+   * carry different captured rates (e.g. a billRate change between
+   * weeks) and no override is applied yet.
+   */
+  employees: EmployeeBillingSummary[]
+}
+
+/** Per-employee aggregation of a BillableCollection (see BillableCollection). */
+export interface EmployeeBillingSummary {
+  resourceId: string
+  resourceName: string
+  /** Summed billable (regular Mon–Fri) hours across the employee's lines. */
+  hours: number
+  /**
+   * Effective rate. With an override applied this is the override;
+   * otherwise the employee's captured rate (or the invoice rate). When
+   * `mixedRates` is true, this is the rate of the first line in
+   * deterministic order and the UI should flag the row.
+   */
+  rate: number
+  /** Sum of the employee's line amounts (round2 per line, then summed). */
+  amount: number
+  rateSource: InvoiceLine['rateSource']
+  /** True when the employee's lines carry different captured rates. */
+  mixedRates: boolean
+  /** The timesheet ids behind the row — the double-bill reservation keys. */
+  timesheetIds: string[]
 }
 
 /**
@@ -369,23 +414,60 @@ export async function collectBillableTimesheets(
     }
   }
 
+  // 3b. Snapshot resource names: batch-load every timesheet's user once
+  // so the per-employee rows (and the lines) can show who worked, not
+  // just an id. A missing user degrades to 'Unknown resource', never
+  // breaks billing.
+  const userIds = [
+    ...new Set(
+      timesheets
+        .map((ts) => ts.userId)
+        .filter(Boolean)
+        .map((id: any) => String(id)),
+    ),
+  ]
+  const userName = new Map<string, string>()
+  if (userIds.length > 0) {
+    const users = await db
+      .collection(COLLECTIONS.USERS)
+      .find({ _id: { $in: userIds.map((id) => new ObjectId(id)) } })
+      .toArray()
+    for (const user of users) {
+      userName.set(String(user._id), user.name ?? 'Unknown resource')
+    }
+  }
+
   // 4. Build one line per timesheet (Mon–Fri regular hours only).
+  // Overrides are keyed by RESOURCE id (employee): one typed rate
+  // prices every billable timesheet of that employee.
+  const overrides = opts.lineRateOverrides ?? {}
   const lines: InvoiceLine[] = []
   for (const ts of timesheets) {
     const hours = billableHoursOf(ts)
     if (hours <= 0) continue // no billable time → nothing to trace or bill
+    const resourceId = ts.userId ? String(ts.userId) : undefined
     const rawRate = ts.assignmentId
       ? assignmentRate.get(String(ts.assignmentId))
       : undefined
     // 0 / null / undefined all mean "no usable captured rate" → invoice rate.
     const captured = typeof rawRate === 'number' && rawRate > 0
-    const rate = captured ? rawRate : opts.hourlyRate
-    const rateSource: InvoiceLine['rateSource'] = captured ? 'assignment' : 'invoice'
+    const baseRate = captured ? rawRate : opts.hourlyRate
+    const baseSource: InvoiceLine['rateSource'] = captured ? 'assignment' : 'invoice'
+    // Phase 5 create-flow preview: a per-employee override typed in the
+    // UI wins over the captured/invoice rate. Stored as 'manual' so the
+    // audit trail records that this line was priced by decision, not by
+    // record. Keys that match no employee in the collected set are
+    // simply never read — a forged body cannot touch other timesheets.
+    const override = resourceId ? overrides[resourceId] : undefined
+    const hasOverride = typeof override === 'number' && Number.isFinite(override) && override >= 0
+    const rate = hasOverride ? override : baseRate
+    const rateSource: InvoiceLine['rateSource'] = hasOverride ? 'manual' : baseSource
     const amount = Math.round(rate * hours * 100) / 100
     lines.push({
       timesheetId: String(ts._id),
       assignmentId: ts.assignmentId ? String(ts.assignmentId) : undefined,
-      resourceId: ts.userId ? String(ts.userId) : undefined,
+      resourceId,
+      resourceName: resourceId ? (userName.get(resourceId) ?? 'Unknown resource') : 'Unknown resource',
       weekStart: ts.weekStart,
       hours,
       rate,
@@ -409,13 +491,55 @@ export async function collectBillableTimesheets(
   const billedSet = new Set(billedTimesheetIds)
   const billedTimesheets = timesheets.filter((ts) => billedSet.has(String(ts._id)))
 
+  // 5. Aggregate the same lines per employee — one UI row per
+  // resource. Hours and amounts are summed from the lines
+  // themselves (already round2'd per line), so this aggregation
+  // can never disagree with fixedCost.
+  const byResource = new Map<string, InvoiceLine[]>()
+  for (const line of lines) {
+    const key = String(line.resourceId ?? '')
+    if (!byResource.has(key)) byResource.set(key, [])
+    byResource.get(key)!.push(line)
+  }
+  const employees: EmployeeBillingSummary[] = [...byResource.entries()]
+    .filter(([resourceId]) => resourceId !== '')
+    .map(([resourceId, resourceLines]) => ({
+      resourceId,
+      resourceName: resourceLines[0].resourceName ?? 'Unknown resource',
+      hours: resourceLines.reduce((sum, line) => sum + line.hours, 0),
+      rate: resourceLines[0].rate,
+      amount: Math.round(resourceLines.reduce((sum, line) => sum + line.amount, 0) * 100) / 100,
+      rateSource: resourceLines[0].rateSource,
+      mixedRates: new Set(resourceLines.map((line) => line.rate)).size > 1,
+      timesheetIds: resourceLines.map((line) => line.timesheetId),
+    }))
+
   return {
     lines,
     billedTimesheetIds,
     billableHours,
     fixedCost,
     timesheets: billedTimesheets,
+    employees,
   }
+}
+
+/**
+ * Flow Integration Phase 5 — read-only preview of the approved-only collector.
+ *
+ * Thin wrapper around `collectBillableTimesheets` so the new-invoice UI and the
+ * eventual `createInvoice` can never disagree: the lines, hours, rates, and
+ * amounts returned here are exactly what the service would persist. The
+ * wrapper exists (rather than exporting the collector directly) so the preview
+ * shape stays stable and a future "preview must not reserve" change is a single
+ * edit. It is side-effect free — no reservation is written, so an admin can
+ * shop per-employee rates before committing.
+ */
+export async function previewBillableTimesheets(
+  projectId: string,
+  opts: CollectBillableOptions,
+): Promise<BillableCollection> {
+  return collectBillableTimesheets(projectId, opts)
 }
 
 export async function createInvoice(input: {
@@ -430,6 +554,24 @@ export async function createInvoice(input: {
   assignmentId?: string
   /** Phase 5: restrict billing scope to these timesheets. */
   timesheetIds?: string[]
+  /**
+   * Phase 5 create-flow preview: per-EMPLOYEE rate overrides typed
+   * into the new-invoice UI. Keys are resource ids (users._id);
+   * the collector expands each across the employee's billable
+   * timesheets. Applied as `rateSource: 'manual'` (an
+   * invoice-level price decision, never an assignment/timesheet
+   * mutation) and folded into `fixedCost` exactly like a
+   * post-create `updateInvoiceRates` would. Empty ⇒ no
+   * overrides, and the invoice is created with the
+   * captured/invoice rates.
+   */
+  lineRateOverrides?: Record<string, number>
+  /**
+   * Variable costs added in the same request as creation (one
+   * round trip instead of create-then-PATCH). total is always
+   * re-derived server-side as fixedCost + variableCostTotal.
+   */
+  variableCosts?: VariableCostInput[]
   adminUserId: string
   adminUserName: string
 }): Promise<Invoice> {
@@ -486,6 +628,7 @@ export async function createInvoice(input: {
       hourlyRate,
       assignmentId: input.assignmentId,
       timesheetIds: input.timesheetIds,
+      lineRateOverrides: input.lineRateOverrides,
     })
     lines = collection.lines
     billedTimesheetIds = collection.billedTimesheetIds
@@ -578,13 +721,26 @@ export async function createInvoice(input: {
 
   const invoice = toInvoice({ ...doc, _id: result.insertedId })
 
+  // Inline variable costs (Phase 5 create flow): applied in the same
+  // request so creation is one round trip. total is re-derived from
+  // fixedCost + variableCostTotal — the same math addVariableCosts
+  // uses, so create-with-costs and create-then-add are identical.
+  let finalInvoice = invoice
+  if (input.variableCosts && input.variableCosts.length > 0) {
+    finalInvoice = await addVariableCosts(
+      result.insertedId.toString(),
+      input.variableCosts,
+      input.adminUserId,
+    )
+  }
+
   await createActivity({
     userId: input.adminUserId,
     projectId: input.projectId,
     description: `Invoice ${invoice.invoiceNumber} created for ${project.name} (week of ${weekStart}).`,
   })
 
-  return invoice
+  return finalInvoice
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
@@ -712,6 +868,168 @@ export async function updateInvoiceRate(
   })
 
   return toInvoice(result)
+}
+
+/**
+ * Flow Integration Phase 5 — update the rate on ONE line of a draft invoice and
+ * recompute that line's amount plus the invoice's fixed cost + total.
+ *
+ * Lines are keyed by `timesheetId` (the unique per-timesheet identifier the
+ * collector already emits). A line's rate is normally the assignment's billRate
+ * (rateSource 'assignment') or the invoice's hourlyRate ('invoice'); this
+ * override records the admin's explicit per-employee price and marks the line
+ * `rateSource: 'manual'` so the provenance is auditable. It does NOT touch the
+ * underlying assignment or timesheet — it is an invoice-level price decision,
+ * the same way `hourlyRate` is.
+ *
+ * `fixedCost` is always re-derived as the sum of every line's amount, so editing
+ * one rate can never leave the invoice internally inconsistent.
+ */
+export async function updateLineRate(
+  invoiceId: string,
+  timesheetId: string,
+  rate: number,
+  adminUserId: string,
+): Promise<Invoice> {
+  const db = await getDb()
+  const invoice = await getInvoice(invoiceId)
+  if (!invoice) throw new Error('Invoice not found')
+  assertDraftInvoice(invoice)
+  if (!Number.isFinite(rate) || rate < 0) {
+    throw new Error('Rate must be 0 or greater')
+  }
+
+  const line = (invoice.lines ?? []).find((l) => l.timesheetId === timesheetId)
+  if (!line) {
+    throw new Error('Line not found on this invoice')
+  }
+
+  const newAmount = round2(rate * line.hours)
+  const result = await db
+    .collection(COLLECTIONS.INVOICES)
+    .findOneAndUpdate(
+      { _id: new ObjectId(invoiceId), status: 'draft' },
+      {
+        $set: {
+          'lines.$[elem].rate': rate,
+          'lines.$[elem].amount': newAmount,
+          'lines.$[elem].rateSource': 'manual',
+          updatedAt: new Date(),
+        },
+      } as any,
+      {
+        returnDocument: 'after',
+        arrayFilters: [{ 'elem.timesheetId': timesheetId }],
+      },
+    )
+  if (!result) throw new Error('Invoice not found or already sent')
+
+  const updated = toInvoice(result)
+  const recomputedFixed = round2((updated.lines ?? []).reduce((s, l) => s + l.amount, 0))
+  await db.collection(COLLECTIONS.INVOICES).updateOne(
+    { _id: new ObjectId(invoiceId) },
+    { $set: { fixedCost: recomputedFixed, total: recomputedFixed + updated.variableCostTotal, updatedAt: new Date() } },
+  )
+
+  const final = toInvoice(
+    await db.collection(COLLECTIONS.INVOICES).findOne({ _id: new ObjectId(invoiceId) }),
+  )
+
+  await createActivity({
+    userId: adminUserId,
+    projectId: invoice.projectId,
+    timesheetId: invoiceId,
+    description: `Line rate for timesheet ${timesheetId.slice(-6)} updated to $${rate.toFixed(2)} on invoice ${invoice.invoiceNumber}.`,
+  })
+
+  return final
+}
+
+/**
+ * Flow Integration Phase 5 — atomically update the rate on several
+ * lines of a draft invoice (typically every line of one employee)
+ * and re-derive fixedCost = Σ line amounts and
+ * total = fixedCost + variableCostTotal in a single write.
+ *
+ * The per-employee create/edit UI sends one row per employee, which
+ * expands to that employee's timesheet ids on the invoice. Unknown
+ * timesheet ids are rejected loudly so a stale UI can never silently
+ * price a line it no longer sees. Like `updateLineRate`, this is an
+ * invoice-level price decision (`rateSource: 'manual'`) — the
+ * underlying assignment/timesheet records are never touched.
+ *
+ * `fixedCost` is re-derived as the sum of every line's amount, so a
+ * batch edit can never leave the invoice internally inconsistent.
+ */
+export async function updateInvoiceRates(
+  invoiceId: string,
+  rates: { timesheetId: string; rate: number }[],
+  adminUserId: string,
+): Promise<Invoice> {
+  const db = await getDb()
+  const invoice = await getInvoice(invoiceId)
+  if (!invoice) throw new Error('Invoice not found')
+  assertDraftInvoice(invoice)
+
+  if (rates.length === 0) throw new Error('At least one rate is required')
+  const requested = new Map<string, number>()
+  for (const entry of rates) {
+    if (!Number.isFinite(entry.rate) || entry.rate < 0) {
+      throw new Error('Rate must be 0 or greater')
+    }
+    requested.set(String(entry.timesheetId), entry.rate)
+  }
+
+  const lines = invoice.lines ?? []
+  const missing = [...requested.keys()].filter(
+    (timesheetId) => !lines.some((line) => line.timesheetId === timesheetId),
+  )
+  if (missing.length > 0) {
+    throw new Error('Line not found on this invoice')
+  }
+
+  // Rebuild the lines array in JS (only the requested lines change)
+  // and persist it in one $set — atomic, and re-deriving fixedCost
+  // from the rebuilt array means the invoice can never be left with
+  // a stale total.
+  const updatedLines = lines.map((line) => {
+    const rate = requested.get(line.timesheetId)
+    if (rate === undefined) return line
+    return {
+      ...line,
+      rate,
+      amount: round2(rate * line.hours),
+      rateSource: 'manual' as const,
+    }
+  })
+  const recomputedFixed = round2(updatedLines.reduce((sum, line) => sum + line.amount, 0))
+
+  const result = await db
+    .collection(COLLECTIONS.INVOICES)
+    .findOneAndUpdate(
+      { _id: new ObjectId(invoiceId), status: 'draft' },
+      {
+        $set: {
+          lines: updatedLines,
+          fixedCost: recomputedFixed,
+          total: recomputedFixed + invoice.variableCostTotal,
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: 'after' },
+    )
+  if (!result) throw new Error('Invoice not found or already sent')
+
+  const final = toInvoice(result)
+
+  await createActivity({
+    userId: adminUserId,
+    projectId: invoice.projectId,
+    timesheetId: invoiceId,
+    description: `Rates updated on ${requested.size} line${requested.size === 1 ? '' : 's'} of invoice ${final.invoiceNumber}.`,
+  })
+
+  return final
 }
 
 export async function removeVariableCosts(

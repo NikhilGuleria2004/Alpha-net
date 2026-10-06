@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { ArrowLeft, Send, FileDown, Trash2 } from 'lucide-react'
+import { ArrowLeft, Send, FileDown, Trash2, Pencil } from 'lucide-react'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Button } from '../../components/ui/Button'
@@ -8,7 +8,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Card } from '../../components/ui/Card'
 import { KpiChip } from '../../components/ui/KpiChip'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { getInvoiceById as getInvoiceService, sendInvoice as sendInvoiceService, updateInvoice as updateInvoiceService } from '../../services/invoiceService'
+import { Input } from '../../components/ui/Input'
+import { getInvoiceById as getInvoiceService, sendInvoice as sendInvoiceService, updateInvoice as updateInvoiceService, updateLineRate as updateLineRateService } from '../../services/invoiceService'
 import type { Invoice, VariableCost } from '../../types/invoice'
 import { failureMessage } from '../../utils/errorMessage'
 import { formatDate } from '../../utils/date'
@@ -24,6 +25,11 @@ export function InvoiceDetail() {
   const [recipientEmail, setRecipientEmail] = useState('')
   const [showSendForm, setShowSendForm] = useState(false)
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<string | null>(null)
+  // Flow Integration Phase 5 — per-employee rate override on a draft invoice.
+  // `editingRate[timesheetId]` holds the in-progress input value for one line;
+  // the row only commits on blur/Enter via handleSaveLineRate.
+  const [editingRate, setEditingRate] = useState<Record<string, number>>({})
+  const [savingLineId, setSavingLineId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!invoiceId) return
@@ -96,6 +102,38 @@ export function InvoiceDetail() {
     }
   }
 
+  /**
+   * Flow Integration Phase 5 — per-employee rate override. PATCHes one line of
+   * the draft invoice, re-fetches the invoice, and rolls the input back to the
+   * committed value on success (or clears it on failure). The row's rate is the
+   * assignment's billRate by default (rateSource 'assignment') or the invoice
+   * rate ('invoice'); an admin override becomes 'manual'. Changing one rate
+   * re-derives fixedCost = sum(lines.amount) and total, so the summary card
+   * below always reflects it.
+   */
+  const handleSaveLineRate = async (timesheetId: string) => {
+    if (!invoice || !invoiceId) return
+    const rate = editingRate[timesheetId]
+    if (rate === undefined || !Number.isFinite(rate) || rate < 0) {
+      setEditingRate((prev) => { const next = { ...prev }; delete next[timesheetId]; return next })
+      return
+    }
+    setSavingLineId(timesheetId)
+    try {
+      const updated = await updateLineRateService(invoiceId, timesheetId, rate)
+      if (updated) {
+        setInvoice(updated)
+        setEditingRate((prev) => { const next = { ...prev }; delete next[timesheetId]; return next })
+        addToast('success', 'Employee rate updated')
+      }
+    } catch (err) {
+      const message = failureMessage(err, { what: 'update that employee rate', reassurance: 'No changes were saved', next: 'try again in a moment' })
+      addToast('error', message)
+    } finally {
+      setSavingLineId(null)
+    }
+  }
+
   if (isLoading || !invoice) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -160,6 +198,104 @@ export function InvoiceDetail() {
           )}
         </div>
       </Card>
+
+      {/* Flow Integration Phase 5 — per-employee breakdown. The approved-only
+          collector already emits one line per billed timesheet (resourceName,
+          hours, rate, amount), so this is display + editable rate only; the
+          underlying assignment/timesheet records are never touched. Empty for
+          legacy invoices and flag-off invoices, which keep their old layout. */}
+      {invoice.lines && invoice.lines.length > 0 && (
+        <Card>
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Employees on This Invoice</h2>
+            <span className="text-sm text-muted-foreground">{invoice.lines.length} {invoice.lines.length === 1 ? 'line' : 'lines'}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Week</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hours</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rate ($/h)</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {invoice.lines.map((line) => {
+                  const isEditing = editingRate[line.timesheetId] !== undefined
+                  const displayRate = isEditing ? editingRate[line.timesheetId] : line.rate
+                  return (
+                    <tr key={line.timesheetId} className="hover:bg-muted">
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{line.resourceName ?? 'Unknown resource'}</span>
+                          {line.rateSource === 'manual' && (
+                            <span className="text-xs text-muted-foreground">rate overridden</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{line.weekStart}</td>
+                      <td className="px-4 py-3 text-right text-sm text-foreground">{line.hours.toFixed(2)}</td>
+                      <td className="px-4 py-3">
+                        {canEdit ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              step="0.01"
+                              min="0"
+                              value={displayRate}
+                              disabled={savingLineId === line.timesheetId}
+                              onChange={(e) => {
+                                const value = parseFloat(e.target.value)
+                                setEditingRate((prev) => ({ ...prev, [line.timesheetId]: Number.isFinite(value) ? value : 0 }))
+                              }}
+                              onBlur={() => handleSaveLineRate(line.timesheetId)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  handleSaveLineRate(line.timesheetId)
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingRate((prev) => { const next = { ...prev }; delete next[line.timesheetId]; return next })
+                                }
+                              }}
+                              className="w-28 text-right"
+                            />
+                            {isEditing && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={savingLineId === line.timesheetId}
+                                onClick={() => handleSaveLineRate(line.timesheetId)}
+                                leftIcon={<Pencil className="h-3 w-3" />}
+                              >
+                                Save
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="block text-right text-sm text-foreground">${line.rate.toFixed(2)}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-foreground">${line.amount.toFixed(2)}</td>
+</tr>
+                  )}
+                )}
+                </tbody>
+                <tfoot className="bg-muted">
+                  <tr>
+                    <td colSpan={2} className="px-4 py-3 text-right text-sm font-semibold text-foreground">Subtotal (lines)</td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">{invoice.lines.reduce((s, l) => s + l.hours, 0).toFixed(2)}</td>
+                    <td className="px-4 py-3" />
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">${invoice.lines.reduce((s, l) => s + l.amount, 0).toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Card>
+      )}
 
       <Card>
         <div className="border-b border-border px-5 py-4">
